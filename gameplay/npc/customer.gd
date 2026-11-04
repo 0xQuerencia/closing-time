@@ -16,8 +16,8 @@ var impatience_delay := 22.0
 var held_product: Product
 var talk: TalkInteractable
 var _hand: Marker3D
-var _legs: Array[Node3D] = []
-var _gait := 0.0
+var _animation_player: AnimationPlayer
+var _current_animation: StringName
 var _talk_used := false
 var _excused := false
 
@@ -49,50 +49,42 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	add_collision_exception_with(game.player)
 	return self
 
-func _box(size: Vector3, pos: Vector3, color: Color, parent: Node3D = self) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	mi.mesh = mesh
-	var m := StandardMaterial3D.new()
-	m.albedo_color = color
-	m.roughness = 0.85
-	mi.material_override = m
-	mi.position = pos
-	parent.add_child(mi)
-	return mi
-
 func _build_body() -> void:
-	var jacket: Color = profile.jacket
-	var trousers: Color = profile.trousers
-	var skin: Color = profile.skin
-	_box(Vector3(0.44, 0.62, 0.25), Vector3(0, 1.2, 0), jacket)
-	for side in [-1.0, 1.0]:
-		var hip := Node3D.new()
-		hip.position = Vector3(side * 0.11, 0.9, 0)
-		add_child(hip)
-		_box(Vector3(0.15, 0.88, 0.17), Vector3(0, -0.44, 0), trousers, hip)
-		_legs.append(hip)
-		_box(Vector3(0.1, 0.5, 0.11), Vector3(side * 0.28, 1.2, 0), jacket)
-	var head := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.115
-	sphere.height = 0.25
-	head.mesh = sphere
-	var hm := StandardMaterial3D.new()
-	hm.albedo_color = skin
-	hm.roughness = 0.7
-	head.material_override = hm
-	head.position.y = 1.65
-	add_child(head)
-	_box(Vector3(0.24, 0.07, 0.25), Vector3(0, 1.74, 0), profile.hair)
+	var model_path := "res://assets/models/characters/young_man.glb" if profile.id == "c1" else "res://assets/models/characters/office_worker.glb"
+	var model_scene := load(model_path) as PackedScene
+	if model_scene == null:
+		push_error("Customer visual model failed to load: " + model_path)
+		return
+	var model := model_scene.instantiate()
+	model.name = "CustomerVisual"
+	# These authored models face +Z; the store's customer paths use Godot's -Z forward.
+	model.rotation.y = PI
+	add_child(model)
+	var animation_players := model.find_children("*", "AnimationPlayer", true, false)
+	if not animation_players.is_empty():
+		_animation_player = animation_players[0] as AnimationPlayer
+		for clip_name in _animation_player.get_animation_list():
+			if clip_name in ["Idle", "IdleShift", "IdleWait", "CounterIdle", "LookAround", "Listen", "Talk", "Walk", "Stroll", "Run", "Flee"]:
+				_animation_player.get_animation(clip_name).loop_mode = Animation.LOOP_LINEAR
+		_play_animation("Idle")
 	_hand = Marker3D.new()
-	_hand.position = Vector3(0.25, 1.0, -0.28)
+	_hand.position = Vector3(0.3, 1.05, -0.12)
 	add_child(_hand)
 
 func _set_phase(next: Phase) -> void:
 	phase = next
 	phase_changed.emit(next)
+	if not is_zero_approx(velocity.x) or not is_zero_approx(velocity.z):
+		return
+	match phase:
+		Phase.BROWSE:
+			_play_animation("IdleShift")
+		Phase.QUEUE:
+			_play_animation("IdleWait")
+		Phase.TRANSACTION:
+			_play_animation("CounterIdle")
+		_:
+			_play_animation("Idle")
 
 ## Full visit. Completion of the sale is awaited, never timed out.
 func run() -> void:
@@ -190,7 +182,6 @@ func _walk_to(target: Vector3) -> void:
 			velocity.x = dir.x * SPEED
 			velocity.z = dir.z * SPEED
 			rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), minf(1.0, delta * 8.0))
-			_gait += delta * SPEED * 5.0
 		velocity.y = -0.1 if is_on_floor() else velocity.y - GRAVITY * delta
 		move_and_slide()
 		_animate()
@@ -215,6 +206,23 @@ func _face(point: Vector3) -> void:
 	rotation.y = atan2(-d.x, -d.z)
 
 func _animate() -> void:
-	var swing := sin(_gait) * 0.5 if velocity.length() > 0.1 else 0.0
-	_legs[0].rotation.x = swing
-	_legs[1].rotation.x = -swing
+	if Vector2(velocity.x, velocity.z).length() > 0.1:
+		_play_animation("Walk")
+		return
+	match phase:
+		Phase.BROWSE:
+			_play_animation("IdleShift")
+		Phase.QUEUE:
+			_play_animation("IdleWait")
+		Phase.TRANSACTION:
+			_play_animation("CounterIdle")
+		_:
+			_play_animation("Idle")
+
+func _play_animation(clip_name: StringName) -> void:
+	if _animation_player == null or not _animation_player.has_animation(clip_name):
+		return
+	if _current_animation == clip_name and _animation_player.is_playing():
+		return
+	_current_animation = clip_name
+	_animation_player.play(clip_name, 0.12)
