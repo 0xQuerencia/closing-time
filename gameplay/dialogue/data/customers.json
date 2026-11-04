@@ -7,6 +7,7 @@
     "found": {"speaker": "Customer", "text": "Mostly. You're out of the other flavour."},
     "card": {"speaker": "Customer", "text": "Card."}}},
   "c1_wait": {"start": "a", "nodes": {"a": {"speaker": "Customer", "text": "Take your time."}}},
+  "c1_excuse": {"start": "a", "nodes": {"a": {"speaker": "Customer", "text": "Excuse me?"}}},
   "c1_thanks": {"start": "a", "nodes": {
     "a": {"speaker": "Customer", "text": "Cheers. Quiet night.", "next": "b"},
     "b": {"speaker": "Jamie", "text": "It is. Take care."}}},
@@ -18,6 +19,7 @@
     "long": {"speaker": "Customer", "text": "Double shift. This is dinner."},
     "bag": {"speaker": "Customer", "text": "No, I'm fine."}}},
   "c2_wait": {"start": "a", "nodes": {"a": {"speaker": "Customer", "text": "Whenever you're ready."}}},
+  "c2_excuse": {"start": "a", "nodes": {"a": {"speaker": "Customer", "text": "Sorry, could I get past?"}}},
   "c2_thanks": {"start": "a", "nodes": {
     "a": {"speaker": "Customer", "text": "Thanks. Goodnight.", "next": "b"},
     "b": {"speaker": "Jamie", "text": "Goodnight. Drive safe."}}}

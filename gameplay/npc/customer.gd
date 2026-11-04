@@ -8,6 +8,7 @@ const SPEED := 1.3
 const GRAVITY := 18.0
 const ARRIVE_DIST := 0.12
 const YIELD_DIST := 0.85
+const EXCUSE_AFTER := 5.0
 var phase := Phase.ARRIVE
 var profile: Dictionary
 var game: Gameplay
@@ -18,6 +19,7 @@ var _hand: Marker3D
 var _legs: Array[Node3D] = []
 var _gait := 0.0
 var _talk_used := false
+var _excused := false
 
 func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	game = owner_game
@@ -166,6 +168,7 @@ func _walk(points: Array) -> void:
 func _walk_to(target: Vector3) -> void:
 	var best := INF
 	var stalled := 0.0
+	var blocked := 0.0
 	while is_inside_tree():
 		var delta := get_physics_process_delta_time()
 		var flat := Vector3(target.x - global_position.x, 0, target.z - global_position.z)
@@ -173,10 +176,17 @@ func _walk_to(target: Vector3) -> void:
 		if remaining < ARRIVE_DIST:
 			break
 		var dir := flat / remaining
-		if _player_in_way(dir):
+		var yielding := _player_in_way(dir)
+		if yielding:
+			# Never walk through the player: wait, and politely ask once.
 			velocity.x = 0.0
 			velocity.z = 0.0
+			blocked += delta
+			if blocked > EXCUSE_AFTER and not _excused and not game.dialogue.is_active():
+				_excused = true
+				game.dialogue.start(profile.id + "_excuse")
 		else:
+			blocked = 0.0
 			velocity.x = dir.x * SPEED
 			velocity.z = dir.z * SPEED
 			rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), minf(1.0, delta * 8.0))
@@ -184,8 +194,8 @@ func _walk_to(target: Vector3) -> void:
 		velocity.y = -0.1 if is_on_floor() else velocity.y - GRAVITY * delta
 		move_and_slide()
 		_animate()
-		if remaining < best - 0.01:
-			best = remaining
+		if yielding or remaining < best - 0.01:
+			best = minf(best, remaining)
 			stalled = 0.0
 		else:
 			stalled += delta
