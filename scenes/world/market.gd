@@ -90,12 +90,23 @@ func build_glass() -> void:
 	glass_panel(Vector3(2.57,1.12,5.45),Vector3(.016,2.18,1.05),Color(.4,.5,.45,.1))
 
 func lamp(pos: Vector3, color: Color, energy: float, distance: float, shadows: bool = false) -> void:
-	var light := OmniLight3D.new()
+	var light: Light3D
+	if pos.y > 2.0:
+		var spot := SpotLight3D.new()
+		spot.spot_range = distance
+		spot.spot_attenuation = 1.35
+		spot.spot_angle = 78
+		spot.spot_angle_attenuation = .35
+		spot.rotation.x = -PI/2
+		light = spot
+	else:
+		var omni := OmniLight3D.new()
+		omni.omni_range = distance
+		omni.omni_attenuation = 1.35
+		light = omni
 	light.position = pos
 	light.light_color = color
 	light.light_energy = energy
-	light.omni_range = distance
-	light.omni_attenuation = 1.35
 	light.shadow_enabled = shadows
 	light.shadow_bias = 0.025
 	light.light_size = 0.0
@@ -213,7 +224,7 @@ func build_hint() -> void:
 func capture_views() -> void:
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1600,900)
-	viewport.positional_shadow_atlas_size = 4096
+	viewport.positional_shadow_atlas_size = 2048
 	viewport.positional_shadow_atlas_16_bits = false
 	viewport.world_3d = get_viewport().world_3d
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -356,10 +367,23 @@ func _exit_tree() -> void:
 			child.stream = null
 
 func benchmark_views() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1920,1080)
+	viewport.world_3d = get_viewport().world_3d
+	viewport.positional_shadow_atlas_size = 2048
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	viewport.msaa_3d = Viewport.MSAA_2X
+	add_child(viewport)
+	var camera := Camera3D.new()
+	camera.keep_aspect = Camera3D.KEEP_WIDTH
+	camera.fov = 75
+	viewport.add_child(camera)
+	camera.current = true
+	get_viewport().disable_3d = true
 	var frame_times: Array[float] = []
 	for view in [[Vector3(-7.2,1.62,5.2),Vector3(-2,1.4,-2)], [Vector3(-1.5,1.62,-1.6),Vector3(0,1.4,7)], [Vector3(-3.4,1.62,19.5),Vector3(-1,1.7,5.8)]]:
-		player.position = view[0]-Vector3(0,1.62,0)
-		player.camera.look_at(view[1])
+		camera.position = view[0]
+		camera.look_at(view[1])
 		await get_tree().create_timer(2).timeout
 		var last_tick := Time.get_ticks_usec()
 		for frame in range(120):
@@ -371,9 +395,12 @@ func benchmark_views() -> void:
 	for delta in frame_times:
 		total += delta
 	frame_times.sort()
-	var result := {"version":Engine.get_version_info().string,"renderer":RenderingServer.get_current_rendering_method(),"resolution":str(get_viewport().get_visible_rect().size),"gpu":RenderingServer.get_video_adapter_name(),"frames":frame_times.size(),"average_fps":frame_times.size()/total,"minimum_fps":1.0/frame_times[-1],"p95_frame_ms":frame_times[int(frame_times.size()*.95)]*1000,"note":"Three static views; normal window viewport; vsync enabled. Not a full walking playthrough."}
+	var result := {"version":Engine.get_version_info().string,"renderer":RenderingServer.get_current_rendering_method(),"resolution":str(viewport.size),"gpu":RenderingServer.get_video_adapter_name(),"frames":frame_times.size(),"average_fps":frame_times.size()/total,"minimum_fps":1.0/frame_times[-1],"p95_frame_ms":frame_times[int(frame_times.size()*.95)]*1000,"note":"Three static views in an offscreen 1080p viewport, MSAA 2x; main viewport 3D disabled; vsync enabled. Not a full walking playthrough."}
 	var file := FileAccess.open("res://local/benchmark.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(result,"  "))
 	file.close()
 	print("BENCHMARK ",JSON.stringify(result))
+	viewport.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
 	await finish_run(0)
