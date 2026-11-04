@@ -43,6 +43,20 @@ func _build() -> void:
 		cs.radius = size.x / 2.0 + 0.01
 		cs.height = size.y
 		_shape.shape = cs
+	elif def.shape == "sack":
+		var lump := SphereMesh.new()
+		lump.radius = size.x / 2.0
+		lump.height = size.y * 1.6
+		body.mesh = lump
+		body.scale = Vector3(1.0, 0.62, size.z / size.x)
+		var knot := SphereMesh.new()
+		knot.radius = 0.045
+		knot.height = 0.09
+		band.mesh = knot
+		_shape = CollisionShape3D.new()
+		var ss := BoxShape3D.new()
+		ss.size = size + Vector3.ONE * 0.02
+		_shape.shape = ss
 	else:
 		var box := BoxMesh.new()
 		box.size = size
@@ -57,7 +71,7 @@ func _build() -> void:
 	body.material_override = _material(def.color, 0.55)
 	band.material_override = _material(def.band, 0.7)
 	body.position.y = size.y / 2.0
-	band.position.y = size.y / 2.0
+	band.position.y = size.y + 0.02 if def.shape == "sack" else size.y / 2.0
 	_shape.position.y = size.y / 2.0
 	add_child(body)
 	add_child(band)
@@ -70,6 +84,8 @@ func _material(color: Color, rough: float) -> StandardMaterial3D:
 	return m
 
 func can_interact(actor: Node) -> bool:
+	if not enabled:
+		return false
 	if checkout != null:
 		return checkout.can_scan(self)
 	return holder == null and (actor == null or not "held" in actor or actor.held == null)

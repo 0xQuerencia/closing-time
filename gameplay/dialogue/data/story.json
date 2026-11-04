@@ -1,0 +1,335 @@
+{
+ "mara_greet": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Mara",
+    "text": "Still here? Thought you had Fridays off."
+   }
+  }
+ },
+ "mara_talk": {
+  "start": "q",
+  "nodes": {
+   "q": {
+    "choices": [
+     {
+      "text": "Not anymore.",
+      "next": "a",
+      "set": {
+       "mara_not_anymore": true
+      }
+     },
+     {
+      "text": "Just covering.",
+      "next": "b",
+      "set": {
+       "mara_just_covering": true
+      }
+     }
+    ]
+   },
+   "a": {
+    "speaker": "Mara",
+    "text": "Rough. Coffee's getting cold, by the way."
+   },
+   "b": {
+    "speaker": "Mara",
+    "text": "Sure you are. Coffee's getting cold, by the way."
+   }
+  }
+ },
+ "mara_wait": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Mara",
+    "text": "Take your time, hon."
+   }
+  }
+ },
+ "mara_excuse": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Mara",
+    "text": "Sorry, hon. Just getting past."
+   }
+  }
+ },
+ "mara_thanks": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Mara",
+    "text": "Night, hon. Get home safe.",
+    "next": "b"
+   },
+   "b": {
+    "speaker": "Jamie",
+    "text": "You too."
+   }
+  }
+ },
+ "ben_greet": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Ben",
+    "text": "Evening."
+   }
+  }
+ },
+ "ben_talk": {
+  "start": "q",
+  "nodes": {
+   "q": {
+    "choices": [
+     {
+      "text": "Long day?",
+      "next": "a",
+      "set": {
+       "ben_long_day": true
+      }
+     },
+     {
+      "text": "Card or cash?",
+      "next": "b",
+      "set": {
+       "ben_card": true
+      }
+     }
+    ]
+   },
+   "a": {
+    "speaker": "Ben",
+    "text": "Poured till ten. Then they wanted it redone."
+   },
+   "b": {
+    "speaker": "Ben",
+    "text": "Card. If that thing works."
+   }
+  }
+ },
+ "ben_reader": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Ben",
+    "text": "Again?",
+    "next": "b"
+   },
+   "b": {
+    "speaker": "Jamie",
+    "text": "Give me a second."
+   }
+  }
+ },
+ "ben_wait": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Ben",
+    "text": "No rush."
+   }
+  }
+ },
+ "ben_excuse": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Ben",
+    "text": "Pardon me."
+   }
+  }
+ },
+ "ben_thanks": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Ben",
+    "text": "Cheers. Hope the rest of your night's quieter.",
+    "next": "b"
+   },
+   "b": {
+    "speaker": "Jamie",
+    "text": "Doubtful."
+   }
+  }
+ },
+ "leon1_greet": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "One of these."
+   }
+  }
+ },
+ "leon1_talk": {
+  "start": "q",
+  "nodes": {
+   "q": {
+    "choices": [
+     {
+      "text": "Anything else?",
+      "next": "a",
+      "set": {
+       "leon1_anything_else": true
+      }
+     },
+     {
+      "text": "Rainy out there?",
+      "next": "b",
+      "set": {
+       "leon1_weather": true
+      }
+     }
+    ]
+   },
+   "a": {
+    "speaker": "Leon",
+    "text": "That's it."
+   },
+   "b": {
+    "speaker": "Leon",
+    "text": "Yeah."
+   }
+  }
+ },
+ "leon1_wait": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "I'll wait."
+   }
+  }
+ },
+ "leon1_excuse": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "Excuse me."
+   }
+  }
+ },
+ "leon1_thanks": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "What time do you close?",
+    "next": "b"
+   },
+   "b": {
+    "speaker": "Jamie",
+    "text": "Midnight.",
+    "next": "c"
+   },
+   "c": {
+    "speaker": "Leon",
+    "text": "Okay."
+   }
+  }
+ },
+ "leon2_greet": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "One of these."
+   }
+  }
+ },
+ "leon2_talk": {
+  "start": "q",
+  "nodes": {
+   "q": {
+    "choices": [
+     {
+      "text": "You were just here.",
+      "next": "j1",
+      "set": {
+       "leon2_confronted": true
+      }
+     },
+     {
+      "text": "Didn't you just come in?",
+      "next": "j2",
+      "set": {
+       "leon2_asked": true
+      }
+     },
+     {
+      "text": "We're closing soon.",
+      "next": "j3",
+      "set": {
+       "leon2_closing": true
+      }
+     }
+    ]
+   },
+   "j1": {
+    "speaker": "Leon",
+    "text": "No, I wasn't.",
+    "next": "j1b"
+   },
+   "j1b": {
+    "speaker": "Jamie",
+    "text": "Same water?",
+    "next": "j1c"
+   },
+   "j1c": {
+    "speaker": "Leon",
+    "text": "It is a popular water."
+   },
+   "j2": {
+    "speaker": "Leon",
+    "text": "Must've been somebody else."
+   },
+   "j3": {
+    "speaker": "Leon",
+    "text": "Won't be long."
+   }
+  }
+ },
+ "leon2_wait": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "I can wait."
+   }
+  }
+ },
+ "leon2_excuse": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "Excuse me."
+   }
+  }
+ },
+ "leon2_thanks": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "Just you tonight?",
+    "next": "b"
+   },
+   "b": {
+    "speaker": "Jamie",
+    "text": "Why?",
+    "next": "c"
+   },
+   "c": {
+    "speaker": "Leon",
+    "text": "Slow night, that's all."
+   }
+  }
+ }
+}

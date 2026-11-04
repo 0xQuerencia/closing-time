@@ -53,21 +53,26 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	add_collision_exception_with(game.player)
 	return self
 
+const MODELS := {
+	"vinrax": "res://assets/models/characters/vinrax/casual_male.glb",
+	"young_man": "res://assets/models/characters/young_man.glb",
+	"office_worker": "res://assets/models/characters/office_worker.glb"}
+const OUTFITS := {
+	"leon_jacket": "res://assets/models/characters/vinrax/casual_male_leon_jacket.png",
+	"leon_overshirt": "res://assets/models/characters/vinrax/casual_male_leon_overshirt.png"}
+
 func _build_body() -> void:
-	var fallback_path := "res://assets/models/characters/young_man.glb" if profile.id == "c1" else "res://assets/models/characters/office_worker.glb"
-	var use_vinrax: bool = profile.id == "c1" and not OS.get_cmdline_user_args().has("--customer-art=cordatix")
-	var model_path := "res://assets/models/characters/vinrax/casual_male.glb" if use_vinrax else fallback_path
+	var model_path: String = MODELS.get(profile.get("model", "vinrax"), MODELS.vinrax)
 	var model_scene := load(model_path) as PackedScene
-	if model_scene == null and use_vinrax:
-		push_warning("Vinrax model unavailable; using retained Cordatix customer")
-		model_scene = load(fallback_path) as PackedScene
 	if model_scene == null:
 		push_error("Customer visual model failed to load: " + model_path)
 		return
 	var model := model_scene.instantiate()
 	model.name = "CustomerVisual"
-	if use_vinrax:
-		_apply_outfit(model, "res://assets/models/characters/vinrax/casual_male_man_tex_beige.png")
+	if profile.has("outfit"):
+		_apply_outfit(model, OUTFITS[profile.outfit])
+	if profile.get("cap", false):
+		_attach_cap(model)
 	# These authored models face +Z; the store's customer paths use Godot's -Z forward.
 	model.rotation.y = PI
 	add_child(model)
@@ -89,7 +94,7 @@ func _build_body() -> void:
 	_hand.position = Vector3(0.3, 1.05, -0.12)
 	add_child(_hand)
 
-## Beige tee variant of the shared texture (same UVs, only the shirt recoloured).
+## Outfit variant of the shared texture (same UVs, only the clothing recoloured).
 func _apply_outfit(model: Node, texture_path: String) -> void:
 	var texture := load(texture_path) as Texture2D
 	if texture == null:
@@ -106,6 +111,36 @@ func _apply_outfit(model: Node, texture_path: String) -> void:
 			tinted.albedo_texture = texture
 			mi.set_surface_override_material(surface, tinted)
 
+## Simple low-poly cap on the head bone (Vinrax has none of his own).
+func _attach_cap(model: Node) -> void:
+	var skeletons := model.find_children("*", "Skeleton3D", true, false)
+	if skeletons.is_empty():
+		return
+	var skeleton := skeletons[0] as Skeleton3D
+	var attach := BoneAttachment3D.new()
+	attach.bone_name = "head" if skeleton.find_bone("head") >= 0 else "Head"
+	skeleton.add_child(attach)
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.09, 0.1, 0.11)
+	cloth.roughness = 0.9
+	var crown := MeshInstance3D.new()
+	var dome := SphereMesh.new()
+	dome.radius = 0.118
+	dome.height = 0.2
+	dome.is_hemisphere = true
+	crown.mesh = dome
+	crown.material_override = cloth
+	crown.position = Vector3(0, 0.05, 0.01)
+	attach.add_child(crown)
+	var brim := MeshInstance3D.new()
+	var brim_mesh := BoxMesh.new()
+	brim_mesh.size = Vector3(0.2, 0.012, 0.11)
+	brim.mesh = brim_mesh
+	brim.material_override = cloth
+	brim.position = Vector3(0, 0.055, 0.115)
+	brim.rotation.x = 0.12
+	attach.add_child(brim)
+
 func _set_phase(next: Phase) -> void:
 	phase = next
 	_idle_time = 0.0
@@ -118,7 +153,11 @@ func _set_phase(next: Phase) -> void:
 		Phase.QUEUE:
 			_play_animation("IdleWait")
 		Phase.TRANSACTION:
-			_play_animation("CounterIdle" if int(_idle_time / 7.0) % 2 == 0 else "IdleWait")
+			var mannerism: String = profile.get("mannerism", "")
+			if mannerism != "" and int(_idle_time / 6.0) % 3 == 1:
+				_play_animation(mannerism)  # a glance toward the back of the store, every visit
+			else:
+				_play_animation("CounterIdle" if int(_idle_time / 7.0) % 2 == 0 else "IdleWait")
 		_:
 			_play_animation("Idle")
 
@@ -129,9 +168,12 @@ func run() -> void:
 	await _walk(route.arrive)
 	_set_phase(Phase.BROWSE)
 	await _walk(route.browse)
-	await _face(global_position + Vector3(-1.0, 0, 0))
+	await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
 	await _wait(2.2)
-	held_product = game.spawn_product(profile.product, null)
+	var basket: Array[Product] = []
+	for item_id in profile.items:
+		basket.append(game.spawn_product(item_id, null))
+	held_product = basket[0]
 	held_product.attach_to(_hand, Vector3.ZERO)
 	await _wait(0.6)
 	_set_phase(Phase.QUEUE)
@@ -142,10 +184,12 @@ func run() -> void:
 	var checkout := game.checkout
 	while not checkout.open_sale(self):
 		await _wait(0.5)  # an earlier sale is still closing
-	var item := held_product
 	held_product = null
-	item.place_at(checkout.drop_point(0), 0.0)
 	talk.available = true
+	for slot in basket.size():
+		basket[slot].place_at(checkout.drop_point(slot), 0.0)
+		await _wait(0.35)
+	checkout.payment_failed.connect(_on_reader_failed)
 	game.dialogue.start(profile.id + "_greet")
 	var waited := 0.0
 	var nagged := false
@@ -164,13 +208,20 @@ func run() -> void:
 			bought.attach_to(_hand, Vector3.ZERO)
 		else:
 			bought.queue_free()
+	checkout.payment_failed.disconnect(_on_reader_failed)
 	await _say(profile.id + "_thanks")
 	checkout.close_sale()
 	_set_phase(Phase.LEAVE)
 	await _walk(route.leave)
+	if route.has("car"):  # walks off to a parked car and drives away
+		await _walk(route.car)
 	_set_phase(Phase.GONE)
 	finished.emit(self)
 	queue_free()
+
+func _on_reader_failed(_remaining: int) -> void:
+	if game.dialogue.has_conversation(profile.id + "_reader"):
+		game.dialogue.start(profile.id + "_reader")
 
 func _say(conversation: String) -> void:
 	if not game.dialogue.start(conversation):

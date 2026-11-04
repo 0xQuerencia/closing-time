@@ -7,6 +7,7 @@ signal item_added(product: Product)
 signal item_scanned(product: Product)
 signal sale_completed(transaction: Dictionary)
 signal sale_closed
+signal payment_failed(attempt: int)
 signal state_changed(state: State)
 const ZONE_MIN := Vector2(-5.95, 3.78)  # x, z on the customer side of the counter
 const ZONE_MAX := Vector2(-4.4, 4.12)
@@ -18,6 +19,8 @@ var state := State.IDLE
 var customer: Node
 var items: Array[Product] = []
 var history: Array[Dictionary] = []
+var reader_failures_left := 0
+var reader_error := false
 var terminal: RegisterTerminal
 var _lcd: Label3D
 var _beep: AudioStreamPlayer3D
@@ -106,6 +109,8 @@ func open_sale(who: Node) -> bool:
 	if state != State.IDLE:
 		return false
 	customer = who
+	reader_failures_left = int(who.profile.get("card_fails", 0)) if "profile" in who else 0
+	reader_error = false
 	_set_state(State.OPEN)
 	sale_opened.emit(who)
 	return true
@@ -167,6 +172,14 @@ func payment_blocked_reason() -> String:
 func take_payment() -> bool:
 	if not can_take_payment():
 		return false
+	if reader_failures_left > 0:
+		reader_failures_left -= 1
+		reader_error = true
+		_beep.play()
+		_refresh_screen()
+		payment_failed.emit(reader_failures_left)
+		return false
+	reader_error = false
 	var ids: Array[String] = []
 	for p in items:
 		ids.append(p.product_id)
@@ -190,6 +203,7 @@ func close_sale() -> void:
 	if state == State.IDLE:
 		return
 	customer = null
+	reader_error = false
 	items.clear()
 	_set_state(State.IDLE)
 	_refresh_screen()
@@ -213,6 +227,8 @@ func _refresh_screen() -> void:
 			_lcd.text = "TOTAL    $0.00\nCLOSING TIME"
 		State.OPEN:
 			var line := "SCAN %d/%d" % [scanned_count(), items.size()] if not items.is_empty() else "WAITING..."
+			if reader_error:
+				line = "READER ERROR\nTRY AGAIN"
 			_lcd.text = "TOTAL  %7s\n%s" % [ProductCatalog.price_text(total_cents()), line]
 		State.PAID:
 			_lcd.text = "TOTAL  %7s\nTHANK YOU" % ProductCatalog.price_text(history.back().total)
