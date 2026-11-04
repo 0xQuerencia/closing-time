@@ -4,6 +4,7 @@ const Player = preload("res://scenes/world/inspection_player.gd")
 var player: CharacterBody3D
 var capture_mode := false
 var samples: Array[float] = []
+var gameplay: Gameplay
 
 func _ready() -> void:
 	capture_mode = "--capture" in OS.get_cmdline_user_args()
@@ -29,12 +30,30 @@ func _ready() -> void:
 	elif "--test-world" in OS.get_cmdline_user_args():
 		player.enabled = false
 		run_world_tests()
+	elif "--test-gameplay" in OS.get_cmdline_user_args():
+		player.enabled = false
+		add_gameplay(false)
+		var gameplay_tests := GameplayTests.new()
+		add_child(gameplay_tests)
+		gameplay_tests.run(self)
+	elif "--capture-gameplay" in OS.get_cmdline_user_args():
+		player.enabled = false
+		add_gameplay(false)
+		var gameplay_capture := GameplayTests.new()
+		add_child(gameplay_capture)
+		gameplay_capture.capture(self)
 	elif "--benchmark" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		benchmark_views()
 	else:
 		build_hint()
+		add_gameplay(true)
+
+func add_gameplay(auto_customers: bool) -> void:
+	gameplay = Gameplay.new()
+	add_child(gameplay)
+	gameplay.setup(self, player, auto_customers)
 
 func build_collisions() -> void:
 	var entries = JSON.parse_string(FileAccess.get_file_as_string("res://assets/models/collisions.json"))
@@ -211,7 +230,7 @@ func build_markers() -> void:
 func build_hint() -> void:
 	var canvas := CanvasLayer.new()
 	var label := Label.new()
-	label.text = "WASD  walk     MOUSE  look     SHIFT  faster     B  head bob     ESC  release mouse"
+	label.text = "WASD  walk     MOUSE  look     SHIFT  faster     E  use     F  inspect     Q  put down     1 2  reply     ESC  release mouse"
 	label.position = Vector2(24,24)
 	label.modulate = Color(.82,.8,.7,.8)
 	label.add_theme_font_size_override("font_size",14)
