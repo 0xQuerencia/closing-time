@@ -55,7 +55,7 @@ func run(market: Node3D) -> void:
 
 ## HUD close-ups: prompt on a counter item, held item, checklist, choices, then a spoken line.
 func _hud_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void:
-	game.dialogue.time_scale_for_tests = 6.0
+	game.dialogue.time_scale_for_tests = 1.0
 	var item := game.spawn_product("crisps", null)
 	game.checkout.open_sale(shopper_stub(market))
 	item.place_at(game.checkout.drop_point(0), 0.0)
@@ -63,7 +63,7 @@ func _hud_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void
 	game.tasks.complete_objective("serve_c1", "at_counter")
 	var cola := game.spawn_product("cola", Vector3(-7.55, 0.955, 4.4))
 	game.interactor.pick_up(cola)
-	game.dialogue.start("c1_talk")
+	game.dialogue.start("mara_talk")
 	player.global_position = Vector3(-4.6, 0.05, 5.0)
 	var d: Vector3 = item.global_position + Vector3(0, 0.1, 0) - (player.global_position + Vector3(0, 1.62, 0))
 	player.rotation = Vector3(0, atan2(-d.x, -d.z), 0)
@@ -78,7 +78,7 @@ func _hud_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("res://local/screenshots/hud_2_line.png")
 	var h := game.hud
-	print("RECTS viewport=", get_viewport().get_visible_rect().size, " task=", h._task_box.get_global_rect(), " vis=", h._task_box.visible, " speech=", h._speech_box.get_global_rect(), " vis=", h._speech_box.visible, " choices=", h._choice_box.get_global_rect(), " n=", h._choice_box.get_child_count(), " prompt=", h._prompt_box.get_global_rect(), " vis=", h._prompt_box.visible)
+	print("RECTS viewport=", get_viewport().get_visible_rect().size, " speech=", h._speech.get_global_rect(), " text=", h._speech.text.left(40), " ratio=", h._speech.visible_ratio, " choices=", h._choices.get_global_rect(), " n=", h._choices.get_child_count(), " slip=", h._slip.get_global_rect())
 	print("REFERENCE hud done")
 
 func shopper_stub(market: Node3D) -> Node3D:
