@@ -1,0 +1,284 @@
+"""Rebuild original market meshes: blender -b --python tools/blender/build_market.py.
+Coordinates below are Godot meters (x, height, z); conversion happens once here.
+Beveled fixtures, lathed packaging, UV labels; no external model dependencies.
+"""
+import bpy, bmesh, math, random, json
+from pathlib import Path
+from mathutils import Vector
+ROOT=Path(__file__).resolve().parents[2]; OUT=ROOT/'assets/models'; OUT.mkdir(parents=True,exist_ok=True)
+bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
+r=random.Random(38); mats={}; colliders=[]; group='shell'; batches={}
+def mat(name,c,rough=.7,metal=0,texture=None,scale=1,emission=0):
+ m=bpy.data.materials.new(name);m.diffuse_color=(*c,1);m.use_nodes=True
+ b=m.node_tree.nodes.get('Principled BSDF');b.inputs['Base Color'].default_value=(*c,1);b.inputs['Roughness'].default_value=rough;b.inputs['Metallic'].default_value=metal
+ if emission: b.inputs['Emission Color'].default_value=(*c,1);b.inputs['Emission Strength'].default_value=emission
+ if texture:
+  t=m.node_tree.nodes.new('ShaderNodeTexImage');t.image=bpy.data.images.load(str(ROOT/'assets/materials'/f'{texture}.png'));m.node_tree.links.new(t.outputs['Color'],b.inputs['Base Color'])
+ mats[name]=m;return m
+mat('tile',(.5,.47,.41),.52,texture='tile');mat('ceiling',(.7,.68,.6),.94,texture='ceiling');mat('plaster',(.6,.57,.48),texture='plaster');mat('brick',(.3,.24,.18),texture='brick')
+mat('asphalt',(.1,.12,.13),.27,texture='asphalt');mat('wood',(.29,.21,.14),.56,texture='wood')
+for n,c,rough,metal in [('shelf',(.32,.38,.37),.52,.35),('steel',(.38,.4,.39),.3,.8),('dark',(.025,.032,.029),.7,.1),('cream',(.68,.65,.53),.65,0),('paper',(.75,.72,.62),.9,0),('red',(.36,.065,.035),.6,0),('cardboard',(.37,.25,.13),.94,0),('yellow',(.68,.51,.18),.7,0),('car',(.17,.22,.2),.34,.65),('rubber',(.018,.021,.02),.95,0),('car_glass',(.025,.05,.065),.16,.6),('green',(.1,.2,.13),.6,.25)]:mat(n,c,rough,metal)
+mat('tube',(.85,.82,.65),.5,emission=3);mat('screen',(.12,.24,.21),.4,emission=.7);mat('packaging',(1,1,1),.6,texture='packaging')
+def xyz(p):return (p[0],-p[2],p[1])
+def register(o,name,material):
+ o.name=name;o.data.materials.append(mats[material]);batches.setdefault(group,[]).append(o);return o
+def box(name,p,s,m,bevel=0,collision=False,uvscale=1):
+ sx,sy,sz=s[0]/2,s[2]/2,s[1]/2
+ vs=[(x,y,z) for x in [-sx,sx] for y in [-sy,sy] for z in [-sz,sz]]
+ fs=[(0,1,3,2),(4,6,7,5),(0,4,5,1),(2,3,7,6),(0,2,6,4),(1,5,7,3)]
+ me=bpy.data.meshes.new(name);me.from_pydata(vs,[],fs);me.update()
+ if bevel:
+  bm=bmesh.new();bm.from_mesh(me);bmesh.ops.bevel(bm,geom=list(bm.edges),offset=bevel,segments=2,affect='EDGES');bm.to_mesh(me);bm.free()
+ o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o);o.location=xyz(p)
+ if m in ['tile','ceiling','asphalt','plaster','brick','wood']:
+  me.uv_layers.new()
+  for poly in me.polygons:
+   axis=max(range(3),key=lambda a:abs(poly.normal[a]));axes=[a for a in range(3) if a!=axis]
+   for li in poly.loop_indices:
+    v=me.vertices[me.loops[li].vertex_index].co+o.location
+    me.uv_layers.active.data[li].uv=(v[axes[0]]/uvscale,v[axes[1]]/uvscale)
+ register(o,name,m)
+ if collision:colliders.append({'name':name,'p':p,'s':s})
+ return o
+def cyl(name,p,radius,depth,m,vertices=16,axis='y'):
+ vs=[]
+ for h in [-depth/2,depth/2]:
+  for j in range(vertices):
+   a=j*math.tau/vertices;v=(radius*math.cos(a),radius*math.sin(a),h)
+   if axis=='x':v=(h,v[0],v[1])
+   if axis=='z':v=(v[0],h,v[1])
+   vs.append(v)
+ fs=[tuple(reversed(range(vertices))),tuple(range(vertices,vertices*2))]
+ fs += [(j,(j+1)%vertices,(j+1)%vertices+vertices,j+vertices) for j in range(vertices)]
+ me=bpy.data.meshes.new(name);me.from_pydata(vs,[],fs);me.update()
+ o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o);o.location=xyz(p)
+ for f in me.polygons:f.use_smooth=len(f.vertices)==4
+ return register(o,name,m)
+def label(p,w,h,index,side=1):
+ # Front-facing UV rectangle, atlas cell inset prevents bleeding.
+ x,y,z=p;verts=[xyz((x-w/2,y-h/2,z)),xyz((x+w/2,y-h/2,z)),xyz((x+w/2,y+h/2,z)),xyz((x-w/2,y+h/2,z))]
+ me=bpy.data.meshes.new('Printed label');me.from_pydata(verts,[],[(0,1,2,3)] if side==1 else [(3,2,1,0)]);me.uv_layers.new()
+ u=(index%4)/4;v=1-(index//4+1)/4;uv=[(u+.006,v+.006),(u+.244,v+.006),(u+.244,v+.244),(u+.006,v+.244)]
+ for poly in me.polygons:
+  for li in poly.loop_indices:me.uv_layers.active.data[li].uv=uv[me.loops[li].vertex_index]
+ o=bpy.data.objects.new('Fictional product print',me);bpy.context.collection.objects.link(o);register(o,'Fictional product print','packaging')
+def product(x,y,z,kind,idx,side=1):
+ if kind=='can':
+  cyl('Tin', (x,y+.115,z),.067,.23,'cream');cyl('Rolled rim',(x,y+.232,z),.069,.012,'steel');label((x,y+.12,z+side*.069),.115,.19,idx,side)
+ elif kind=='bottle':
+  cyl('Bottle',(x,y+.13,z),.064,.26,'green');cyl('Shoulder',(x,y+.27,z),.046,.055,'green');cyl('Cap',(x,y+.315,z),.027,.04,'cream');label((x,y+.13,z+side*.065),.11,.16,idx,side)
+ elif kind=='bag':
+  o=box('Crimped snack bag',(x,y+.16,z),(.19,.32,.105),'cream',.027);o.rotation_euler[1]=r.uniform(-.07,.07)
+  box('Heat seal',(x,y+.315,z),(.185,.018,.08),'yellow',.003);label((x,y+.17,z+side*.055),.17,.27,idx,side)
+ else:
+  box('Carton',(x,y+.18,z),(.18,.36,.13),'cream',.006);label((x,y+.18,z+side*.067),.175,.345,idx,side)
+# Shell: retail 12.5m wide, staff wing 5.5m; 18x12m total.
+box('Sales floor',(0,-.11,0),(18,.22,12),'tile',collision=True,uvscale=2.4)
+box('Ceiling',(0,3.24,0),(18,.1,12),'ceiling',uvscale=2.4)
+for x in [-9,9]:box('Side wall',(x,1.6,0),(.22,3.2,12),'plaster',collision=True,uvscale=2)
+for x,w in [(-2.7,12.6),(6.9,4.2)]:box('Rear masonry',(x,1.6,-6),(w,3.2,.22),'plaster',collision=True,uvscale=2)
+box('Rear doorway header',(4.25,2.7,-6),(1.1,1,.22),'plaster',collision=True)
+# Front glazing spans retail; solid staff facade.
+box('Front knee wall',(-3, .3,6),(12,.6,.2),'brick',collision=True,uvscale=2)
+# Open entrance x1.2..2.4. Remove knee wall there by shortened glazing boundary at x.5.
+colliders.pop()
+# Replace knee wall with geometry split for the entrance.
+o=bpy.data.objects.get('Front knee wall');batches[group].remove(o);bpy.data.objects.remove(o,do_unlink=True)
+box('Window base',(-4.05,.3,6),(9.9,.6,.2),'brick',collision=True,uvscale=2)
+box('Door right base',(3,.3,6),(1.2,.6,.2),'brick',collision=True,uvscale=2)
+box('Front lintel',(0,2.96,6),(18,.5,.25),'plaster',collision=True)
+box('Staff facade',(6.3,1.5,6),(5.4,3,.25),'brick',collision=True,uvscale=2)
+for x in [-8.9,-6.5,-4.1,-1.7,.9,2.5,3.5]:box('Window mullion',(x,1.68,6),(.055,2.15,.08),'steel',.008)
+for y in [.61,2.73]:box('Glazing rail',(-2.7,y,6),(12.5,.045,.08),'steel')
+box('Entrance threshold',(1.7,.015,6),(1.55,.03,.28),'steel')
+box('Entry mat',(1.7,.013,5.1),(1.5,.022,1.15),'rubber',.02)
+# Internal staff partition with open doorways, frames and a real corridor.
+for z,l in [(-5.55,.9),(-2.3,3.3),(3.1,5.8)]:box('Retail staff partition',(3.5,1.6,z),(.13,3.2,l),'plaster',collision=True,uvscale=2)
+for z in [-4.3,0]:
+ box('Staff doorway header',(3.5,2.7,z),(.13,1,1.2),'plaster',collision=True)
+ for dz in [-.58,.58]:box('Door jamb',(3.5,1.1,z+dz),(.19,2.2,.065),'wood',.008)
+# Office on right, 3.9 x 3.5; stockroom below.
+for z,l in [(-5.55,.9),(-3.1,1.25),(-1.55,1.7),(2.85,4.5)]:box('Corridor partition',(5,1.6,z),(.12,3.2,l),'plaster',collision=True,uvscale=2)
+box('Office entry header',(5,2.7,-4.3),(.12,1,1.25),'plaster',collision=True)
+box('Office divider',(7,1.6,-2.45),(4,3.2,.13),'plaster',collision=True,uvscale=2)
+# Real door leaf parked open into office; rear door closed.
+box('Office open leaf',(5.55,1.08,-4.91),(1.05,2.16,.055),'wood',.018,True)
+box('Rear steel door',(4.25,1.09,-6),(1.05,2.18,.07),'shelf',.018,True)
+box('Rear push bar',(4.25,1,-5.93),(.72,.045,.07),'steel',.012)
+# Baseboards and wainscot.
+for x in [-8.86,3.4,8.86]:box('Skirting',(x,.08,0),(.035,.16,11.7),'wood')
+box('Rear skirting',(-2.8,.08,-5.86),(12.1,.16,.04),'wood')
+# Fluorescent ceiling practicals.
+for x in [-6,-2,1.4,6.9]:
+ for z in [-3.8,.1,3.6] if x<3 else [-4,1.5]:
+  box('Fluorescent housing',(x,3.13,z),(.29,.10,1.28),'steel',.018)
+  for dx in [-.075,.075]:box('Fluorescent diffuser',(x+dx,3.066,z),(.065,.035,1.16),'tube',.015)
+# Checkout with toe kick, laminate edge, panelled front and equipment.
+group='retail'
+box('Checkout carcass',(-6,.43,4.25),(4.1,.86,.8),'wood',.035,True,uvscale=1.5)
+box('Countertop',(-6,.91,4.25),(4.25,.09,.96),'cream',.035)
+box('Counter toe kick',(-6,.08,3.82),(3.9,.15,.045),'dark')
+for x in [-7.4,-6,-4.6]:box('Counter front inset',(x,.46,3.839),(1.2,.56,.018),'wood',.018)
+box('Cash drawer',(-5.8,1.005,4.3),(.48,.12,.43),'dark',.02)
+box('POS base',(-5.8,1.09,4.35),(.26,.04,.2),'cream',.018)
+box('POS neck',(-5.8,1.22,4.38),(.07,.24,.07),'cream',.01)
+box('POS monitor',(-5.8,1.4,4.38),(.41,.3,.09),'cream',.035)
+box('Register display',(-5.8,1.4,4.432),(.34,.23,.008),'screen',.006)
+for row in range(4):box('POS screen text',(-5.85,1.47-row*.04,4.439),(.21-row*.027,.008,.001),'cream')
+box('Receipt printer',(-6.4,1.08,4.25),(.21,.22,.27),'cream',.03)
+box('Printer mouth',(-6.4,1.155,4.395),(.15,.018,.009),'dark')
+box('Receipt curl',(-6.4,1.17,4.48),(.1,.003,.16),'paper')
+box('Scanner pedestal',(-5.1,1,4.25),(.18,.07,.15),'dark',.02)
+cyl('Scanner upright',(-5.1,1.1,4.25),.026,.17,'dark')
+box('Scanner head',(-5.1,1.23,4.25),(.12,.09,.16),'dark',.02)
+box('Scanner lens',(-5.1,1.23,4.159),(.08,.025,.005),'red')
+box('Card reader',(-4.7,1.04,3.96),(.14,.11,.22),'dark',.02)
+for j in range(4):
+ for k in range(3):box('Terminal key',(-4.74+k*.04,1.099,3.92+j*.035),(.025,.005,.023),'cream',.003)
+# 3 gondolas, shelves 1.72m high. Irregular stock in coherent brand runs.
+for ai,x in enumerate([-6,-3,0]):
+ box('Gondola base',(x,.12,-.9),(.91,.24,4.9),'shelf',.025,True)
+ box('Gondola spine',(x,.9,-.9),(.055,1.6,4.8),'shelf',.01)
+ for z in [-3.28,1.48]:box('Upright',(x,.91,z),(.08,1.8,.065),'steel',.009)
+ for side in [-1,1]:
+  # Products face along x; rotate all generated stock around aisle pivot.
+  for level,h in enumerate([.28,.68,1.08,1.48]):
+   box('Shelf pan',(x+side*.23,h,-.9),(.46,.035,4.85),'shelf',.008)
+   box('Price rail',(x+side*.455,h+.018,-.9),(.025,.055,4.84),'cream',.004)
+   for j in range(19):
+    if r.random()<.17:continue
+    z=-3.1+j*.241+r.uniform(-.012,.012)
+    start=len(batches[group]);product(0,h+.02,0,['bag','box','can'][ai],(ai*4+level)%16)
+    # Default front is +z. Rotate front to aisle's side x.
+    for o in batches[group][start:]:
+     old=o.location.copy();ang=side*math.pi/2
+     o.location=(x+side*.25+old.x*math.cos(ang)-old.y*math.sin(ang),-z+old.x*math.sin(ang)+old.y*math.cos(ang),old.z)
+     o.rotation_euler[2]+=ang
+   for z in [-2.8,-1.5,-.2,1.1]:box('Shelf ticket',(x+side*.472,h+.02,z),(.006,.041,.19),'paper')
+# Cooler row across back wall: frame, stock, transparent glass supplied in Godot.
+for i in range(6):
+ x=-7.1+i*1.57
+ box('Cooler cabinet',(x,1.17,-5.45),(1.52,2.34,.9),'dark',.025,True)
+ box('Cooler interior',(x,1.2,-4.982),(1.38,1.95,.025),'cream')
+ for h in [.34,.78,1.22,1.66]:
+  box('Cooler rack',(x,h,-4.88),(1.37,.025,.34),'steel',.004)
+  for j in range(6):product(x-.56+j*.22,h+.02,-4.86,'bottle',(i+3)%12)
+ for dx in [-.736,.736]:box('Fridge stile',(x+dx,1.17,-4.69),(.045,2.31,.06),'steel',.008)
+ for h in [.09,2.28]:box('Fridge crossbar',(x,h,-4.69),(1.47,.05,.07),'steel',.008)
+ box('Cooler handle',(x+.59,1.2,-4.62),(.025,.56,.07),'steel',.009)
+ box('Cooler light',(x-.68,1.2,-4.73),(.025,1.9,.03),'tube',.006)
+# Coffee station left wall behind aisle.
+box('Coffee cabinet',(-8.35,.46,-.6),(.9,.92,2.2),'wood',.02,True)
+box('Coffee worktop',(-8.33,.95,-.6),(1,.055,2.3),'cream',.02)
+for z in [-1.3,-.6]:
+ box('Coffee machine',(-8.3,1.23,z),(.45,.52,.45),'steel',.025)
+ cyl('Coffee pot',(-8.02,1.1,z),.105,.22,'dark');cyl('Coffee lid',(-8.02,1.23,z),.11,.025,'dark')
+for j in range(5):cyl('Cup stack',(-8.2,1.04,.05+j*.1),.04,.13,'paper')
+# Office furniture and stockroom.
+group='backrooms'
+box('Office desk',(7.6,.74,-5.25),(2.1,.075,.75),'wood',.02,True)
+for x in [6.7,8.5]:box('Desk leg',(x,.37,-5.25),(.065,.74,.62),'steel',.008,True)
+box('CRT case',(7.9,1.02,-5.31),(.49,.48,.4),'cream',.055)
+box('CRT display',(7.9,1.02,-5.096),(.38,.31,.015),'screen',.02)
+for x in [7.8,8]:
+ for y in [.95,1.1]:box('Security view divider',(x,y,-5.085),(.16,.012,.003),'dark')
+box('Keyboard',(7.9,.8,-4.96),(.42,.035,.15),'cream',.012)
+for j in range(12):box('Keyboard keys',(7.72+j*.033,.824,-4.96),(.02,.01,.11),'dark',.003)
+box('Landline',(6.9,.83,-5.15),(.25,.11,.24),'cream',.026)
+box('Handset',(6.9,.93,-5.15),(.3,.075,.08),'dark',.03)
+box('Ledger',(7.3,.794,-5.06),(.25,.025,.3),'red',.005)
+cyl('Chair foot',(7.6,.08,-4.22),.32,.045,'dark');cyl('Chair stem',(7.6,.3,-4.22),.035,.43,'steel')
+box('Chair seat',(7.6,.5,-4.22),(.45,.08,.44),'dark',.045,True)
+box('Chair back',(7.6,.81,-4.04),(.45,.51,.06),'dark',.045)
+box('Notice board',(8.89,1.65,-3.6),(.035,.8,1.2),'cardboard',.02)
+for z in [-3.9,-3.4]:box('Pinned notice',(8.86,1.7,z),(.005,.32,.23),'paper')
+for z in [-1.2,1.5,4.5]:
+ box('Stock rack base',(8.3,.1,z),(1.2,.2,1.9),'shelf',.015,True)
+ for x in [7.75,8.85]:
+  for zz in [z-.85,z+.85]:box('Stock rack upright',(x,1.2,zz),(.055,2.4,.055),'steel',.007)
+ for y in [.25,1,1.75]:
+  box('Stock rack shelf',(8.3,y,z),(1.2,.045,1.9),'wood',.01)
+  for j in range(3):
+   if r.random()<.2:continue
+   zz=z-.6+j*.58
+   box('Sealed carton',(8.25,y+.26,zz),(.85,.5,.49),'cardboard',.018)
+   box('Packing tape',(8.25,y+.515,zz),(.12,.006,.49),'cream')
+   box('Shipping label',(7.818,y+.27,zz),(.005,.17,.25),'paper')
+box('Breaker box',(4.91,1.52,2.8),(.13,.55,.35),'shelf',.018)
+for z in [2.69,2.78,2.87]:box('Breaker switch',(4.829,1.5,z),(.025,.065,.04),'dark')
+# Mop bucket and angled handle.
+cyl('Mop bucket',(5.8,.19,4.4),.22,.36,'yellow');o=cyl('Mop handle',(5.9,.9,4.4),.018,1.6,'wood');o.rotation_euler[1]=.16
+box('Inventory table',(6,.76,2.9),(1.2,.07,.65),'wood',.02,True)
+for x in [5.5,6.5]:box('Table leg',(x,.38,2.9),(.06,.76,.5),'steel',.006)
+box('Inventory sheet',(6,.801,2.9),(.25,.003,.32),'paper')
+# Exterior pavement and bounded lot; road + modest terrain silhouettes.
+group='exterior'
+box('Parking asphalt',(0,-.23,15),(28,.22,18),'asphalt',collision=True,uvscale=3)
+box('Sidewalk',(0,-.08,7),(20,.16,1.8),'plaster',.04,True,uvscale=2)
+box('Side pavement',(10.1,-.1,0),(2,.16,14),'asphalt',collision=True,uvscale=3)
+box('Rear loading pad',(4,-.07,-7),(4,.18,2),'plaster',.025,True)
+box('Surrounding ground',(0,-.32,0),(90,.15,90),'dark',collision=True)
+box('Road',(0,-.205,26),(65,.1,7),'asphalt',uvscale=4)
+for x in range(-30,32,8):box('Road dashed line',(x,-.147,26),(3,.005,.1),'paper')
+for x in [-7,-4,-1,2]:box('Parking stripe',(x,-.111,12),(.095,.008,4.8),'cream')
+for x in [-5.5,-2.5,.5]:box('Wheel stop',(x,-.01,9.65),(1.6,.19,.16),'plaster',.035,True)
+# Fascia, canopy and practical fascia sign.
+box('Canopy',(0,3.3,6.5),(18.7,.2,1.5),'cream',.025)
+box('Fascia',(0,3.62,6.95),(18.7,.6,.15),'green',.02)
+for x in [-8.5,8.5]:box('Canopy column',(x,1.6,7),(.16,3.2,.16),'cream',.01,True)
+# Car: tapered body mesh, glass cabin, wheel arches suggested by fenders.
+def hull(name,levels,m):
+ vs=[]
+ for y,w,z0,z1 in levels:vs.extend([xyz((-4.9-w/2,y,z0)),xyz((-4.9+w/2,y,z0)),xyz((-4.9+w/2,y,z1)),xyz((-4.9-w/2,y,z1))])
+ fs=[(3,2,1,0)]
+ for k in range(len(levels)-1):
+  for j in range(4):fs.append((k*4+j,k*4+(j+1)%4,(k+1)*4+(j+1)%4,(k+1)*4+j))
+ fs.append(tuple(range((len(levels)-1)*4,len(levels)*4)))
+ me=bpy.data.meshes.new(name);me.from_pydata(vs,[],fs);o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o);register(o,name,m)
+ mod=o.modifiers.new('Body seams softened','BEVEL');mod.width=.055;mod.segments=3;bpy.context.view_layer.objects.active=o;o.select_set(True);bpy.ops.object.modifier_apply(modifier=mod.name);o.select_set(False)
+hull('Compact body',[(.22,1.54,11,15.1),(.72,1.7,10.95,15.12),(.84,1.59,11.15,14.95)],'car')
+hull('Cabin glass',[(.79,1.48,11.9,14.3),(1.38,1.25,12.4,13.92)],'car_glass')
+box('Car roof',(-4.9,1.4,13.15),(1.31,.07,1.56),'car',.045)
+for x in [-5.68,-4.12]:
+ box('B pillar',(x,1.1,13.24),(.06,.59,.1),'car')
+ for z in [11.74,14.29]:
+  cyl('Tire',(x,.29,z),.31,.18,'rubber',24,'x');cyl('Hubcap',(x+(-.1 if x<-4.9 else .1),.29,z),.19,.018,'steel',16,'x')
+ for z in [12.7,13.7]:box('Car door handle',(x,.77,z),(.04,.04,.19),'steel',.012)
+box('Car front bumper',(-4.9,.38,15.13),(1.55,.18,.12),'dark',.035)
+for x in [-5.46,-4.34]:box('Headlamp',(x,.65,15.14),(.38,.15,.02),'cream',.03)
+box('Car rear bumper',(-4.9,.38,10.97),(1.55,.18,.12),'dark',.035)
+for x in [-5.48,-4.32]:box('Tail light',(x,.65,10.955),(.3,.14,.02),'red',.02)
+box('License plate',(-4.9,.52,15.205),(.32,.13,.012),'paper')
+colliders.append({'name':'Parked compact','p':[-4.9,.6,13],'s':[1.8,1.4,4.3]})
+for x,z in [(-10,15),(11,23)]:
+ cyl('Light pole',(x,2.7,z),.065,5.6,'steel');box('Pole base',(x,.18,z),(.38,.5,.38),'plaster',.03,True)
+ box('Pole arm',(x+.5,5.4,z),(1,.08,.08),'steel',.02);box('Street lamp',(x+1,5.37,z),(.48,.13,.32),'dark',.04);box('Lamp lens',(x+1,5.29,z),(.4,.025,.25),'tube',.02)
+# Side dumpster with lid hinge and bins.
+box('Dumpster',(10.5,.65,-3.7),(1.4,1.3,2),'green',.07,True)
+box('Dumpster lid',(10.5,1.35,-3.7),(1.48,.12,2.08),'dark',.04)
+for z in [-4.35,-3.05]:box('Dumpster reinforcement',(11.22,.65,z),(.06,1.05,.08),'steel')
+# Boundary fence, physically bounded playable area.
+for z in [-9,23]:
+ for x in range(-14,15,2):box('Fence post',(x,.9,z),(.09,1.8,.09),'wood',.008,True)
+ for h in [.5,1.25]:box('Fence rail',(0,h,z),(28,.1,.09),'wood')
+ colliders.append({'name':'Lot boundary','p':[0,.9,z],'s':[28,1.8,.1]})
+for x in [-14,14]:
+ colliders.append({'name':'Side boundary','p':[x,1,7],'s':[.1,2,32]})
+ for z in range(-9,24,2):box('Side fence post',(x,.9,z),(.09,1.8,.09),'wood',.008)
+ for h in [.5,1.25]:box('Side fence rail',(x,h,7),(.09,.1,32),'wood')
+# Distant unlit tree silhouettes, organic branching crowns.
+for i in range(32):
+ x=r.uniform(-38,38);z=r.choice([-1,1])*r.uniform(30,42);h=r.uniform(5,10)
+ cyl('Distant trunk',(x,h/2,z),.15,h,'dark',7)
+ for j in range(3):
+  bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=h*.32,location=xyz((x+r.uniform(-1,1),h*.7+j*.7,z)));o=bpy.context.object;o.scale=(1,.85,1.2);register(o,'Distant canopy','dark')
+# Join per material per area: keeps runtime draw calls modest and export reproducible.
+for category,objects in batches.items():
+ for o in bpy.context.selected_objects:o.select_set(False)
+ for o in objects:o.select_set(True)
+ bpy.context.view_layer.objects.active=objects[0];bpy.ops.object.join();o=bpy.context.object;o.name=category
+ bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
+ # Remove unused duplicate slots by exporter; glTF splits by material automatically.
+ bpy.ops.export_scene.gltf(filepath=str(OUT/f'{category}.glb'),use_selection=True,export_format='GLB',export_yup=True,export_materials='EXPORT')
+(ROOT/'assets/models/collisions.json').write_text(json.dumps(colliders,indent=2)+'\n')
+print('MARKET EXPORT COMPLETE',len(colliders),'colliders')
