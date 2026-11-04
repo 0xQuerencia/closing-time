@@ -5,7 +5,7 @@ signal focus_changed(target: Interactable)
 signal message(text: String)
 signal held_changed(item: Product)
 const REACH := 2.2
-const HELD_OFFSET := Vector3(0.2, -0.2, -0.45)
+const HELD_OFFSET := Vector3(0.27, -0.25, -0.62)
 const WORLD_AND_INTERACTABLE := 1 | Interactable.LAYER
 var camera: Camera3D
 var body: CollisionObject3D

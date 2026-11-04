@@ -4,7 +4,7 @@ extends Node3D
 signal clue_seen(clue_id: String)
 const HOOK_BOARD := Vector3(5.075, 1.45, -3.1)
 const ENVELOPE_NEAT := Vector3(8.35, 0.778, -5.1)
-const ENVELOPE_MOVED := Vector3(7.15, 0.778, -4.78)
+const ENVELOPE_MOVED := Vector3(7.45, 0.778, -5.12)
 const PRINT_PATH := [Vector3(4.18, 0, -5.55), Vector3(4.38, 0, -5.0), Vector3(4.2, 0, -4.45), Vector3(4.4, 0, -3.9), Vector3(4.22, 0, -3.3), Vector3(4.4, 0, -2.7), Vector3(4.24, 0, -2.1), Vector3(4.4, 0, -1.5)]
 var active := false
 var seen := {}
@@ -32,6 +32,13 @@ func _mat(color: Color, rough := 0.8, metallic := 0.0) -> StandardMaterial3D:
 	m.roughness = rough
 	m.metallic = metallic
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	return m
+
+func _lit_brass() -> StandardMaterial3D:
+	var m := _mat(Color(0.85, 0.68, 0.26), 0.35, 0.7)
+	m.emission_enabled = true
+	m.emission = Color(0.55, 0.4, 0.1)
+	m.emission_energy_multiplier = 0.5
 	return m
 
 func _mesh(parent: Node3D, mesh: Mesh, material: Material, pos: Vector3) -> MeshInstance3D:
@@ -72,7 +79,7 @@ func _build_hooks() -> void:
 	board.position = HOOK_BOARD
 	board.rotation.y = PI / 2.0  # faces +x into the office
 	add_child(board)
-	_mesh(board, _box(Vector3(0.62, 0.34, 0.025)), _mat(Color(0.26, 0.18, 0.11), 0.9), Vector3.ZERO)
+	_mesh(board, _box(Vector3(0.62, 0.34, 0.025)), _mat(Color(0.42, 0.3, 0.19), 0.9), Vector3.ZERO)
 	var labels := ["REAR", "OFFICE", "FRIDGE", "SPARE"]
 	for i in 4:
 		var x := -0.22 + i * 0.147
@@ -86,7 +93,7 @@ func _build_hooks() -> void:
 		tag.outline_size = 0
 		tag.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		board.add_child(tag)
-		var key := _mesh(board, _box(Vector3(0.022, 0.07, 0.008)), _mat(Color(0.78, 0.62, 0.22), 0.35, 0.85), Vector3(x, 0.0, 0.034))
+		var key := _mesh(board, _box(Vector3(0.022, 0.07, 0.008)), _lit_brass(), Vector3(x, 0.0, 0.034))
 		if i == 3:
 			_spare_key = key
 	_spot("spare_key", Vector3(0.5, 0.5, 0.7), HOOK_BOARD + Vector3(0.25, 0, 0), func():

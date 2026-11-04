@@ -121,24 +121,24 @@ func _attach_cap(model: Node) -> void:
 	attach.bone_name = "head" if skeleton.find_bone("head") >= 0 else "Head"
 	skeleton.add_child(attach)
 	var cloth := StandardMaterial3D.new()
-	cloth.albedo_color = Color(0.09, 0.1, 0.11)
+	cloth.albedo_color = Color(0.2, 0.22, 0.2)
 	cloth.roughness = 0.9
 	var crown := MeshInstance3D.new()
 	var dome := SphereMesh.new()
-	dome.radius = 0.118
-	dome.height = 0.2
+	dome.radius = 0.112
+	dome.height = 0.16
 	dome.is_hemisphere = true
 	crown.mesh = dome
 	crown.material_override = cloth
-	crown.position = Vector3(0, 0.05, 0.01)
+	crown.position = Vector3(0, 0.082, -0.012)
 	attach.add_child(crown)
 	var brim := MeshInstance3D.new()
 	var brim_mesh := BoxMesh.new()
-	brim_mesh.size = Vector3(0.2, 0.012, 0.11)
+	brim_mesh.size = Vector3(0.17, 0.01, 0.085)
 	brim.mesh = brim_mesh
 	brim.material_override = cloth
-	brim.position = Vector3(0, 0.055, 0.115)
-	brim.rotation.x = 0.12
+	brim.position = Vector3(0, 0.1, 0.1)
+	brim.rotation.x = 0.18
 	attach.add_child(brim)
 
 func _set_phase(next: Phase) -> void:
@@ -190,7 +190,8 @@ func run() -> void:
 		basket[slot].place_at(checkout.drop_point(slot), 0.0)
 		await _wait(0.35)
 	checkout.payment_failed.connect(_on_reader_failed)
-	game.dialogue.start(profile.id + "_greet")
+	if not game.dialogue.is_active():  # the player already started talking: don't talk over them
+		game.dialogue.start(profile.id + "_greet")
 	var waited := 0.0
 	var nagged := false
 	while checkout.state != Checkout.State.PAID:

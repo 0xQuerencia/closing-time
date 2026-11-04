@@ -79,7 +79,7 @@ func _qa_movement() -> void:
 	check(player.global_position.x > -8.75, "side wall stops the player (x=%.2f)" % player.global_position.x)
 	player.global_position = Vector3(-1.5, 0.05, 0.6)
 	player.rotation = Vector3(0, PI / 2.0, 0)
-	await hold(KEY_W, 120)
+	await hold(KEY_W, 240)
 	check(player.global_position.x > -2.4 and player.global_position.x < -2.1, "gondola stops the player (x=%.2f)" % player.global_position.x)
 	var yaw := player.rotation.y
 	var motion := InputEventMouseMotion.new()
@@ -123,7 +123,7 @@ func _qa_products_and_misuse() -> void:
 	check(inter.held == null and cola.holder == null and cola.get_parent() == world, "Q puts the product back down (held=%s parent=%s)" % [inter.held, cola.get_parent()])
 
 func _wait_customer_at_counter(customer: Customer) -> bool:
-	return await wait_until(func(): return game.checkout.state == Checkout.State.OPEN and game.checkout.items.size() == 1, 90)
+	return await wait_until(func(): return game.checkout.state == Checkout.State.OPEN and game.checkout.customer != null and game.checkout.items.size() == game.checkout.customer.profile.items.size(), 90)
 
 func _qa_blocked_arrival() -> void:
 	player.global_position = Vector3(1.7, 0.05, 5.2)
@@ -131,7 +131,7 @@ func _qa_blocked_arrival() -> void:
 	var cid := customer.get_instance_id()
 	await wait_until(func(): return customer.global_position.z < 6.7, 30)
 	var excuses: Array[String] = []
-	var excuse_probe := func(_s, text): if text == "Excuse me?": excuses.append(text)
+	var excuse_probe := func(_s, text): if text == "Sorry, hon. Just getting past.": excuses.append(text)
 	game.dialogue.line_shown.connect(excuse_probe)
 	var closest := INF
 	var t := 0.0
@@ -152,11 +152,12 @@ func _qa_blocked_arrival() -> void:
 	check(await wait_until(func(): return not is_instance_id_valid(cid), 60), "blocked-arrival customer still completes and leaves")
 
 func _scan_and_pay_with_keys() -> void:
-	var item := game.checkout.items[0]
-	await aim(CLERK, item.global_position + Vector3(0, 0.06, 0))
-	await tap(KEY_E)
+	for item in game.checkout.items.duplicate():
+		await aim(Vector3(item.global_position.x + 0.1, 0.05, 5.0), item.global_position + Vector3(0, 0.06, 0))
+		await tap(KEY_E)
 	await aim(Vector3(-5.8, 0.05, 5.0), game.checkout.terminal.global_position)
-	await tap(KEY_E)
+	for attempt in 3:  # spam: Ben's card reader fails once, every extra press after the sale is ignored
+		await tap(KEY_E)
 
 func _pay_all(use_keys: bool) -> void:
 	await _scan_and_pay_with_keys()
@@ -166,7 +167,7 @@ func _qa_customer_one() -> void:
 	var sales_before := game.checkout.history.size()
 	var customer := game.spawn_customer()
 	var cid := customer.get_instance_id()
-	check(customer.profile.id == "c2" or true, "second visitor spawns")
+	check(customer.profile.id == "ben", "second visitor is Ben")
 	check(await _wait_customer_at_counter(customer), "customer %s at counter" % customer.profile.id)
 	var id: String = customer.profile.id
 	game.dialogue.time_scale_for_tests = 4.0
@@ -180,15 +181,15 @@ func _qa_customer_one() -> void:
 	await tap(KEY_3)
 	check(game.dialogue.current_choices.size() == 2, "key 3 with two options is ignored")
 	await tap(KEY_2)
-	check(game.dialogue.flags.has(id + "_declined_bag") or game.dialogue.flags.has(id + "_pays_card"), "key 2 selects the second reply")
+	check(game.dialogue.flags.has("ben_card"), "key 2 selects the second reply")
 	await _scan_and_pay_with_keys()
 	check(game.checkout.history.size() == sales_before + 1 and game.tasks.completed_count() == tasks_before + 1, "sale for %s recorded and task complete" % id)
 	check(await wait_until(func(): return not is_instance_id_valid(cid), 90), "customer %s leaves" % id)
 
 func _qa_customer_two_delayed() -> void:
-	game.next_profile = 0  # replay profile c1 as the delayed visitor
+	game.next_profile = 0  # replay Mara as the delayed visitor
 	var sales_before := game.checkout.history.size()
-	game.tasks.tasks.erase("serve_c1")
+	game.tasks.tasks.erase("serve_mara")
 	var customer := game.spawn_customer()
 	var cid := customer.get_instance_id()
 	customer.impatience_delay = 6.0
@@ -196,10 +197,10 @@ func _qa_customer_two_delayed() -> void:
 	await aim(Vector3(-5.0, 0.05, 5.0), customer.global_position + Vector3(0, 1.0, 0))
 	await tap(KEY_E)
 	await tap(KEY_1)
-	check(game.dialogue.flags.get("c1_asked_found", false), "key 1 selects the first reply")
+	check(game.dialogue.flags.get("mara_not_anymore", false), "key 1 selects the first reply")
 	var waited := 0.0
 	var nags: Array[String] = []  # lambdas capture ints by value, so collect into an array
-	var counter := func(_s, t): if t == "Take your time.": nags.append(t)
+	var counter := func(_s, t): if t == "Take your time, hon.": nags.append(t)
 	game.dialogue.line_shown.connect(counter)
 	while waited < 30.0:
 		await get_tree().physics_frame
@@ -211,7 +212,7 @@ func _qa_customer_two_delayed() -> void:
 	await tap(KEY_E)
 	await aim(Vector3(-4.6, 0.05, 5.0), Vector3(-4.6, 0.955, 3.95))  # clear of the register screen
 	await tap(KEY_Q)
-	check(game.checkout.items.size() == 2 and water in game.checkout.items, "item the player adds mid-sale joins the sale (items=%d held=%s msg=%s state=%d)" % [game.checkout.items.size(), game.interactor.held, game.hud._message.text, game.checkout.state])
+	check(game.checkout.items.size() == 3 and water in game.checkout.items, "item the player adds mid-sale joins the sale (items=%d held=%s msg=%s state=%d)" % [game.checkout.items.size(), game.interactor.held, game.hud._message.text, game.checkout.state])
 	await aim(Vector3(-5.8, 0.05, 5.0), game.checkout.terminal.global_position)
 	await tap(KEY_E)
 	check(game.checkout.history.size() == sales_before and game.checkout.state == Checkout.State.OPEN, "payment refused while items are unscanned")
@@ -221,7 +222,7 @@ func _qa_customer_two_delayed() -> void:
 	await aim(Vector3(-5.8, 0.05, 5.0), game.checkout.terminal.global_position)
 	for i in 3:
 		await tap(KEY_E)
-	check(game.checkout.history.size() == sales_before + 1 and game.checkout.history.back().total == 249 + 149, "two-item sale totals correctly and pays once")
+	check(game.checkout.history.size() == sales_before + 1 and game.checkout.history.back().total == 99 + 150 + 149, "three-item sale totals correctly and pays once")
 	game.dialogue.line_shown.disconnect(counter)
 	check(await wait_until(func(): return not is_instance_id_valid(cid), 90), "delayed customer leaves")
 

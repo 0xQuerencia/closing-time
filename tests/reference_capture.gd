@@ -25,6 +25,10 @@ func run(market: Node3D) -> void:
 	shopper.global_position = Vector3(-4.6, 0.0, 3.3)
 	shopper.rotation.y = 0.0  # faces the counter (-Z is forward, so turn to +Z)
 	shopper.rotation.y = PI
+	if "--story" in OS.get_cmdline_user_args():
+		await _story_shots(market, game, player)
+		await market.finish_run(0)
+		return
 	var show_hud := "--hud" in OS.get_cmdline_user_args()
 	game.hud.visible = show_hud
 	if show_hud:
@@ -81,3 +85,50 @@ func shopper_stub(market: Node3D) -> Node3D:
 	var stub := Node3D.new()
 	market.add_child(stub)
 	return stub
+
+func _story_view(player: CharacterBody3D, from: Vector3, target: Vector3, name: String) -> void:
+	player.global_position = from
+	var d: Vector3 = target - (from + Vector3(0, 1.62, 0))
+	player.rotation = Vector3(0, atan2(-d.x, -d.z), 0)
+	player.camera.rotation = Vector3(atan2(d.y, Vector2(d.x, d.z).length()), 0, 0)
+	for i in 30:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("res://local/screenshots/story_%s.png" % name)
+	print("REFERENCE story_", name)
+
+## Rendered M3 moments: phone, both Leon outfits, chores and the three clues.
+func _story_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void:
+	game.hud.visible = true
+	game.director.spawn_enabled = false
+	game.director.delay_scale = 0.0
+	game.director.start()
+	await get_tree().process_frame
+	for id in ["kay_1", "dina_3"]:
+		pass
+	game.phone.deliver("dina_2", "Dina", "Remember the freezer count. And the back latch sticks. Lift it before you turn the key.", "11:33 PM")
+	game.phone.deliver("kay_1", "Kay", "Still doing inventory? Respectfully, why?", "11:44 PM")
+	game.phone.deliver("dina_3", "Dina", "Cash drop goes in the office drawer by 11:55. Don't leave it on the desk.", "11:49 PM")
+	await _story_view(player, Vector3(-5.6, 0.05, 5.0), Vector3(-5.4, 1.0, 3.6), "1_toast")
+	game.phone_ui.toggle()
+	await _story_view(player, Vector3(-5.6, 0.05, 5.0), Vector3(-5.4, 1.0, 3.6), "2_phone_open")
+	game.phone_ui.toggle()
+	for index in [2, 3]:
+		var profile: Dictionary = game.profiles[index]
+		var leon := Customer.new().setup(game, profile)
+		market.add_child(leon)
+		leon.global_position = Vector3(-5.0, 0.0, 3.15)
+		leon.rotation.y = PI
+		await _story_view(player, Vector3(-5.0, 0.05, 5.0), Vector3(-5.0, 1.45, 3.15), "%d_%s" % [index + 1, profile.id])
+		leon.queue_free()
+		await get_tree().process_frame
+	var shift := game.shift
+	game.interactor.pick_up(game.spawn_product("crisps", null))
+	await _story_view(player, Vector3(-6.33, 0.05, 3.4), shift.slots[0].position + Vector3(0, 0.2, 0), "5_restock_gap")
+	game.interactor.release_held().queue_free()
+	await _story_view(player, Vector3(-7.7, 0.05, 5.3), ShiftTasks.BIN_POINT + Vector3(0, 0.4, 0), "6_trash_bin")
+	await _story_view(player, Vector3(4.25, 0.05, -4.9), ShiftTasks.LATCH_POINT + Vector3(0, -0.06, 0), "7_latch")
+	game.clues.activate()
+	await _story_view(player, Vector3(6.2, 0.05, -3.1), Vector3(5.25, 1.45, -3.1), "8_key_hooks")
+	await _story_view(player, Vector3(7.7, 0.05, -4.2), Clues.ENVELOPE_MOVED + Vector3(0, 0.05, 0), "9_envelope")
+	await _story_view(player, Vector3(4.3, 0.05, -1.0), Vector3(4.3, 0.0, -5.0), "10_boot_prints")
