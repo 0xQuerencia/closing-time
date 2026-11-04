@@ -8,6 +8,8 @@ const VIEWS := [
 	["ref_4_exterior_wide", Vector3(-1.5, 0.0, 15.5), Vector3(1.7, 2.0, 6.0)],
 	["ref_5_exterior_right", Vector3(-6.0, 0.0, 14.0), Vector3(6.5, 1.8, 6.5)],
 	["ref_6_endcaps", Vector3(-1.5, 0.05, 4.6), Vector3(-3.4, 0.9, 1.8)],
+	["ref_7_register", Vector3(-5.8, 0.05, 5.15), Vector3(-5.8, 1.22, 4.4)],
+	["ref_8_office_pc", Vector3(7.0, 0.05, -3.3), Vector3(7.6, 0.95, -5.3)],
 ]
 
 func run(market: Node3D) -> void:
@@ -20,7 +22,13 @@ func run(market: Node3D) -> void:
 	shopper.rotation.y = 0.0  # faces the counter (-Z is forward, so turn to +Z)
 	shopper.rotation.y = PI
 	game.hud.visible = false
+	var only := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			only = arg.trim_prefix("--only=")
 	for view in VIEWS:
+		if only != "" and not String(view[0]).contains(only):
+			continue
 		player.global_position = view[1]
 		var d: Vector3 = view[2] - (view[1] + Vector3(0, 1.62, 0))
 		player.rotation = Vector3(0, atan2(-d.x, -d.z), 0)

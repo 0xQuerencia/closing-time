@@ -11,6 +11,8 @@ signal state_changed(state: State)
 const ZONE_MIN := Vector2(-5.95, 3.78)  # x, z on the customer side of the counter
 const ZONE_MAX := Vector2(-4.4, 4.12)
 const COUNTER_TOP := 0.955
+const CRT_BASE := 1.065  # top of the cash drawer
+const CRT_POS := Vector3(-5.8, CRT_BASE, 4.33)
 const DROP_SLOTS := [Vector3(-5.4, COUNTER_TOP, 3.95), Vector3(-5.05, COUNTER_TOP, 3.95), Vector3(-5.75, COUNTER_TOP, 3.95)]
 var state := State.IDLE
 var customer: Node
@@ -37,73 +39,51 @@ func build(world: Node3D) -> void:
 	terminal.checkout = self
 	var tshape := CollisionShape3D.new()
 	var tbox := BoxShape3D.new()
-	tbox.size = Vector3(0.42, 0.32, 0.1)
+	tbox.size = Vector3(0.4, 0.36, 0.44)
 	tshape.shape = tbox
 	terminal.add_child(tshape)
-	terminal.position = Vector3(-5.8, 1.4, 4.4)
+	terminal.position = Vector3(-5.8, CRT_BASE + 0.18, 4.33)
 	add_child(terminal)
-	_build_screen()
-	_build_keypad()
+	_build_workstation()
 	_beep = _make_player(1180.0, 70, Vector3(-5.8, 1.1, 4.3))
 	_chime = _make_player(660.0, 260, Vector3(-5.8, 1.1, 4.3))
 	ServiceBell.new().build(self, Vector3(-6.75, COUNTER_TOP, 3.98))
 	_refresh_screen()
 
-func _build_screen() -> void:
-	var glass := MeshInstance3D.new()
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.325, 0.215)
-	glass.mesh = quad
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.03, 0.075, 0.045)
-	m.roughness = 0.35
-	m.emission_enabled = true
-	m.emission = Color(0.02, 0.06, 0.03)
-	glass.material_override = m
-	glass.position = Vector3(-5.8, 1.4, 4.4425)
-	add_child(glass)
+## Real CRT monitor + keyboard on the cash drawer; the register text is drawn on the CRT glass.
+func _build_workstation() -> void:
+	var crt := _spawn_prop("res://assets/models/office_props/crt_monitor__static.glb", CRT_POS)
+	_spawn_prop("res://assets/models/office_props/keyboard.glb", Vector3(-5.8, COUNTER_TOP + 0.004, 4.6))
+	if crt:
+		var glass := crt.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
+		var lcd_material := StandardMaterial3D.new()
+		lcd_material.albedo_color = Color(0.02, 0.06, 0.035)
+		lcd_material.emission_enabled = true
+		lcd_material.emission = Color(0.03, 0.09, 0.05)
+		lcd_material.roughness = 0.3
+		glass.set_surface_override_material(1, lcd_material)
 	_lcd = Label3D.new()
 	var mono := SystemFont.new()
 	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Liberation Mono", "monospace"])
 	_lcd.font = mono
-	_lcd.pixel_size = 0.00056
-	_lcd.font_size = 46
+	_lcd.pixel_size = 0.00058
+	_lcd.font_size = 44
 	_lcd.modulate = Color(0.62, 0.95, 0.62)
 	_lcd.outline_size = 0
 	_lcd.shaded = false
 	_lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_lcd.position = Vector3(-5.8 - 0.143, 1.4, 4.4435)
+	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.1895)
 	add_child(_lcd)
 
-## Chunky register keys on the clerk side of the screen.
-func _build_keypad() -> void:
-	var plate := MeshInstance3D.new()
-	var plate_mesh := BoxMesh.new()
-	plate_mesh.size = Vector3(0.3, 0.035, 0.17)
-	plate.mesh = plate_mesh
-	plate.material_override = _flat(Color(0.52, 0.48, 0.4), 0.7)
-	var pad := Node3D.new()
-	pad.position = Vector3(-5.8, COUNTER_TOP + 0.03, 4.62)
-	pad.rotation.x = -0.28
-	pad.add_child(plate)
-	for row in 4:
-		for col in 5:
-			var key := MeshInstance3D.new()
-			var key_mesh := BoxMesh.new()
-			key_mesh.size = Vector3(0.036, 0.016, 0.026)
-			key.mesh = key_mesh
-			var accent := col == 4 and row < 3
-			key.material_override = _flat(Color(0.8, 0.45, 0.2) if accent else Color(0.62, 0.62, 0.58), 0.6)
-			key.position = Vector3(-0.108 + col * 0.054, 0.024, -0.058 + row * 0.04)
-			pad.add_child(key)
-	add_child(pad)
-
-func _flat(color: Color, rough: float) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = color
-	m.roughness = rough
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	return m
+func _spawn_prop(path: String, pos: Vector3) -> Node3D:
+	var scene := load(path) as PackedScene
+	if scene == null:
+		push_error("Register prop failed to load: " + path)
+		return null
+	var instance := scene.instantiate() as Node3D
+	instance.position = pos
+	add_child(instance)
+	return instance
 
 func _make_player(freq: float, ms: int, pos: Vector3) -> AudioStreamPlayer3D:
 	var p := Tone.player(Tone.stream(freq, ms), pos)
