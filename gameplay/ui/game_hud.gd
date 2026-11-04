@@ -26,6 +26,7 @@ var _line: Label
 var _choice_box: VBoxContainer
 var _task_box: PanelContainer
 var _task_list: VBoxContainer
+var _clock: Label
 var _message_left := 0.0
 var _line_left := 0.0
 var _type_tween: Tween
@@ -39,6 +40,8 @@ func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManage
 	_build_held()
 	_build_speech()
 	_build_tasks()
+	_clock = _label("", 15, AMBER, FONT_BOLD)
+	_place(_clock, 0.0, 0.0, 24, 24, 160)
 	dialogue.line_shown.connect(_on_line)
 	dialogue.choices_shown.connect(_on_choices)
 	dialogue.finished.connect(func(_id): _clear_choices())
@@ -273,3 +276,7 @@ func _refresh_tasks() -> void:
 			for o in t.objectives:
 				_task_list.add_child(_label(("   [x] " if o.done else "   [ ] ") + o.text, 13, GREEN if o.done else DIM))
 	_task_box.visible = shown
+
+func set_clock(text: String) -> void:
+	if _clock:
+		_clock.text = text

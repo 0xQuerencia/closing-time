@@ -10,6 +10,12 @@ var checkout: Checkout
 var dialogue: DialogueRunner
 var tasks: TaskManager
 var hud: GameHud
+var phone: PhoneModel
+var clock: StoryClock
+var shift: ShiftTasks
+var clues: Clues
+var director: StoryDirector
+var phone_ui: PhoneUI
 var markers := {}
 var profiles: Array[Dictionary] = []
 var next_profile := 0
@@ -27,7 +33,7 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	profiles = CustomerProfiles.build(markers)
 	dialogue = DialogueRunner.new()
 	add_child(dialogue)
-	dialogue.load_file("res://gameplay/dialogue/data/customers.json")
+	dialogue.load_file("res://gameplay/dialogue/data/story.json")
 	tasks = TaskManager.new()
 	add_child(tasks)
 	checkout = Checkout.new()
@@ -42,9 +48,21 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	hud = GameHud.new()
 	add_child(hud)
 	hud.setup(interactor, dialogue, tasks)
+	phone = PhoneModel.new()
+	clock = StoryClock.new()
+	clock.changed.connect(hud.set_clock)
+	hud.set_clock(clock.text())
+	phone_ui = PhoneUI.new()
+	add_child(phone_ui)
+	phone_ui.setup(phone, clock)
+	shift = ShiftTasks.new().build(self)
+	clues = Clues.new().build(world)
+	director = StoryDirector.new()
+	add_child(director)
+	director.setup(self)
 	_stock_shelves()
 	if auto_customers:
-		get_tree().create_timer(4.0).timeout.connect(spawn_customer)
+		director.start()
 
 func _unhandled_input(event: InputEvent) -> void:
 	for i in GameInput.CHOICES.size():
@@ -69,11 +87,22 @@ func _stock_shelves() -> void:
 	for id in spots:
 		spawn_product(id, spots[id])
 
+func spawn_customer_by_id(profile_id: String) -> Customer:
+	for index in profiles.size():
+		if profiles[index].id == profile_id:
+			next_profile = maxi(next_profile, index + 1)
+			return _spawn_profile(profiles[index])
+	push_error("Unknown customer profile: " + profile_id)
+	return null
+
 func spawn_customer() -> Customer:
 	if next_profile >= profiles.size():
 		return null
 	var profile := profiles[next_profile]
 	next_profile += 1
+	return _spawn_profile(profile)
+
+func _spawn_profile(profile: Dictionary) -> Customer:
 	var customer := Customer.new().setup(self, profile)
 	world.add_child(customer)
 	customer.global_position = profile.start
@@ -104,5 +133,3 @@ func _on_sale_completed(_tx: Dictionary) -> void:
 
 func _on_customer_finished(customer: Customer) -> void:
 	customer_finished.emit(customer)
-	if auto_customers and next_profile < profiles.size():
-		get_tree().create_timer(CUSTOMER_GAP).timeout.connect(spawn_customer)

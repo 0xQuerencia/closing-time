@@ -121,15 +121,15 @@ func _test_dialogue() -> void:
 	d.line_shown.connect(capture)
 	var done: Array[String] = []
 	d.finished.connect(func(id): done.append(id))
-	check(d.start("c1_thanks") and done == ["c1_thanks"], "scripted conversation runs to completion")
-	check(lines == ["Customer|Cheers. Quiet night.", "Jamie|It is. Take care."], "lines arrive in order")
+	check(d.start("mara_thanks") and done == ["mara_thanks"], "scripted conversation runs to completion")
+	check(lines == ["Mara|Night, hon. Get home safe.", "Jamie|You too."], "lines arrive in order")
 	d.time_scale_for_tests = 1.0
-	d.start("c1_talk")
+	d.start("mara_talk")
 	check(d.is_active() and d.current_choices.size() == 2, "choices wait for the player")
 	check(not d.choose(5), "invalid choice index is ignored")
-	check(d.choose(0) and d.flags.get("c1_asked_found", false), "choice sets a flag")
+	check(d.choose(0) and d.flags.get("mara_not_anymore", false), "choice sets a flag")
 	d.cancel()
-	check(not d.is_active() and done.back() == "c1_talk", "cancel ends conversation and notifies")
+	check(not d.is_active() and done.back() == "mara_talk", "cancel ends conversation and notifies")
 	d.time_scale_for_tests = 0.0
 	d.line_shown.disconnect(capture)
 
@@ -194,7 +194,9 @@ func _test_routes() -> void:
 	add_child(probe)
 	for profile in game.profiles:
 		var path: Array[Vector3] = [profile.start]
-		for leg in ["arrive", "browse", "queue", "leave"]:
+		for leg in ["arrive", "browse", "queue", "leave", "car"]:
+			if not profile.route.has(leg):
+				continue
 			path.append_array(profile.route[leg])
 		var clear := true
 		for i in range(path.size() - 1):
@@ -206,10 +208,27 @@ func _test_routes() -> void:
 		check(clear, "capsule can walk every leg of route " + profile.id)
 	probe.queue_free()
 
+## Scans every item on the counter and takes payment through the real interactor. Returns payment attempts.
+func scan_all_and_pay(max_attempts := 4) -> int:
+	var checkout := game.checkout
+	for item in checkout.items.duplicate():
+		await aim(Vector3(item.global_position.x + 0.1, 0.05, 5.0), item.global_position + Vector3(0, 0.06, 0))
+		game.interactor.interact()
+	var sales := checkout.history.size()
+	var attempts := 0
+	await aim(Vector3(-5.8, 0.05, 5.0), checkout.terminal.global_position)
+	while checkout.history.size() == sales and attempts < max_attempts:
+		game.interactor.interact()
+		attempts += 1
+		await get_tree().physics_frame
+	return attempts
+
 func _test_customer_cycles() -> void:
 	var checkout := game.checkout
 	var line_log: Array[String] = []
 	game.dialogue.line_shown.connect(func(s, t): line_log.append("%s|%s" % [s, t]))
+	var failures_seen: Array[int] = []
+	checkout.payment_failed.connect(func(left): failures_seen.append(left))
 	for round_index in 2:
 		var delayed := round_index == 1
 		var customer := game.spawn_customer()
@@ -218,7 +237,7 @@ func _test_customer_cycles() -> void:
 		var id: String = customer.profile.id
 		var customer_id := customer.get_instance_id()
 		var sales_before := checkout.history.size()
-		check(await wait_until(func(): return checkout.state == Checkout.State.OPEN and checkout.items.size() == 1, 60), "customer %s reaches the counter with an item" % id)
+		check(await wait_until(func(): return checkout.state == Checkout.State.OPEN and checkout.items.size() == 2, 90), "%s reaches the counter with two items" % id)
 		check(customer.phase == Customer.Phase.TRANSACTION and checkout.customer == customer, "phase is TRANSACTION at the counter")
 		check(game.tasks.tasks["serve_" + id].objectives[0].done and not game.tasks.is_complete("serve_" + id), "task: at counter done, not complete yet")
 		await aim(Vector3(-5.0, 0.05, 5.0), customer.global_position + Vector3(0, 1.0, 0))
@@ -228,24 +247,22 @@ func _test_customer_cycles() -> void:
 			game.interactor.interact()
 			check(game.dialogue.is_active() and game.dialogue.current_choices.size() == 2, "talking offers two replies")
 			game.dialogue.choose(1)
-			check(game.dialogue.flags.has("c1_pays_card"), "reply sets a story flag")
+			check(game.dialogue.flags.has("mara_just_covering"), "reply sets a story flag")
 		else:
 			await get_tree().create_timer(4.5).timeout
-			check(line_log.any(func(l): return l.ends_with("Whenever you're ready.")), "customer waits patiently and speaks up when delayed")
+			check(line_log.any(func(l): return l.ends_with("No rush.")), "customer waits patiently and speaks up when delayed")
 			check(checkout.state == Checkout.State.OPEN and not game.tasks.is_complete("serve_" + id), "no timer completes the sale")
-		var item := checkout.items[0]
-		await aim(CLERK, item.global_position + Vector3(0, 0.06, 0))
-		game.interactor.interact()
-		check(item.scanned, "item scanned by the player")
-		await aim(Vector3(-5.8, 0.05, 5.0), checkout.terminal.global_position)
-		game.interactor.interact()
+		var attempts := await scan_all_and_pay()
+		check(checkout.items.all(func(p): return p.scanned) or checkout.history.size() == sales_before + 1, "both items scanned")
 		check(checkout.history.size() == sales_before + 1, "transaction %d recorded" % (round_index + 1))
+		check(attempts == (2 if delayed else 1), "payment took %d attempt(s): Ben's reader fails once, Mara's does not" % attempts)
 		check(game.tasks.is_complete("serve_" + id), "task completes after the sale")
-		var gone := await wait_until(func(): return not is_instance_id_valid(customer_id), 60)
+		var gone := await wait_until(func(): return not is_instance_id_valid(customer_id), 90)
 		check(gone, "customer %s leaves and is removed" % id)
 		check(checkout.state == Checkout.State.IDLE, "register is idle again")
+	check(failures_seen == [0], "exactly one reader failure happened, for Ben")
 	check(game.customers_served == 3 and game.tasks.completed_count() == 2, "two customers served end to end")
-	check(game.spawn_customer() == null, "no third profile is spawned")
+	check(game.next_profile == 2, "story customers beyond Ben are left for the director")
 
 ## Real-renderer screenshots of the sale in progress: local/screenshots/gameplay_*.png
 func capture(market: Node3D) -> void:

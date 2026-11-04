@@ -89,6 +89,13 @@ func pick_up(item: Product) -> bool:
 	held_changed.emit(held)
 	return true
 
+## Hands the carried item over to something that consumes it (shelf gap, trash spot).
+func release_held() -> Product:
+	var item := held
+	held = null
+	held_changed.emit(null)
+	return item
+
 func place_held() -> bool:
 	if held == null:
 		return false
