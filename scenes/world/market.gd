@@ -16,6 +16,7 @@ func _ready() -> void:
 	build_lighting()
 	build_signage()
 	build_markers()
+	build_room_tone()
 	player = CharacterBody3D.new()
 	player.set_script(Player)
 	add_child(player)
@@ -28,6 +29,10 @@ func _ready() -> void:
 	elif "--test-world" in OS.get_cmdline_user_args():
 		player.enabled = false
 		run_world_tests()
+	elif "--benchmark" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		benchmark_views()
 	else:
 		build_hint()
 
@@ -36,11 +41,19 @@ func build_collisions() -> void:
 	for entry in entries:
 		var body := StaticBody3D.new()
 		body.name = entry.name
-		body.position = Vector3(entry.p[0], entry.p[1], entry.p[2])
+		body.position = Vector3(entry.p[0], entry.p[1], entry.p[2]) if entry.has("p") else Vector3.ZERO
 		var collision := CollisionShape3D.new()
-		var shape := BoxShape3D.new()
-		shape.size = Vector3(entry.s[0], entry.s[1], entry.s[2])
-		collision.shape = shape
+		if entry.has("points"):
+			var shape := ConvexPolygonShape3D.new()
+			var points := PackedVector3Array()
+			for p in entry.points:
+				points.append(Vector3(p[0],p[1],p[2]))
+			shape.points = points
+			collision.shape = shape
+		else:
+			var shape := BoxShape3D.new()
+			shape.size = Vector3(entry.s[0], entry.s[1], entry.s[2])
+			collision.shape = shape
 		body.add_child(collision)
 		add_child(body)
 
@@ -113,6 +126,20 @@ func build_lighting() -> void:
 			lamp(Vector3(x,2.85,z),Color(1,.95,.83),0.85,5.3,x == -2.0)
 	for z in [-4,1.5]:
 		lamp(Vector3(6.9,2.84,z),Color(1,.91,.77),0.72,4.0,true)
+	var utility_fixture := MeshInstance3D.new()
+	var diffuser := CylinderMesh.new()
+	diffuser.top_radius = .14
+	diffuser.bottom_radius = .14
+	diffuser.height = .045
+	utility_fixture.mesh = diffuser
+	utility_fixture.position = Vector3(4.25,3.12,-2.7)
+	var finish := StandardMaterial3D.new()
+	finish.albedo_color = Color(.76,.74,.64)
+	finish.emission_enabled = true
+	finish.emission = Color(.4,.36,.26)
+	utility_fixture.material_override = finish
+	add_child(utility_fixture)
+	lamp(Vector3(4.25,2.95,-2.7),Color(1,.9,.74),.55,4.2,true)
 	lamp(Vector3(4.2,2.6,3.3),Color(.68,.76,.69),.45,3.6)
 	for x in [-6,-2,1.4]:
 		lamp(Vector3(x,2.65,7.0),Color(1,.87,.68),1.3,5.4,true)
@@ -157,7 +184,6 @@ func build_signage() -> void:
 	text_label("KEEP REAR DOOR CLOSED",Vector3(4.25,1.72,-5.951),23,.003,Color(.8,.78,.64))
 	text_label("SHIFT NOTES\n\nCOUNT MILK BEFORE CLOSE\n\nREAR LATCH STICKS\n\n– D.",Vector3(8.835,1.7,-3.9),22,.0007,Color(.22,.19,.14),-PI/2)
 	text_label("$1.99",Vector3(-6,.87,3.757),28,.002,Color(.22,.17,.11),PI)
-	text_label("COFFEE\nFRESH UNTIL 10",Vector3(-8.86,1.98,-.6),32,.003,Color(.25,.2,.13),PI/2)
 
 func build_markers() -> void:
 	var markers := Node3D.new()
@@ -187,16 +213,19 @@ func build_hint() -> void:
 func capture_views() -> void:
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1600,900)
+	viewport.positional_shadow_atlas_size = 4096
+	viewport.positional_shadow_atlas_16_bits = false
 	viewport.world_3d = get_viewport().world_3d
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(viewport)
 	var shot_camera := Camera3D.new()
-	shot_camera.fov = 59.5
+	shot_camera.keep_aspect = Camera3D.KEEP_WIDTH
+	shot_camera.fov = 75.0
 	shot_camera.near = 0.055
 	viewport.add_child(shot_camera)
 	shot_camera.current = true
 	var views := [
-		["01_outside_to_store",Vector3(-3.4,1.62,16.4),Vector3(-1,1.7,5.8)],
+		["01_outside_to_store",Vector3(-3.4,1.62,19.5),Vector3(-1,1.7,5.8)],
 		["02_checkout_to_aisles",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)],
 		["03_aisle_to_exit",Vector3(-1.5,1.62,-1.6),Vector3(.6,1.4,6.4)],
 		["04_office_rear_corridor",Vector3(5.7,1.62,-3.15),Vector3(7.5,1.1,-5.2)],
@@ -210,7 +239,7 @@ func capture_views() -> void:
 		var error := viewport.get_texture().get_image().save_png("res://local/screenshots/%s.png" % view[0])
 		print("CAPTURE ",view[0]," status=",error)
 	print("CAPTURE COMPLETE renderer=",RenderingServer.get_current_rendering_method()," resolution=",viewport.size)
-	get_tree().quit()
+	await finish_run(0)
 
 func run_world_tests() -> void:
 	await get_tree().physics_frame
@@ -243,5 +272,98 @@ func run_world_tests() -> void:
 			failures += 1
 		else:
 			print("CAPSULE TEST PASS: ",route[0])
+	player.position = Vector3(-1.5,.03,4)
+	player.rotation = Vector3.ZERO
+	player.camera.rotation = Vector3.ZERO
+	player.enabled = true
+	player.require_mouse_capture = false # Headless display drivers cannot capture a mouse.
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	var press := InputEventKey.new()
+	press.physical_keycode = KEY_W
+	press.pressed = true
+	Input.parse_input_event(press)
+	var before := player.position
+	for frame in range(45):
+		await get_tree().physics_frame
+	var release := InputEventKey.new()
+	release.physical_keycode = KEY_W
+	release.pressed = false
+	Input.parse_input_event(release)
+	var displacement := before.distance_to(player.position)
+	if displacement > 1.0 and displacement < 1.7:
+		print("INPUT TEST PASS: W moved capsule ",displacement," meters")
+	else:
+		push_error("INPUT TEST FAIL: W displacement="+str(displacement))
+		failures += 1
+	var motion := InputEventMouseMotion.new()
+	motion.relative = Vector2(100,35)
+	player._unhandled_input(motion)
+	if absf(player.rotation.y + .2) < .01 and absf(player.camera.rotation.x + .07) < .01:
+		print("INPUT TEST PASS: mouse yaw and pitch")
+	else:
+		push_error("INPUT TEST FAIL: mouse rotation")
+		failures += 1
+	player.position = Vector3(1.7,-.10,10)
+	player.rotation = Vector3.ZERO
+	press.pressed = true
+	Input.parse_input_event(press)
+	for frame in range(120):
+		await get_tree().physics_frame
+	Input.parse_input_event(release)
+	if player.position.z < 7.2 and player.position.y > -.03:
+		print("INPUT TEST PASS: parking to sidewalk ramp ",player.position)
+	else:
+		push_error("INPUT TEST FAIL: curb ramp "+str(player.position))
+		failures += 1
+	player.enabled = false
 	print("WORLD TESTS COMPLETE failures=",failures)
-	get_tree().quit(1 if failures else 0)
+	await finish_run(1 if failures else 0)
+
+func build_room_tone() -> void:
+	var stream := load("res://assets/audio/refrigeration.wav") as AudioStreamWAV
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = stream.data.size() / 2
+	for x in [-6.4,-1.7]:
+		var source := AudioStreamPlayer3D.new()
+		source.stream = stream
+		source.position = Vector3(x,1.2,-5.0)
+		source.unit_size = 2
+		source.max_distance = 15
+		source.volume_db = -12
+		add_child(source)
+		source.play()
+
+func finish_run(code: int) -> void:
+	for child in get_children():
+		if child is AudioStreamPlayer3D:
+			child.stop()
+			child.stream = null
+	await get_tree().create_timer(.15).timeout
+	get_tree().quit(code)
+
+func _exit_tree() -> void:
+	for child in get_children():
+		if child is AudioStreamPlayer3D:
+			child.stop()
+			child.stream = null
+
+func benchmark_views() -> void:
+	var frame_times: Array[float] = []
+	for view in [[Vector3(-7.2,1.62,5.2),Vector3(-2,1.4,-2)], [Vector3(-1.5,1.62,-1.6),Vector3(0,1.4,7)], [Vector3(-3.4,1.62,19.5),Vector3(-1,1.7,5.8)]]:
+		player.position = view[0]-Vector3(0,1.62,0)
+		player.camera.look_at(view[1])
+		await get_tree().create_timer(2).timeout
+		for frame in range(120):
+			await get_tree().process_frame
+			frame_times.append(get_process_delta_time())
+	var total := 0.0
+	for delta in frame_times:
+		total += delta
+	frame_times.sort()
+	var result := {"version":Engine.get_version_info().string,"renderer":RenderingServer.get_current_rendering_method(),"resolution":str(get_viewport().get_visible_rect().size),"gpu":RenderingServer.get_video_adapter_name(),"frames":frame_times.size(),"average_fps":frame_times.size()/total,"minimum_fps":1.0/frame_times[-1],"p95_frame_ms":frame_times[int(frame_times.size()*.95)]*1000,"note":"Three static views; normal window viewport; vsync enabled. Not a full walking playthrough."}
+	var file := FileAccess.open("res://local/benchmark.json",FileAccess.WRITE)
+	file.store_string(JSON.stringify(result,"  "))
+	file.close()
+	print("BENCHMARK ",JSON.stringify(result))
+	await finish_run(0)

@@ -24,6 +24,10 @@ mat('asphalt',(.1,.12,.13),.27,texture='asphalt');mat('wood',(.29,.21,.14),.56,t
 for n,c,rough,metal in [('shelf',(.32,.38,.37),.52,.35),('steel',(.38,.4,.39),.3,.8),('dark',(.025,.032,.029),.7,.1),('cream',(.68,.65,.53),.65,0),('paper',(.75,.72,.62),.9,0),('red',(.36,.065,.035),.6,0),('cardboard',(.37,.25,.13),.94,0),('yellow',(.68,.51,.18),.7,0),('car',(.17,.22,.2),.34,.65),('rubber',(.018,.021,.02),.95,0),('car_glass',(.025,.05,.065),.16,.6),('green',(.1,.2,.13),.6,.25)]:mat(n,c,rough,metal)
 mat('tube',(.85,.82,.65),.5,emission=3);mat('screen',(.12,.24,.21),.4,emission=.7);mat('packaging',(1,1,1),.6,texture='packaging')
 for i,c in enumerate([(132,60,39),(167,137,67),(131,47,35),(48,94,101),(82,65,44),(79,103,58),(188,150,71),(56,92,115),(80,54,42),(91,116,130),(166,94,36),(66,100,67),(132,119,96),(130,59,40),(97,73,44),(165,133,76)]):mat('pack%d'%i,tuple(v/255 for v in c),.53)
+for n in ['register','cctv_standby','coffee_poster','shipping','price']:mat(n,(1,1,1),.65,texture=n)
+for n in ['register','cctv_standby']:
+ b=mats[n].node_tree.nodes.get('Principled BSDF');t=next(n for n in mats[n].node_tree.nodes if n.type=='TEX_IMAGE');mats[n].node_tree.links.new(t.outputs['Color'],b.inputs['Emission Color']);b.inputs['Emission Strength'].default_value=.5
+
 def xyz(p):return (p[0],-p[2],p[1])
 def register(o,name,material):
  o.name=name;o.data.materials.append(mats[material]);batches.setdefault(group,[]).append(o);return o
@@ -89,6 +93,12 @@ def pillow_bag(x,y,z,index):
  fs.append(tuple(range(32,40)));me=bpy.data.meshes.new('Shaped foil bag');me.from_pydata(vs,[],fs)
  o=bpy.data.objects.new('Shaped foil bag',me);bpy.context.collection.objects.link(o);register(o,'Shaped foil bag','pack%d'%index)
 
+def art_panel(p,w,h,material,angle=0):
+ me=bpy.data.meshes.new('Printed artwork');me.from_pydata([xyz((-w/2,-h/2,0)),xyz((w/2,-h/2,0)),xyz((w/2,h/2,0)),xyz((-w/2,h/2,0))],[],[(0,1,2,3)]);me.uv_layers.new()
+ for li,uv in enumerate([(0,0),(1,0),(1,1),(0,1)]):me.uv_layers.active.data[li].uv=uv
+ o=bpy.data.objects.new('Printed '+material,me);bpy.context.collection.objects.link(o);o.location=xyz(p);o.rotation_euler[2]=angle;register(o,'Printed '+material,material)
+ return o
+
 def product(x,y,z,kind,idx,side=1):
  if kind=='can':
   cyl('Tin', (x,y+.115,z),.067,.23,'pack%d'%idx);cyl('Rolled rim',(x,y+.232,z),.069,.012,'steel');wrap_label(x,y+.12,z,.069,.19,idx)
@@ -120,7 +130,7 @@ for y in [.61,2.73]:box('Glazing rail',(-2.7,y,6),(12.5,.045,.08),'steel')
 box('Entrance threshold',(1.7,.015,6),(1.55,.03,.28),'steel')
 box('Entry mat',(1.7,.013,5.1),(1.5,.022,1.15),'rubber',.02)
 # Internal staff partition with open doorways, frames and a real corridor.
-for z,l in [(-5.55,.9),(-2.3,3.3),(3.1,5.8)]:box('Retail staff partition',(3.5,1.6,z),(.13,3.2,l),'plaster',collision=True,uvscale=2)
+for z,l in [(-5.55,.9),(-2.3,3.3),(3.3,5.4)]:box('Retail staff partition',(3.5,1.6,z),(.13,3.2,l),'plaster',collision=True,uvscale=2)
 for z in [-4.3,0]:
  box('Staff doorway header',(3.5,2.7,z),(.13,1,1.2),'plaster',collision=True)
  for dz in [-.58,.58]:box('Door jamb',(3.5,1.1,z+dz),(.19,2.2,.065),'wood',.008)
@@ -156,7 +166,7 @@ box('POS base',(-5.8,1.09,4.35),(.26,.04,.2),'cream',.018)
 box('POS neck',(-5.8,1.22,4.38),(.07,.24,.07),'cream',.01)
 box('POS monitor',(-5.8,1.4,4.38),(.41,.3,.09),'cream',.035)
 box('Register display',(-5.8,1.4,4.432),(.34,.23,.008),'screen',.006)
-for row in range(4):box('POS screen text',(-5.85,1.47-row*.04,4.439),(.21-row*.027,.008,.001),'cream')
+art_panel((-5.8,1.4,4.439),.335,.225,'register')
 box('Receipt printer',(-6.4,1.08,4.25),(.21,.22,.27),'cream',.03)
 box('Printer mouth',(-6.4,1.155,4.395),(.15,.018,.009),'dark')
 box('Receipt curl',(-6.4,1.17,4.48),(.1,.003,.16),'paper')
@@ -167,6 +177,10 @@ box('Scanner lens',(-5.1,1.23,4.159),(.08,.025,.005),'red')
 box('Card reader',(-4.7,1.04,3.96),(.14,.11,.22),'dark',.02)
 for j in range(4):
  for k in range(3):box('Terminal key',(-4.74+k*.04,1.099,3.92+j*.035),(.025,.005,.023),'cream',.003)
+cyl('Clerk coffee cup',(-7.6,1.03,4.5),.045,.16,'paper',24)
+cyl('Cup lid',(-7.6,1.116,4.5),.048,.015,'dark',24)
+for j in range(3):
+ o=box('Loose receipt',(-7.2+j*.035,.959+j*.002,4.3+j*.02),(.07,.002,.17),'paper');o.rotation_euler[2]=j*.12
 # 3 gondolas, shelves 1.72m high. Irregular stock in coherent brand runs.
 for ai,x in enumerate([-6,-3,0]):
  box('Gondola base',(x,.12,-.9),(.91,.24,4.9),'shelf',.025,True)
@@ -189,7 +203,7 @@ for ai,x in enumerate([-6,-3,0]):
      old=o.location.copy();ang=side*math.pi/2
      o.location=(x+side*.25+old.x*math.cos(ang)-old.y*math.sin(ang),-z+old.x*math.sin(ang)+old.y*math.cos(ang),old.z)
      o.rotation_euler[2]+=ang
-   for z in [-2.8,-1.5,-.2,1.1]:box('Shelf ticket',(x+side*.472,h+.02,z),(.006,.041,.19),'paper')
+   for z in [-2.8,-1.5,-.2,1.1]:art_panel((x+side*.472,h+.02,z),.19,.041,'price',side*math.pi/2)
 box('Cooler sign backing',(-3.2,2.53,-5.1),(9.45,.32,.06),'green',.015)
 # Cooler row across back wall: frame, stock, transparent glass supplied in Godot.
 for i in range(6):
@@ -210,14 +224,16 @@ for z in [-1.3,-.6]:
  box('Coffee machine',(-8.3,1.23,z),(.45,.52,.45),'steel',.025)
  cyl('Coffee pot',(-8.02,1.1,z),.105,.22,'dark');cyl('Coffee lid',(-8.02,1.23,z),.11,.025,'dark')
 for j in range(5):cyl('Cup stack',(-8.2,1.04,.05+j*.1),.04,.13,'paper')
+art_panel((-8.875,1.98,-.6),.43,.58,'coffee_poster',math.pi/2)
+for y in [1.7,2.26]:
+ for z in [-.79,-.41]:box('Poster tape',(-8.867,y,z),(.008,.04,.075),'cream')
 # Office furniture and stockroom.
 group='backrooms'
 box('Office desk',(7.6,.74,-5.25),(2.1,.075,.75),'wood',.02,True)
 for x in [6.7,8.5]:box('Desk leg',(x,.37,-5.25),(.065,.74,.62),'steel',.008,True)
 box('CRT case',(7.9,1.02,-5.31),(.49,.48,.4),'cream',.055)
 box('CRT display',(7.9,1.02,-5.096),(.38,.31,.015),'screen',.02)
-for x in [7.8,8]:
- for y in [.95,1.1]:box('Security view divider',(x,y,-5.085),(.16,.012,.003),'dark')
+art_panel((7.9,1.02,-5.085),.375,.305,'cctv_standby')
 box('Keyboard',(7.9,.8,-4.96),(.42,.035,.15),'cream',.012)
 for j in range(12):box('Keyboard keys',(7.72+j*.033,.824,-4.96),(.02,.01,.11),'dark',.003)
 box('Landline',(6.9,.83,-5.15),(.25,.11,.24),'cream',.026)
@@ -248,7 +264,7 @@ for z in [-1.2,1.5,4.5]:
    zz=z-.6+j*.58
    box('Sealed carton',(8.25,y+.26,zz),(.85,.5,.49),'cardboard',.018)
    box('Packing tape',(8.25,y+.515,zz),(.12,.006,.49),'cream')
-   box('Shipping label',(7.818,y+.27,zz),(.005,.17,.25),'paper')
+   art_panel((7.816,y+.27,zz),.25,.17,'shipping',-math.pi/2)
 box('Breaker box',(4.91,1.52,2.8),(.13,.55,.35),'shelf',.018)
 for z in [2.69,2.78,2.87]:box('Breaker switch',(4.829,1.5,z),(.025,.065,.04),'dark')
 # Low-key evidence of a working shift: wall clock, bin, cup, floor carton.
@@ -271,6 +287,11 @@ box('Inventory sheet',(6,.801,2.9),(.25,.003,.32),'paper')
 group='exterior'
 box('Parking asphalt',(0,-.23,15),(28,.22,18),'asphalt',collision=True,uvscale=3)
 box('Sidewalk',(0,-.08,7),(20,.16,1.8),'plaster',.04,True,uvscale=2)
+# Accessible curb ramp connects the parking surface to the entry sidewalk.
+pts=[(.9,-.12,7.9),(2.5,-.12,7.9),(2.5,-.12,9.15),(.9,-.12,9.15),(.9,0,7.9),(2.5,0,7.9)]
+me=bpy.data.meshes.new('Curb ramp');me.from_pydata([xyz(p) for p in pts],[],[(0,3,2,1),(0,1,5,4),(0,4,3),(1,2,5),(4,5,2,3)]);me.update()
+o=bpy.data.objects.new('Curb ramp',me);bpy.context.collection.objects.link(o);register(o,'Curb ramp','plaster')
+colliders.append({'name':'Curb ramp','points':pts})
 box('Side pavement',(10.1,-.1,0),(2,.16,14),'asphalt',collision=True,uvscale=3)
 box('Rear loading pad',(4,-.07,-7),(4,.18,2),'plaster',.025,True)
 box('Surrounding ground',(0,-.32,0),(90,.15,90),'dark',collision=True)
