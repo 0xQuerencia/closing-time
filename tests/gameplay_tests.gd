@@ -21,7 +21,7 @@ func run(market: Node3D) -> void:
 	_test_dialogue()
 	_test_tasks()
 	await _test_manual_sale()
-	_test_routes()
+	await _test_routes()
 	game.dialogue.time_scale_for_tests = 1.0
 	Engine.time_scale = TIME_SCALE
 	await _test_customer_cycles()
@@ -192,6 +192,9 @@ func _test_routes() -> void:
 	probe.add_child(shape)
 	probe.collision_mask = 1
 	add_child(probe)
+	game.security.front_door.snap(true)  # customers push the doors open; sweep with them open
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	for profile in game.profiles:
 		var path: Array[Vector3] = [profile.start]
 		for leg in ["arrive", "browse", "queue", "leave", "car"]:

@@ -4,7 +4,7 @@ extends Node
 ## leaving, chores, clues), never by one long timer, so a slow or dawdling player cannot stall it.
 signal step_changed(step: Step)
 signal event_logged(entry: String)
-enum Step { IDLE, INTRO, MARA, BEN, WORK, LEON_1, LEON_1_AWAY, LEON_2, ANOMALY }
+enum Step { IDLE, INTRO, MARA, BEN, WORK, LEON_1, LEON_1_AWAY, LEON_2, ANOMALY, CAMERAS, BLACKOUT, POWER_BACK, SECURITY_DONE }
 const LEON_RETURN_AFTER_CHORES := 2
 const LEON_RETURN_MIN_AWAY := 10.0
 const LEON_RETURN_MAX_AWAY := 90.0
@@ -20,6 +20,7 @@ var delay_scale := 1.0
 var _fired := {}
 var _away := 0.0
 var _chores_done := {}
+var beats: SecurityBeats
 
 func setup(owner_game: Gameplay) -> StoryDirector:
 	game = owner_game
@@ -31,6 +32,8 @@ func setup(owner_game: Gameplay) -> StoryDirector:
 	game.tasks.task_completed.connect(_on_task_completed)
 	game.shift.latch_locked.connect(func(): flags["rear_latch_checked"] = true; _record("rear_latch_checked"))
 	game.clues.clue_seen.connect(_on_clue_seen)
+	beats = SecurityBeats.new().setup(self)
+	add_child(beats)
 	return self
 
 func start() -> bool:
@@ -102,6 +105,8 @@ func _anomaly() -> void:
 	_set_step(Step.ANOMALY)
 	clock.advance_to(0, 6)
 	game.clues.activate()
+	if game.security != null:
+		game.security.pulse_rear_door()
 	game.tasks.add_task("look_back", "Something's off in back", [
 		{"id": "spare_key", "text": "Check the key hooks"},
 		{"id": "cash_envelope", "text": "Check the cash drop"},
@@ -109,6 +114,8 @@ func _anomaly() -> void:
 	_later(5.0, func(): _text("kay_2", "Kay", "A man bought the same water twice and acted like I'd never seen him.", 0, 7, true))
 	_later(14.0, func(): _text("kay_3", "Kay", "Maybe he really likes hydration.", 0, 8))
 	_later(24.0, func(): _text("dina_4", "Dina", "If the alarm trips, call the police, not me.", 0, 9))
+	if beats != null:
+		get_tree().create_timer(75.0).timeout.connect(beats.begin)  # real time: a player who ignores the clues still gets the cameras
 
 # --- chores and clues -------------------------------------------------------------------------
 

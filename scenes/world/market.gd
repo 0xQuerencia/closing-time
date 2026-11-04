@@ -43,6 +43,7 @@ func _ready() -> void:
 		capture_views(true)
 	elif "--test-world" in OS.get_cmdline_user_args():
 		player.enabled = false
+		add_gameplay(false)  # the doors are gameplay objects now
 		run_world_tests()
 	elif "--test-gameplay" in OS.get_cmdline_user_args():
 		player.enabled = false
@@ -56,6 +57,12 @@ func _ready() -> void:
 		var story_tests := StoryTests.new()
 		add_child(story_tests)
 		story_tests.run_story(self)
+	elif "--test-security" in OS.get_cmdline_user_args():
+		player.enabled = false
+		add_gameplay(false)
+		var security_tests := SecurityTests.new()
+		add_child(security_tests)
+		security_tests.run_security(self)
 	elif "--qa-gameplay" in OS.get_cmdline_user_args():
 		player.require_mouse_capture = false
 		add_gameplay(false)
@@ -80,6 +87,13 @@ func _ready() -> void:
 		var reference := ReferenceCapture.new()
 		add_child(reference)
 		reference.run(self)
+	elif "--capture-m4" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		add_gameplay(false)
+		var m4_capture := SecurityCapture.new()
+		add_child(m4_capture)
+		m4_capture.run(self)
 	elif "--capture-customers" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -183,8 +197,6 @@ func build_glass() -> void:
 		add_child(body)
 	for i in range(6):
 		glass_panel(Vector3(-7.1+i*1.57,1.2,-4.7),Vector3(1.37,2.06,.012),Color(.32,.43,.4,.05))
-	# Entrance is open for M1 access; the leaf is fixed alongside the right-hand pane.
-	glass_panel(Vector3(2.57,1.12,5.45),Vector3(.016,2.18,1.05),Color(.4,.5,.45,.1))
 
 func lamp(pos: Vector3, color: Color, energy: float, distance: float, shadows: bool = false) -> void:
 	var light: Light3D
@@ -209,6 +221,8 @@ func lamp(pos: Vector3, color: Color, energy: float, distance: float, shadows: b
 	light.light_size = 0.0
 	light.light_specular = 0.3
 	light.shadow_blur = 1.6
+	if pos.z < 6.4 and pos.y > 1.2:
+		light.add_to_group("store_lights")  # on the store's circuit; the outdoor lamps are not
 	add_child(light)
 
 func build_lighting() -> void:
@@ -289,7 +303,6 @@ func build_signage() -> void:
 		text_label(["01   SNACKS","02   PANTRY","03   EVERYDAY"][i],Vector3(-6+i*3,2.04,1.538),26,.0024,Color(.78,.74,.61))
 	text_label("STAFF ONLY",Vector3(3.39,2.38,0),28,.004,Color(.3,.22,.12),-PI/2)
 	text_label("OFFICE",Vector3(3.39,2.38,-4.3),28,.004,Color(.3,.22,.12),-PI/2)
-	text_label("KEEP REAR DOOR CLOSED",Vector3(4.25,1.72,-5.951),23,.003,Color(.8,.78,.64))
 	text_label("SHIFT NOTES\n\nCOUNT MILK BEFORE CLOSE\n\nREAR LATCH STICKS\n\n– D.",Vector3(8.835,1.7,-3.9),22,.0007,Color(.22,.19,.14),-PI/2)
 	text_label("$1.99",Vector3(-6,.87,3.757),28,.002,Color(.22,.17,.11),PI)
 
@@ -377,7 +390,7 @@ func run_world_tests() -> void:
 		["floor",Vector3(-1.5,1,-1),Vector3(-1.5,-1,-1),true],
 		["shelf",Vector3(-1.5,.12,-1),Vector3(0,.12,-1),true],
 		["front glass",Vector3(-4,1,5),Vector3(-4,1,7),true],
-		["front entrance",Vector3(1.7,1,5),Vector3(1.7,1,7),false],
+		["front doors (closed)",Vector3(1.7,1,5),Vector3(1.7,1,7),true],
 		["rear door",Vector3(4.25,1,-5),Vector3(4.25,1,-7),true],
 		["office passage",Vector3(4.1,1,-4.3),Vector3(5.5,1,-4.3),false],
 		["stock passage",Vector3(3,1,0),Vector3(5.5,1,0),false]]
@@ -390,7 +403,10 @@ func run_world_tests() -> void:
 			failures += 1
 		else:
 			print("WORLD TEST PASS: ",check[0])
-	# Sweep the actual capsule through realistic routes and into obstructions.
+	# Sweep the actual capsule through realistic routes and into obstructions. The entrance is walked with the doors open.
+	gameplay.security.front_door.snap(true)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	for route in [["entrance",Vector3(1.7,.03,5),Vector3(0,0,2),false],["wall",Vector3(-8,.03,3),Vector3(-2,0,0),true],["shelf",Vector3(-4.5,.03,0),Vector3(-2,0,0),true],["office",Vector3(4.1,.03,-4.3),Vector3(1.4,0,0),false]]:
 		player.position = route[1]
 		var blocked := player.test_move(player.global_transform,route[2])
@@ -458,6 +474,7 @@ func build_room_tone() -> void:
 		source.unit_size = 2
 		source.max_distance = 15
 		source.volume_db = -12
+		source.add_to_group("power_hum")
 		add_child(source)
 		source.play()
 

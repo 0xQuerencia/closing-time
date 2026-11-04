@@ -151,9 +151,9 @@ func _test_chores() -> void:
 	check(not shift.locked and game.interactor.current_prompt().text == "Stuck. Lift the latch first.", "key refuses to turn before the latch is lifted")
 	await do_latch()
 	check(shift.latch_is_lifted and shift.locked and game.tasks.is_complete("latch"), "lift then turn completes the latch check")
-	for i in 3:
-		game.interactor.interact()  # spam on the already locked door
-	check(done.count("latch") == 1, "latch task completes exactly once")
+	for i in 4:
+		game.interactor.interact()  # the key now toggles: unlock, lock, unlock, lock
+	check(shift.locked and done.count("latch") == 1, "latch task completes exactly once")
 	# Trash: placing without a bag is refused; bag then place completes.
 	await aim(Vector3(4.25, 0.05, -4.2), ShiftTasks.BAG_SPOT + Vector3(0, 0.08, 0))
 	check(game.interactor.current_prompt().available == false, "no drop prompt without a bag")

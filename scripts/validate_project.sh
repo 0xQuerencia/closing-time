@@ -35,3 +35,9 @@ if rg -n 'SCRIPT ERROR|ERROR:' local/validation-story.log; then
 fi
 rg 'STORY TESTS COMPLETE' local/validation-story.log
 echo '[PASS] Story: state machine, once-only beats, chores, clues and a full accelerated night'
+"$G" --headless --path . -- --test-security > local/validation-security.log 2>&1
+if rg -n 'SCRIPT ERROR|ERROR:' local/validation-security.log; then
+  echo '[FAIL] Godot reported security test errors'; exit 1
+fi
+rg 'SECURITY TESTS COMPLETE' local/validation-security.log
+echo '[PASS] Security: doors and locks, rear sensor, breaker and blackout, CCTV, and the rear entry'
