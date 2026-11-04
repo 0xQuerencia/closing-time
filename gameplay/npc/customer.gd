@@ -31,6 +31,7 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	name = "Customer_" + profile.id
 	collision_layer = 4
 	collision_mask = 1
+	add_to_group("customers")
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.24

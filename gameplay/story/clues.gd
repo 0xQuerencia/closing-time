@@ -14,7 +14,6 @@ var _flap: MeshInstance3D
 var _prints: Array[MeshInstance3D] = []
 var _print_spot: ClueSpot
 var _envelope_spot: ClueSpot
-var _chime: AudioStreamPlayer3D
 
 func build(world: Node3D) -> Clues:
 	name = "Clues"
@@ -22,8 +21,6 @@ func build(world: Node3D) -> Clues:
 	_build_hooks()
 	_build_envelope()
 	_build_prints()
-	_chime = Tone.player(Tone.stream(740.0, 700, 0.35, 0.3), Vector3(4.25, 1.2, -5.7), 5.0)
-	add_child(_chime)
 	return self
 
 func _mat(color: Color, rough := 0.8, metallic := 0.0) -> StandardMaterial3D:
@@ -157,13 +154,7 @@ func activate() -> bool:
 	for quad in _prints:
 		quad.visible = true
 	_print_spot.enabled = true
-	_chime.play()  # the rear-door sensor, once
 	return true
-
-func _exit_tree() -> void:
-	if _chime:
-		_chime.stop()
-		_chime.stream = null
 
 ## Back to the normal state (checkpoint retry, tests). Clues seen so far are forgotten.
 func reset() -> void:

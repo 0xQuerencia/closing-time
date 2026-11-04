@@ -15,6 +15,7 @@ var clock: StoryClock
 var shift: ShiftTasks
 var clues: Clues
 var director: StoryDirector
+var security: Security
 var phone_ui: PhoneUI
 var markers := {}
 var profiles: Array[Dictionary] = []
@@ -57,6 +58,9 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	phone_ui.setup(phone, clock)
 	shift = ShiftTasks.new().build(self)
 	clues = Clues.new().build(world)
+	security = Security.new()
+	add_child(security)
+	security.build(self)
 	director = StoryDirector.new()
 	add_child(director)
 	director.setup(self)

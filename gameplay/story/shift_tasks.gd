@@ -6,6 +6,7 @@ signal trash_bagged
 signal trash_placed
 signal latch_lifted
 signal latch_locked
+signal latch_unlocked
 const STOCK_IDS := ["crisps", "cola", "noodles"]
 const SLOT_POINTS := [Vector3(-6.33, 1.14, 1.98), Vector3(-3.33, 1.14, 1.98), Vector3(-0.33, 1.14, 1.98)]
 const CARTON_POINT := Vector3(5.75, 0.36, 1.35)
@@ -20,6 +21,9 @@ var bag_made := false
 var bag_placed := false
 var latch_is_lifted := false
 var locked := false
+## Everything fixed to the rear door's inside face, so it can ride on the leaf when the door swings.
+var latch_parts: Array[Node3D] = []
+var door_ajar := Callable()  # true while the rear door is open: the lock cannot be worked then
 var _lever: MeshInstance3D
 var _placed: Array[Product] = []
 var _bin: TrashBin
@@ -111,6 +115,7 @@ func _build_latch() -> void:
 	lever_base.position = LATCH_POINT
 	_box_collider(lever_base, Vector3(0.36, 0.08, 0.1))
 	add_child(lever_base)
+	latch_parts.append(lever_base)
 	_lever = MeshInstance3D.new()
 	var bar := BoxMesh.new()
 	bar.size = Vector3(0.3, 0.035, 0.05)
@@ -122,11 +127,13 @@ func _build_latch() -> void:
 	_lever.material_override = steel
 	_lever.position = LATCH_POINT + Vector3(0, 0, 0.015)
 	add_child(_lever)
+	latch_parts.append(_lever)
 	var key_lock := LatchKey.new()
 	key_lock.tasks = self
 	key_lock.position = LATCH_POINT + Vector3(0, -0.13, 0)
 	_box_collider(key_lock, Vector3(0.12, 0.12, 0.08))
 	add_child(key_lock)
+	latch_parts.append(key_lock)
 	var plate := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 0.035
@@ -137,6 +144,7 @@ func _build_latch() -> void:
 	plate.rotation.x = PI / 2.0
 	plate.position = key_lock.position + Vector3(0, 0, 0.012)
 	add_child(plate)
+	latch_parts.append(plate)
 
 ## Chores undone: stocked items removed, bag back in the bin, latch down and unlocked.
 func reset() -> void:
@@ -152,9 +160,15 @@ func reset() -> void:
 	bag_made = false
 	bag_placed = false
 	latch_is_lifted = false
+	var was_locked := locked
 	locked = false
+	if was_locked:
+		latch_unlocked.emit()
 	_lever.rotation.z = 0.0
 	_bin.show_bag()
+
+func is_door_open() -> bool:
+	return door_ajar.is_valid() and door_ajar.call()
 
 func lift_latch() -> bool:
 	if latch_is_lifted or locked:
@@ -170,6 +184,16 @@ func turn_key() -> bool:
 	locked = true
 	create_tween().tween_property(_lever, "rotation:z", 0.0, 0.25)
 	latch_locked.emit()
+	return true
+
+## Turn the key back: the door can open again, and one more turn locks it.
+func unlock_key() -> bool:
+	if not locked:
+		return false
+	locked = false
+	latch_is_lifted = true
+	create_tween().tween_property(_lever, "rotation:z", 0.7, 0.25)
+	latch_unlocked.emit()
 	return true
 
 # --- interactables for the chores ---------------------------------------------------------------
@@ -314,8 +338,10 @@ class LatchLever extends Interactable:
 		verb = "Lift"
 		description = "The latch sticks. Lift it before you turn the key."
 	func can_interact(_actor: Node) -> bool:
-		return not tasks.latch_is_lifted and not tasks.locked
+		return not tasks.latch_is_lifted and not tasks.locked and not tasks.is_door_open()
 	func blocked_reason(_actor: Node) -> String:
+		if tasks.is_door_open():
+			return "Close the door first."
 		return "Rear door locked" if tasks.locked else "Latch is up"
 	func interact(actor: Node) -> void:
 		tasks.lift_latch()
@@ -329,9 +355,18 @@ class LatchKey extends Interactable:
 		verb = "Turn the key in"
 		description = "A worn brass lock. It binds unless the latch is lifted."
 	func can_interact(_actor: Node) -> bool:
-		return tasks.latch_is_lifted and not tasks.locked
+		return (tasks.latch_is_lifted or tasks.locked) and not tasks.is_door_open()
 	func blocked_reason(_actor: Node) -> String:
-		return "Rear door locked" if tasks.locked else "Stuck. Lift the latch first."
+		if tasks.is_door_open():
+			return "Close the door first."
+		return "Stuck. Lift the latch first."
+	func prompt_text(actor: Node) -> String:
+		if not can_interact(actor):
+			return ""
+		return "Unlock the rear door" if tasks.locked else "Turn the key in the rear door lock"
 	func interact(actor: Node) -> void:
-		tasks.turn_key()
+		if tasks.locked:
+			tasks.unlock_key()
+		else:
+			tasks.turn_key()
 		interacted.emit(actor)

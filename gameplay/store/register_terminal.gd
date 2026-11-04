@@ -2,6 +2,7 @@ class_name RegisterTerminal
 extends Interactable
 ## The register screen: taking payment completes the sale.
 var checkout: Checkout
+var powered := Callable()  # set by the electrical system; absent means mains
 
 func _init() -> void:
 	super()
@@ -9,10 +10,15 @@ func _init() -> void:
 	verb = "Take payment at"
 	name = "RegisterTerminal"
 
+func has_power() -> bool:
+	return not powered.is_valid() or powered.call()
+
 func can_interact(_actor: Node) -> bool:
-	return checkout != null and checkout.can_take_payment()
+	return checkout != null and has_power() and checkout.can_take_payment()
 
 func blocked_reason(_actor: Node) -> String:
+	if not has_power():
+		return "The register is dead."
 	return checkout.payment_blocked_reason() if checkout else ""
 
 func prompt_text(actor: Node) -> String:

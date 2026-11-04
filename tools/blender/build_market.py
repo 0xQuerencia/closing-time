@@ -140,10 +140,9 @@ box('Office entry header',(5,2.7,-4.3),(.12,1,1.25),'plaster',collision=True)
 box('Office divider',(7,1.6,-2.45),(4,3.2,.13),'plaster',collision=True,uvscale=2)
 # Real door leaf parked open into office; rear door closed.
 box('Office open leaf',(5.55,1.08,-4.91),(1.05,2.16,.055),'wood',.018,True)
-box('Rear steel door',(4.25,1.09,-6),(1.05,2.18,.07),'shelf',.018,True)
+# Rear steel door and push bar are runtime Door objects (gameplay/security/door.gd).
 for x in [3.7,4.8]:box('Rear door frame',(x,1.1,-5.94),(.075,2.2,.1),'steel',.008)
 box('Rear frame header',(4.25,2.21,-5.94),(1.17,.075,.1),'steel',.008)
-box('Rear push bar',(4.25,1,-5.93),(.72,.045,.07),'steel',.012)
 # Baseboards and wainscot.
 for x in [-8.86,3.4,8.86]:box('Skirting',(x,.08,0),(.035,.16,11.7),'wood')
 box('Rear skirting',(-2.8,.08,-5.86),(12.1,.16,.04),'wood')
@@ -152,11 +151,7 @@ for x in [-6,-2,1.4,6.9]:
  for z in [-3.8,.1,3.6] if x<3 else [-4,1.5]:
   box('Fluorescent housing',(x,3.13,z),(.29,.10,1.28),'steel',.018)
   for dx in [-.075,.075]:box('Fluorescent diffuser',(x+dx,3.066,z),(.065,.035,1.16),'tube',.015)
-# Open entrance leaf: metal frame, hinge and handle, alongside doorway.
-for z in [4.925,5.975]:box('Open door stile',(2.57,1.1,z),(.06,2.2,.055),'steel',.008)
-for y in [.06,2.19]:box('Open door rail',(2.57,y,5.45),(.06,.065,1.1),'steel',.008)
-box('Open door handle',(2.5,1.05,5.07),(.08,.38,.025),'steel',.008)
-colliders.append({'name':'Open entrance leaf','p':[2.57,1.1,5.45],'s':[.06,2.2,1.1]})
+# Entrance leaves are runtime Door objects (gameplay/security/door.gd).
 # Checkout with toe kick, laminate edge, panelled front and equipment.
 group='retail'
 box('Checkout carcass',(-6,.43,4.25),(4.1,.86,.8),'wood',.035,True,uvscale=1.5)

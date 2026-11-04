@@ -55,6 +55,11 @@ func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManage
 	_on_held(null)
 	_refresh_tasks()
 
+## The centre dot and prompt only make sense while the player is walking around.
+func set_crosshair(shown: bool) -> void:
+	_dot.visible = shown
+	_prompt.visible = shown
+
 func choices_visible() -> bool:
 	return _choices.get_child_count() > 0
 
