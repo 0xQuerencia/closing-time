@@ -263,4 +263,6 @@ func capture(market: Node3D) -> void:
 	await get_tree().create_timer(0.5).timeout
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("res://local/screenshots/gameplay_4_paid.png")
+	var cid := customer.get_instance_id()
+	await wait_until(func(): return not is_instance_id_valid(cid), 60)  # exit with no suspended customer coroutine
 	await world.finish_run(0)

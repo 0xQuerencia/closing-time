@@ -36,6 +36,12 @@ func _ready() -> void:
 		var gameplay_tests := GameplayTests.new()
 		add_child(gameplay_tests)
 		gameplay_tests.run(self)
+	elif "--qa-gameplay" in OS.get_cmdline_user_args():
+		player.require_mouse_capture = false
+		add_gameplay(false)
+		var gameplay_qa := GameplayQA.new()
+		add_child(gameplay_qa)
+		gameplay_qa.run_qa(self)
 	elif "--capture-gameplay" in OS.get_cmdline_user_args():
 		player.enabled = false
 		add_gameplay(false)
