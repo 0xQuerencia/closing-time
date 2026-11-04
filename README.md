@@ -45,3 +45,31 @@ to the ignored `local/customer-motion/after/` directory (MP4 in its parent direc
 The simulation runs at a fixed 30 FPS and the capture samples every second frame for
 15 FPS playback. This is visual review footage, not a performance benchmark. Normal
 play still requires the player to scan and collect payment.
+
+## Customer character art
+
+Customer 1 uses **Vinrax's PSX Casual Male**, with the original 256px texture and
+nine retargeted clips from the licensed Cordatix sampler. Customer 2 retains the
+Cordatix office worker. Attribution and source links are in `ASSET_CREDITS.md`.
+The M3.1 movement, browsing, blending and transaction logic are preserved.
+
+```sh
+# Retained Cordatix customer 1 fallback:
+godot --path . -- --customer-art=cordatix
+# Actual store-route comparison (Godot and FFmpeg):
+bash tools/compare_customer_art.sh
+# Isolated rig/animation comparison; Cordatix at x=-0.65, Vinrax at x=+0.65:
+godot --path . scenes/tests/vinrax_character_test.tscn --fixed-fps 30 -- --capture-test
+# Import and skeleton/duration checks:
+godot --headless --editor --path . --import --quit
+godot --headless --path . --script tests/vinrax_rig_tests.gd
+# Rebuild from the original Vinrax source archive and existing Cordatix GLB:
+blender -b --factory-startup --python-exit-code 1 --python tools/blender/retarget_vinrax.py
+blender -b --factory-startup --python-exit-code 1 --python tools/blender/validate_vinrax.py
+```
+
+Store comparison footage is written to ignored `local/m32/comparison.mp4`, with
+Cordatix on the left and Vinrax on the right. It uses identical camera positions,
+fixed-step movement sequences and automated scan/payment. Individual recordings,
+engine screenshots and capture metadata are saved beside it. No store geometry,
+lighting, routes or gameplay rules are changed by this comparison mode.

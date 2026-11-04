@@ -9,6 +9,14 @@ func run(market: Node3D) -> void:
 	_viewport.size = Vector2i(960, 540)
 	var label := "after" if "--after" in OS.get_cmdline_user_args() else "before"
 	var directory := "res://local/customer-motion/" + label
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--art-comparison="):
+			var variant := argument.trim_prefix("--art-comparison=")
+			if variant not in ["cordatix", "vinrax"]:
+				push_error("Unknown art comparison variant")
+				await world.finish_run(1)
+				return
+			directory = "res://local/m32/" + variant
 	DirAccess.make_dir_recursive_absolute(directory)
 	for file in DirAccess.get_files_at(directory):
 		if file.begins_with("frame_") and file.ends_with(".jpg"):
@@ -48,6 +56,6 @@ func run(market: Node3D) -> void:
 			await world.finish_run(1)
 			return
 	var metadata := FileAccess.open(directory + "/capture.json", FileAccess.WRITE)
-	metadata.store_string(JSON.stringify({"label": label, "frames": frame, "playback_fps": 15, "simulation_fps": 30, "resolution": str(_viewport.size), "renderer": RenderingServer.get_current_rendering_method(), "gpu": RenderingServer.get_video_adapter_name(), "note": "Actual engine renders of two customer visits. Capture samples every second fixed simulation frame. Automated scan/payment; no audio. Not a performance benchmark."}, "\t"))
+	metadata.store_string(JSON.stringify({"label": label, "customer_1_art": "cordatix" if "--customer-art=cordatix" in OS.get_cmdline_user_args() else "vinrax", "frames": frame, "playback_fps": 15, "simulation_fps": 30, "resolution": str(_viewport.size), "renderer": RenderingServer.get_current_rendering_method(), "gpu": RenderingServer.get_video_adapter_name(), "note": "Actual engine renders of two customer visits. Capture samples every second fixed simulation frame. Automated scan/payment; no audio. Not a performance benchmark."}, "\t"))
 	print("CUSTOMER MOTION CAPTURE COMPLETE ", label, " frames=", frame, " both sales and exits complete")
 	await world.finish_run(0)
