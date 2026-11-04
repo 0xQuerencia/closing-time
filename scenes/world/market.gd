@@ -25,6 +25,7 @@ func _ready() -> void:
 	build_room_tone()
 	add_child(RetroEffect.new())
 	add_child(InteriorDressing.new())
+	add_child(ExteriorDressing.new())
 	player = CharacterBody3D.new()
 	player.set_script(Player)
 	add_child(player)
