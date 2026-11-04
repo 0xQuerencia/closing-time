@@ -41,3 +41,7 @@ __pycache__/
 # Local build/debug artifacts
 /tmp/
 /temp/
+
+# Local activity tracking and editor preferences
+/.wakatime-project
+/.vscode/
