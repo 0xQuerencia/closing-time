@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Lightweight, independently toggleable finishing pass for the world view.
-@export var pixelation_enabled := true
+@export var pixelation_enabled := false
 @export var palette_enabled := true
 @export var analog_enabled := true
 
