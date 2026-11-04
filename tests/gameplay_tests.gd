@@ -17,6 +17,7 @@ func run(market: Node3D) -> void:
 	await _test_bindings()
 	await _test_aiming_and_pickup()
 	await _test_placement()
+	await _test_bell()
 	_test_dialogue()
 	_test_tasks()
 	await _test_manual_sale()
@@ -99,6 +100,19 @@ func _test_placement() -> void:
 	cola.place_at(Vector3(-7.55, 0.955, 4.4), 0.0)
 	game.interactor.held = null
 	check(cola.holder == null, "product returned to stock")
+
+func _test_bell() -> void:
+	var bell: ServiceBell = null
+	for child in game.checkout.get_children():
+		if child is ServiceBell:
+			bell = child
+	check(bell != null, "counter has a service bell")
+	var rings: Array[int] = []
+	bell.rung.connect(func(): rings.append(1))
+	await aim(Vector3(-6.75, 0.05, 5.0), bell.global_position + Vector3(0, 0.06, 0))
+	check(game.interactor.focus == bell and game.interactor.current_prompt().text == "Ring service bell", "aiming at the bell offers Ring")
+	game.interactor.interact()
+	check(rings.size() == 1, "interacting rings the bell")
 
 func _test_dialogue() -> void:
 	var d := game.dialogue

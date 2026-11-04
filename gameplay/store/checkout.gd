@@ -45,6 +45,7 @@ func build(world: Node3D) -> void:
 	_build_screen()
 	_beep = _make_player(1180.0, 70, Vector3(-5.8, 1.1, 4.3))
 	_chime = _make_player(660.0, 260, Vector3(-5.8, 1.1, 4.3))
+	ServiceBell.new().build(self, Vector3(-6.75, COUNTER_TOP, 3.98))
 	_refresh_screen()
 
 func _build_screen() -> void:
@@ -53,36 +54,28 @@ func _build_screen() -> void:
 	quad.size = Vector2(0.325, 0.215)
 	glass.mesh = quad
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.015, 0.03, 0.02)
+	m.albedo_color = Color(0.03, 0.075, 0.045)
 	m.roughness = 0.35
+	m.emission_enabled = true
+	m.emission = Color(0.02, 0.06, 0.03)
 	glass.material_override = m
 	glass.position = Vector3(-5.8, 1.4, 4.4425)
 	add_child(glass)
 	_lcd = Label3D.new()
-	_lcd.pixel_size = 0.00042
-	_lcd.font_size = 54
-	_lcd.modulate = Color(0.55, 0.95, 0.6)
+	var mono := SystemFont.new()
+	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Liberation Mono", "monospace"])
+	_lcd.font = mono
+	_lcd.pixel_size = 0.00056
+	_lcd.font_size = 46
+	_lcd.modulate = Color(0.62, 0.95, 0.62)
 	_lcd.outline_size = 0
 	_lcd.shaded = false
-	_lcd.position = Vector3(-5.8, 1.4, 4.4435)
+	_lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_lcd.position = Vector3(-5.8 - 0.143, 1.4, 4.4435)
 	add_child(_lcd)
 
 func _make_player(freq: float, ms: int, pos: Vector3) -> AudioStreamPlayer3D:
-	var rate := 22050
-	var count := rate * ms / 1000
-	var data := PackedByteArray()
-	data.resize(count * 2)
-	for i in count:
-		var s := sin(TAU * freq * i / rate) * 0.3 * (1.0 - float(i) / count)
-		data.encode_s16(i * 2, int(s * 32767.0))
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = rate
-	wav.data = data
-	var p := AudioStreamPlayer3D.new()
-	p.stream = wav
-	p.unit_size = 4.0
-	p.position = pos
+	var p := Tone.player(Tone.stream(freq, ms), pos)
 	add_child(p)
 	return p
 
@@ -206,8 +199,9 @@ func _refresh_screen() -> void:
 		return
 	match state:
 		State.IDLE:
-			_lcd.text = "MARLOW'S\nREADY"
+			_lcd.text = "TOTAL    $0.00\nCLOSING TIME"
 		State.OPEN:
-			_lcd.text = ("SCAN ITEMS\n%d/%d\n%s" % [scanned_count(), items.size(), ProductCatalog.price_text(total_cents())]) if not items.is_empty() else "WAITING\nFOR ITEMS"
+			var line := "SCAN %d/%d" % [scanned_count(), items.size()] if not items.is_empty() else "WAITING..."
+			_lcd.text = "TOTAL  %7s\n%s" % [ProductCatalog.price_text(total_cents()), line]
 		State.PAID:
-			_lcd.text = "PAID\n%s\nTHANK YOU" % ProductCatalog.price_text(history.back().total)
+			_lcd.text = "TOTAL  %7s\nTHANK YOU" % ProductCatalog.price_text(history.back().total)
