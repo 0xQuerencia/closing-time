@@ -22,3 +22,10 @@ if rg -n 'SCRIPT ERROR|ERROR:' local/validation-gameplay.log; then
 fi
 rg 'GAMEPLAY TESTS COMPLETE' local/validation-gameplay.log
 echo '[PASS] Gameplay systems: interaction, checkout, dialogue, tasks, customer cycles'
+
+"$G" --headless --path . --script tests/mouse_capture_tests.gd > local/validation-mouse-capture.log 2>&1
+if rg -n 'SCRIPT ERROR|ERROR:' local/validation-mouse-capture.log; then
+  echo '[FAIL] Godot reported captured-mouse HUD errors'; exit 1
+fi
+rg 'MOUSE CAPTURE TESTS COMPLETE' local/validation-mouse-capture.log
+echo '[PASS] Centered mouse look through the gameplay HUD'
