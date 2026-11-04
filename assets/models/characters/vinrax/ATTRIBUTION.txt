@@ -10,3 +10,4 @@ Animation motion by Cordatix: https://cordatix.itch.io/psx-bystanders-npc-pack-f
 See ../CORDATIX_LICENSE.txt. These clips are included as part of Closing Time,
 not offered as a standalone animation/asset pack.
 Retargeting and contact correction tooling created with OpenAI Codex assistance.
+Beige-tee texture variant: shirt pixels of casual_male_man_tex.png recoloured for Closing Time (Codex asset, author credit unchanged).

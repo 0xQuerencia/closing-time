@@ -66,6 +66,8 @@ func _build_body() -> void:
 		return
 	var model := model_scene.instantiate()
 	model.name = "CustomerVisual"
+	if use_vinrax:
+		_apply_outfit(model, "res://assets/models/characters/vinrax/casual_male_man_tex_beige.png")
 	# These authored models face +Z; the store's customer paths use Godot's -Z forward.
 	model.rotation.y = PI
 	add_child(model)
@@ -86,6 +88,23 @@ func _build_body() -> void:
 	_hand = Marker3D.new()
 	_hand.position = Vector3(0.3, 1.05, -0.12)
 	add_child(_hand)
+
+## Beige tee variant of the shared texture (same UVs, only the shirt recoloured).
+func _apply_outfit(model: Node, texture_path: String) -> void:
+	var texture := load(texture_path) as Texture2D
+	if texture == null:
+		return
+	for mesh_instance in model.find_children("*", "MeshInstance3D", true, false):
+		var mi := mesh_instance as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for surface in mi.mesh.get_surface_count():
+			var base := mi.get_active_material(surface) as BaseMaterial3D
+			if base == null:
+				continue
+			var tinted := base.duplicate() as BaseMaterial3D
+			tinted.albedo_texture = texture
+			mi.set_surface_override_material(surface, tinted)
 
 func _set_phase(next: Phase) -> void:
 	phase = next
