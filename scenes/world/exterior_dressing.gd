@@ -140,6 +140,7 @@ func _build_sky() -> void:
 	moon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	moon_mat.albedo_texture = halo
 	moon_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	moon_mat.disable_fog = true
 	var moon := MeshInstance3D.new()
 	var quad := QuadMesh.new()
 	quad.size = Vector2(26, 26)
@@ -158,6 +159,7 @@ func _build_sky() -> void:
 	var sky_mat := StandardMaterial3D.new()
 	sky_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sky_mat.albedo_texture = sky
+	sky_mat.disable_fog = true
 	var backdrop := MeshInstance3D.new()
 	var back_mesh := QuadMesh.new()
 	back_mesh.size = Vector2(320, 70)
@@ -169,6 +171,7 @@ func _build_sky() -> void:
 	var tree := StandardMaterial3D.new()
 	tree.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	tree.albedo_color = Color(0.004, 0.007, 0.009)
+	tree.disable_fog = true
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9
 	for i in 70:

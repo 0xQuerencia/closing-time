@@ -7,6 +7,7 @@ const VIEWS := [
 	["ref_3_front_window", Vector3(0.9, 0.05, 1.0), Vector3(1.7, 1.5, 6.0)],
 	["ref_4_exterior_wide", Vector3(-1.5, 0.0, 15.5), Vector3(1.7, 2.0, 6.0)],
 	["ref_5_exterior_right", Vector3(-6.0, 0.0, 14.0), Vector3(6.5, 1.8, 6.5)],
+	["ref_6_endcaps", Vector3(-1.5, 0.05, 4.6), Vector3(-3.4, 0.9, 1.8)],
 ]
 
 func run(market: Node3D) -> void:

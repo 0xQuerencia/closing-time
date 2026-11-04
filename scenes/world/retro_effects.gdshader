@@ -7,8 +7,10 @@ uniform bool analog_enabled = true;
 uniform float pixel_size : hint_range(1.0, 3.0, 0.25) = 1.5;
 uniform float palette_steps : hint_range(16.0, 48.0, 1.0) = 32.0;
 uniform float dither_strength : hint_range(0.0, 0.4, 0.01) = 0.12;
-uniform float grain_strength : hint_range(0.0, 0.025, 0.001) = 0.004;
-uniform float scanline_strength : hint_range(0.0, 0.025, 0.001) = 0.004;
+uniform float grain_strength : hint_range(0.0, 0.025, 0.001) = 0.012;
+uniform float scanline_strength : hint_range(0.0, 0.025, 0.001) = 0.006;
+uniform float vignette_strength : hint_range(0.0, 1.0, 0.01) = 0.42;
+uniform float saturation : hint_range(0.0, 1.0, 0.01) = 0.84;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -31,6 +33,10 @@ void fragment() {
 	if (analog_enabled) {
 		float grain = hash12(pixel + floor(TIME * 18.0)) - 0.5;
 		float scanline = sin(pixel.y * 3.14159265);
+		float luma = dot(color, vec3(0.299, 0.587, 0.114));
+		color = mix(vec3(luma), color, saturation);
+		vec2 centered = SCREEN_UV - 0.5;
+		color *= 1.0 - vignette_strength * smoothstep(0.25, 0.85, length(centered * vec2(1.0, 0.85)));
 		color += grain * grain_strength;
 		color *= 1.0 - scanline * scanline_strength;
 	}

@@ -26,6 +26,8 @@ func _ready() -> void:
 	add_child(RetroEffect.new())
 	add_child(InteriorDressing.new())
 	add_child(ExteriorDressing.new())
+	add_child(FearsLook.new())
+	add_child(AmbientDread.new())
 	player = CharacterBody3D.new()
 	player.set_script(Player)
 	add_child(player)
