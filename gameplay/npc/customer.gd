@@ -4,9 +4,12 @@ extends CharacterBody3D
 enum Phase { ARRIVE, BROWSE, QUEUE, TRANSACTION, LEAVE, GONE }
 signal phase_changed(phase: Phase)
 signal finished(customer: Customer)
-const SPEED := 1.3
+const SPEED := 1.15
+const ACCELERATION := 1.8
+const BRAKING := 2.8
+const TURN_SPEED := 2.6
+const WALK_CLIP_SPEED := 1.3
 const GRAVITY := 18.0
-const ARRIVE_DIST := 0.12
 const YIELD_DIST := 0.85
 const EXCUSE_AFTER := 5.0
 var phase := Phase.ARRIVE
@@ -18,6 +21,7 @@ var talk: TalkInteractable
 var _hand: Marker3D
 var _animation_player: AnimationPlayer
 var _current_animation: StringName
+var _idle_time := 0.0
 var _talk_used := false
 var _excused := false
 
@@ -63,9 +67,16 @@ func _build_body() -> void:
 	var animation_players := model.find_children("*", "AnimationPlayer", true, false)
 	if not animation_players.is_empty():
 		_animation_player = animation_players[0] as AnimationPlayer
+		var library := _animation_player.get_animation_library("").duplicate(true) as AnimationLibrary
+		_animation_player.remove_animation_library("")
+		_animation_player.add_animation_library("", library)
 		for clip_name in _animation_player.get_animation_list():
+			var clip := _animation_player.get_animation(clip_name)
 			if clip_name in ["Idle", "IdleShift", "IdleWait", "CounterIdle", "LookAround", "Listen", "Talk", "Walk", "Stroll", "Run", "Flee"]:
-				_animation_player.get_animation(clip_name).loop_mode = Animation.LOOP_LINEAR
+				clip.loop_mode = Animation.LOOP_LINEAR
+			# Smooth the sampler's stepped keys without changing its authored poses.
+			for track in range(clip.get_track_count()):
+				clip.track_set_interpolation_type(track, Animation.INTERPOLATION_LINEAR)
 		_play_animation("Idle")
 	_hand = Marker3D.new()
 	_hand.position = Vector3(0.3, 1.05, -0.12)
@@ -73,6 +84,7 @@ func _build_body() -> void:
 
 func _set_phase(next: Phase) -> void:
 	phase = next
+	_idle_time = 0.0
 	phase_changed.emit(next)
 	if not is_zero_approx(velocity.x) or not is_zero_approx(velocity.z):
 		return
@@ -82,7 +94,7 @@ func _set_phase(next: Phase) -> void:
 		Phase.QUEUE:
 			_play_animation("IdleWait")
 		Phase.TRANSACTION:
-			_play_animation("CounterIdle")
+			_play_animation("CounterIdle" if int(_idle_time / 7.0) % 2 == 0 else "IdleWait")
 		_:
 			_play_animation("Idle")
 
@@ -93,13 +105,14 @@ func run() -> void:
 	await _walk(route.arrive)
 	_set_phase(Phase.BROWSE)
 	await _walk(route.browse)
-	await _wait(1.6)
+	await _face(global_position + Vector3(-1.0, 0, 0))
+	await _wait(2.2)
 	held_product = game.spawn_product(profile.product, null)
 	held_product.attach_to(_hand, Vector3.ZERO)
 	await _wait(0.6)
 	_set_phase(Phase.QUEUE)
 	await _walk(route.queue)
-	_face(Vector3(route.queue.back().x, 0, 4.5))
+	await _face(Vector3(route.queue.back().x, 0, 4.5))
 	await _wait(0.4)
 	_set_phase(Phase.TRANSACTION)
 	var checkout := game.checkout
@@ -115,6 +128,8 @@ func run() -> void:
 	while checkout.state != Checkout.State.PAID:
 		await get_tree().physics_frame
 		waited += get_physics_process_delta_time()
+		_idle_time += get_physics_process_delta_time()
+		_animate()
 		if not nagged and waited > impatience_delay and not game.dialogue.is_active():
 			nagged = true
 			game.dialogue.start(profile.id + "_wait")
@@ -152,12 +167,16 @@ func _wait(seconds: float) -> void:
 	while left > 0.0:
 		await get_tree().physics_frame
 		left -= get_physics_process_delta_time()
+		_idle_time += get_physics_process_delta_time()
+		_animate()
 
 func _walk(points: Array) -> void:
-	for point in points:
-		await _walk_to(point)
+	for index in range(points.size()):
+		await _walk_to(points[index], index == points.size() - 1)
+	velocity = Vector3.ZERO
+	_animate()
 
-func _walk_to(target: Vector3) -> void:
+func _walk_to(target: Vector3, final_point: bool = true) -> void:
 	var best := INF
 	var stalled := 0.0
 	var blocked := 0.0
@@ -165,7 +184,7 @@ func _walk_to(target: Vector3) -> void:
 		var delta := get_physics_process_delta_time()
 		var flat := Vector3(target.x - global_position.x, 0, target.z - global_position.z)
 		var remaining := flat.length()
-		if remaining < ARRIVE_DIST:
+		if remaining < (0.045 if final_point else 0.28):
 			break
 		var dir := flat / remaining
 		var yielding := _player_in_way(dir)
@@ -179,9 +198,19 @@ func _walk_to(target: Vector3) -> void:
 				game.dialogue.start(profile.id + "_excuse")
 		else:
 			blocked = 0.0
-			velocity.x = dir.x * SPEED
-			velocity.z = dir.z * SPEED
-			rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), minf(1.0, delta * 8.0))
+			var desired_yaw := atan2(-dir.x, -dir.z)
+			var turn := absf(angle_difference(rotation.y, desired_yaw))
+			rotation.y = rotate_toward(rotation.y, desired_yaw, TURN_SPEED * delta)
+			var pace := SPEED * (0.82 if phase == Phase.BROWSE else 1.0)
+			# Slow before sharp corners and brake only at the end of a route.
+			pace *= lerpf(1.0, 0.3, clampf(turn / PI, 0.0, 1.0))
+			if final_point:
+				pace = minf(pace, sqrt(2.0 * BRAKING * remaining))
+			var horizontal := Vector2(velocity.x, velocity.z)
+			var desired := Vector2(dir.x, dir.z) * minf(pace, remaining / delta)
+			horizontal = horizontal.move_toward(desired, ACCELERATION * delta)
+			velocity.x = horizontal.x
+			velocity.z = horizontal.y
 		velocity.y = -0.1 if is_on_floor() else velocity.y - GRAVITY * delta
 		move_and_slide()
 		_animate()
@@ -194,7 +223,6 @@ func _walk_to(target: Vector3) -> void:
 			push_warning("%s stalled on the way to %s; skipping waypoint" % [name, target])
 			break
 		await get_tree().physics_frame
-	velocity = Vector3.ZERO
 
 func _player_in_way(dir: Vector3) -> bool:
 	var to_player: Vector3 = game.player.global_position - global_position
@@ -203,11 +231,23 @@ func _player_in_way(dir: Vector3) -> bool:
 
 func _face(point: Vector3) -> void:
 	var d := point - global_position
-	rotation.y = atan2(-d.x, -d.z)
+	var yaw := atan2(-d.x, -d.z)
+	# Take a short, visible step-turn rather than snapping at the counter.
+	var difference := angle_difference(rotation.y, yaw)
+	if absf(difference) > 0.15:
+		_play_animation("TurnLeft" if difference > 0.0 else "TurnRight")
+	while absf(angle_difference(rotation.y, yaw)) > 0.015:
+		rotation.y = rotate_toward(rotation.y, yaw, TURN_SPEED * get_physics_process_delta_time())
+		await get_tree().physics_frame
+	_animate()
 
 func _animate() -> void:
 	if Vector2(velocity.x, velocity.z).length() > 0.1:
 		_play_animation("Walk")
+		# Use displacement, including collision response, to avoid running feet when blocked.
+		var speed := Vector2(get_real_velocity().x, get_real_velocity().z).length()
+		if _animation_player != null:
+			_animation_player.speed_scale = clampf(speed / WALK_CLIP_SPEED, 0.3, 1.05)
 		return
 	match phase:
 		Phase.BROWSE:
@@ -215,7 +255,7 @@ func _animate() -> void:
 		Phase.QUEUE:
 			_play_animation("IdleWait")
 		Phase.TRANSACTION:
-			_play_animation("CounterIdle")
+			_play_animation("CounterIdle" if int(_idle_time / 7.0) % 2 == 0 else "IdleWait")
 		_:
 			_play_animation("Idle")
 
@@ -225,4 +265,5 @@ func _play_animation(clip_name: StringName) -> void:
 	if _current_animation == clip_name and _animation_player.is_playing():
 		return
 	_current_animation = clip_name
-	_animation_player.play(clip_name, 0.12)
+	_animation_player.speed_scale = 1.0
+	_animation_player.play(clip_name, 0.24)
