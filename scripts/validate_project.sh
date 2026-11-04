@@ -16,3 +16,9 @@ if rg -n 'SCRIPT ERROR|ERROR:' local/validation-world.log; then
 fi
 rg 'TEST PASS|TESTS COMPLETE' local/validation-world.log
 echo '[PASS] Engine collision checks. Render and manual input checks are separate.'
+"$G" --headless --path . -- --test-gameplay > local/validation-gameplay.log 2>&1
+if rg -n 'SCRIPT ERROR|ERROR:' local/validation-gameplay.log; then
+  echo '[FAIL] Godot reported gameplay test errors'; exit 1
+fi
+rg 'GAMEPLAY TESTS COMPLETE' local/validation-gameplay.log
+echo '[PASS] Gameplay systems: interaction, checkout, dialogue, tasks, customer cycles'
