@@ -238,7 +238,11 @@ func capture_views() -> void:
 		await RenderingServer.frame_post_draw
 		var error := viewport.get_texture().get_image().save_png("res://local/screenshots/%s.png" % view[0])
 		print("CAPTURE ",view[0]," status=",error)
-	print("CAPTURE COMPLETE renderer=",RenderingServer.get_current_rendering_method()," resolution=",viewport.size)
+	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	viewport.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("CAPTURE COMPLETE renderer=",RenderingServer.get_current_rendering_method()," resolution=1600x900")
 	await finish_run(0)
 
 func run_world_tests() -> void:
@@ -336,6 +340,9 @@ func build_room_tone() -> void:
 
 func finish_run(code: int) -> void:
 	for child in get_children():
+		if child is ReflectionProbe:
+			child.queue_free()
+	for child in get_children():
 		if child is AudioStreamPlayer3D:
 			child.stop()
 			child.stream = null
@@ -354,9 +361,12 @@ func benchmark_views() -> void:
 		player.position = view[0]-Vector3(0,1.62,0)
 		player.camera.look_at(view[1])
 		await get_tree().create_timer(2).timeout
+		var last_tick := Time.get_ticks_usec()
 		for frame in range(120):
 			await get_tree().process_frame
-			frame_times.append(get_process_delta_time())
+			var tick := Time.get_ticks_usec()
+			frame_times.append(float(tick-last_tick)/1000000.0)
+			last_tick = tick
 	var total := 0.0
 	for delta in frame_times:
 		total += delta

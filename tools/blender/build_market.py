@@ -113,7 +113,7 @@ def product(x,y,z,kind,idx,side=1):
 box('Sales floor',(0,-.11,0),(18,.22,12),'tile',collision=True,uvscale=2.4)
 box('Ceiling',(0,3.24,0),(18,.1,12),'ceiling',uvscale=2.4)
 for x in [-9,9]:box('Side wall',(x,1.6,0),(.22,3.2,12),'plaster',collision=True,uvscale=2)
-for x,w in [(-2.7,12.6),(6.9,4.2)]:box('Rear masonry',(x,1.6,-6),(w,3.2,.22),'plaster',collision=True,uvscale=2)
+for x,w in [(-2.65,12.7),(6.9,4.2)]:box('Rear masonry',(x,1.6,-6),(w,3.2,.22),'plaster',collision=True,uvscale=2)
 box('Rear doorway header',(4.25,2.7,-6),(1.1,1,.22),'plaster',collision=True)
 # Front glazing spans retail; solid staff facade.
 box('Front knee wall',(-3, .3,6),(12,.6,.2),'brick',collision=True,uvscale=2)
@@ -141,6 +141,8 @@ box('Office divider',(7,1.6,-2.45),(4,3.2,.13),'plaster',collision=True,uvscale=
 # Real door leaf parked open into office; rear door closed.
 box('Office open leaf',(5.55,1.08,-4.91),(1.05,2.16,.055),'wood',.018,True)
 box('Rear steel door',(4.25,1.09,-6),(1.05,2.18,.07),'shelf',.018,True)
+for x in [3.7,4.8]:box('Rear door frame',(x,1.1,-5.94),(.075,2.2,.1),'steel',.008)
+box('Rear frame header',(4.25,2.21,-5.94),(1.17,.075,.1),'steel',.008)
 box('Rear push bar',(4.25,1,-5.93),(.72,.045,.07),'steel',.012)
 # Baseboards and wainscot.
 for x in [-8.86,3.4,8.86]:box('Skirting',(x,.08,0),(.035,.16,11.7),'wood')

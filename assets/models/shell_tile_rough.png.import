@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c6lrerm7gp20b"
-path="res://.godot/imported/shell_tile_rough.png-a927d15695f2a272db942961138cc4a2.ctex"
+path.s3tc="res://.godot/imported/shell_tile_rough.png-a927d15695f2a272db942961138cc4a2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "920146ed47c84ea6efbb38b10795effc"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/shell_tile_rough.png"
-dest_files=["res://.godot/imported/shell_tile_rough.png-a927d15695f2a272db942961138cc4a2.ctex"]
+dest_files=["res://.godot/imported/shell_tile_rough.png-a927d15695f2a272db942961138cc4a2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

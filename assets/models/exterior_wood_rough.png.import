@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bcctart6dxoxm"
-path="res://.godot/imported/exterior_wood_rough.png-5d357ce5a5243db2119ad33f7f3b2fac.ctex"
+path.s3tc="res://.godot/imported/exterior_wood_rough.png-5d357ce5a5243db2119ad33f7f3b2fac.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a61e5ec674c0ed2ad243bc3525f4a941"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/exterior_wood_rough.png"
-dest_files=["res://.godot/imported/exterior_wood_rough.png-5d357ce5a5243db2119ad33f7f3b2fac.ctex"]
+dest_files=["res://.godot/imported/exterior_wood_rough.png-5d357ce5a5243db2119ad33f7f3b2fac.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
