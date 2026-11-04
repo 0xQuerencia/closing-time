@@ -206,6 +206,16 @@ for ai,x in enumerate([-6,-3,0]):
      o.location=(x+side*.25+old.x*math.cos(ang)-old.y*math.sin(ang),-z+old.x*math.sin(ang)+old.y*math.cos(ang),old.z)
      o.rotation_euler[2]+=ang
    for z in [-2.8,-1.5,-.2,1.1]:art_panel((x+side*.472,h+.02,z),.19,.041,'price',side*math.pi/2)
+# End-cap displays at the front of each gondola (own RNG so existing stock layout is unchanged).
+r2=random.Random(91)
+for ai,x in enumerate([-6,-3,0]):
+ box('End cap base',(x,.2,1.98),(.92,.4,.5),'red',.02,True)
+ colliders[-1]['p']=(x,.2,1.98);colliders[-1]['s']=(.92,.4,.5)
+ box('End cap lip',(x,.42,2.24),(.92,.06,.03),'cream',.006)
+ for row in range(3):
+  for j in range(4):
+   if row==2 and j in (0,3):continue
+   product(x-.33+j*.22+r2.uniform(-.01,.01)+(.11 if row==1 else 0)*0,.4+row*.37,1.98+r2.uniform(-.03,.03),'box',(ai*5+row*3+j*2+7)%16)
 box('Cooler sign backing',(-3.2,2.53,-5.1),(9.45,.32,.06),'green',.015)
 # Cooler row across back wall: frame, stock, transparent glass supplied in Godot.
 for i in range(6):
