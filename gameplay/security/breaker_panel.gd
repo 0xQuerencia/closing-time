@@ -18,8 +18,8 @@ func build(world: Node3D, power: PowerGrid) -> BreakerPanel:
 	grid = power
 	world.add_child(self)
 	var steel := StandardMaterial3D.new()
-	steel.albedo_color = Color(0.36, 0.38, 0.37)
-	steel.metallic = 0.5
+	steel.albedo_color = Color(0.5, 0.52, 0.5)
+	steel.metallic = 0.0
 	steel.roughness = 0.55
 	steel.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	cover = Door.new().setup(world, "breaker cover", Vector3(COVER_X, 1.27, 2.81), PI / 2.0, Vector3(0.33, 0.5, 0.016), false, steel)
@@ -55,7 +55,7 @@ func _build_lever(id: String) -> BreakerLever:
 	var text := Label3D.new()
 	text.text = TITLES[id]
 	text.font_size = 18
-	text.pixel_size = 0.0011
+	text.pixel_size = 0.0007
 	text.modulate = Color(0.12, 0.12, 0.1)
 	text.rotation.y = -PI / 2.0
 	text.position = Vector3(-0.001, 0.058 if not big else 0.075, 0)

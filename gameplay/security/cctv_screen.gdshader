@@ -24,7 +24,7 @@ void fragment() {
 	c = mix(vec3(luma), c, 0.22) * vec3(0.8, 1.0, 0.88);
 	c *= 0.84 + 0.16 * sin(uv.y * 240.0 * 3.14159);
 	float n = hash(floor(uv * vec2(180.0, 130.0)) + floor(TIME * 25.0));
-	c += (n - 0.5) * (0.05 + static_amount * 0.95);
+	c += (n - 0.5) * (0.028 + static_amount * 0.95);
 	float roll = smoothstep(0.0, 0.03, abs(fract(uv.y - TIME * 0.05) - 0.5) - 0.47);
 	c += roll * 0.03;
 	vec2 d = uv - 0.5;
