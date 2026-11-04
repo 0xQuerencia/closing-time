@@ -58,6 +58,12 @@ func _ready() -> void:
 		var gameplay_capture := GameplayTests.new()
 		add_child(gameplay_capture)
 		gameplay_capture.capture(self)
+	elif "--capture-reference" in OS.get_cmdline_user_args():
+		player.enabled = false
+		add_gameplay(false)
+		var reference := ReferenceCapture.new()
+		add_child(reference)
+		reference.run(self)
 	elif "--capture-customers" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
