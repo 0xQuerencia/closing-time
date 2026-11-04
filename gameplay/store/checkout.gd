@@ -43,6 +43,7 @@ func build(world: Node3D) -> void:
 	terminal.position = Vector3(-5.8, 1.4, 4.4)
 	add_child(terminal)
 	_build_screen()
+	_build_keypad()
 	_beep = _make_player(1180.0, 70, Vector3(-5.8, 1.1, 4.3))
 	_chime = _make_player(660.0, 260, Vector3(-5.8, 1.1, 4.3))
 	ServiceBell.new().build(self, Vector3(-6.75, COUNTER_TOP, 3.98))
@@ -73,6 +74,36 @@ func _build_screen() -> void:
 	_lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_lcd.position = Vector3(-5.8 - 0.143, 1.4, 4.4435)
 	add_child(_lcd)
+
+## Chunky register keys on the clerk side of the screen.
+func _build_keypad() -> void:
+	var plate := MeshInstance3D.new()
+	var plate_mesh := BoxMesh.new()
+	plate_mesh.size = Vector3(0.3, 0.035, 0.17)
+	plate.mesh = plate_mesh
+	plate.material_override = _flat(Color(0.52, 0.48, 0.4), 0.7)
+	var pad := Node3D.new()
+	pad.position = Vector3(-5.8, COUNTER_TOP + 0.03, 4.62)
+	pad.rotation.x = -0.28
+	pad.add_child(plate)
+	for row in 4:
+		for col in 5:
+			var key := MeshInstance3D.new()
+			var key_mesh := BoxMesh.new()
+			key_mesh.size = Vector3(0.036, 0.016, 0.026)
+			key.mesh = key_mesh
+			var accent := col == 4 and row < 3
+			key.material_override = _flat(Color(0.8, 0.45, 0.2) if accent else Color(0.62, 0.62, 0.58), 0.6)
+			key.position = Vector3(-0.108 + col * 0.054, 0.024, -0.058 + row * 0.04)
+			pad.add_child(key)
+	add_child(pad)
+
+func _flat(color: Color, rough: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.roughness = rough
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	return m
 
 func _make_player(freq: float, ms: int, pos: Vector3) -> AudioStreamPlayer3D:
 	var p := Tone.player(Tone.stream(freq, ms), pos)
