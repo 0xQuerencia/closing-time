@@ -1,6 +1,8 @@
 extends Node3D
 ## Static environment composition and reproducible M1 rendering hooks.
 const Player = preload("res://scenes/world/inspection_player.gd")
+const RetroEffect = preload("res://scenes/world/retro_effects.gd")
+const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
 var player: CharacterBody3D
 var capture_mode := false
 var samples: Array[float] = []
@@ -11,13 +13,17 @@ func _ready() -> void:
 	for part in ["shell", "retail", "backrooms", "exterior"]:
 		var scene := load("res://assets/models/%s.glb" % part) as PackedScene
 		if scene:
-			add_child(scene.instantiate())
+			var instance := scene.instantiate()
+			add_child(instance)
+			RetroMaterials.apply_nearest_filter(instance)
+	build_imported_props()
 	build_collisions()
 	build_glass()
 	build_lighting()
 	build_signage()
 	build_markers()
 	build_room_tone()
+	add_child(RetroEffect.new())
 	player = CharacterBody3D.new()
 	player.set_script(Player)
 	add_child(player)
@@ -26,7 +32,11 @@ func _ready() -> void:
 	if capture_mode:
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		capture_views()
+		capture_views(false)
+	elif "--capture-m3" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		capture_views(true)
 	elif "--test-world" in OS.get_cmdline_user_args():
 		player.enabled = false
 		run_world_tests()
@@ -48,6 +58,13 @@ func _ready() -> void:
 		var gameplay_capture := GameplayTests.new()
 		add_child(gameplay_capture)
 		gameplay_capture.capture(self)
+	elif "--capture-m3-gameplay" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		add_gameplay(false)
+		var visual_capture: Node = (load("res://tests/visual_capture_m3.gd") as Script).new()
+		add_child(visual_capture)
+		visual_capture.run(self)
 	elif "--benchmark" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -60,6 +77,32 @@ func add_gameplay(auto_customers: bool) -> void:
 	gameplay = Gameplay.new()
 	add_child(gameplay)
 	gameplay.setup(self, player, auto_customers)
+
+func build_imported_props() -> void:
+	# Office models replace the blockout computer set inside the existing office footprint.
+	_add_visual("res://assets/models/office_props/desk_office.glb", Vector3(7.6, 0, -5.25))
+	_add_visual("res://assets/models/office_props/chair_office.glb", Vector3(7.6, 0, -4.22), PI)
+	_add_visual("res://assets/models/office_props/crt_monitor__static.glb", Vector3(7.9, .77, -5.43))
+	_add_visual("res://assets/models/props/desktop_pc.glb", Vector3(7.35, .77, -5.38))
+	_add_visual("res://assets/models/office_props/keyboard.glb", Vector3(7.9, .77, -4.96))
+	_add_visual("res://assets/models/office_props/desk_phone.glb", Vector3(6.92, .77, -5.1))
+	_add_visual("res://assets/models/props/mug.glb", Vector3(-8.02, .96, .15))
+	_add_visual("res://assets/models/props/bottle_crate.glb", Vector3(6.45, 0, 1.25), PI / 2.0)
+	_add_visual("res://assets/models/props/fire_extinguisher.glb", Vector3(4.74, 0, -1.0), PI / 2.0)
+	_add_visual("res://assets/models/props/cctv_a.glb", Vector3(-8.0, 2.56, 5.78))
+	_add_visual("res://assets/models/props/cctv_b.glb", Vector3(8.0, 2.56, -5.77), PI)
+
+func _add_visual(path: String, point: Vector3, yaw: float = 0.0) -> Node3D:
+	var scene := load(path) as PackedScene
+	if scene == null:
+		push_error("Visual asset failed to load: " + path)
+		return null
+	var instance := scene.instantiate() as Node3D
+	instance.position = point
+	instance.rotation.y = yaw
+	add_child(instance)
+	RetroMaterials.apply_nearest_filter(instance)
+	return instance
 
 func build_collisions() -> void:
 	var entries = JSON.parse_string(FileAccess.get_file_as_string("res://assets/models/collisions.json"))
@@ -145,11 +188,11 @@ func build_lighting() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(.018,.03,.045)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(.49,.54,.57)
-	env.ambient_light_energy = 0.24
+	env.ambient_light_color = Color(.54,.58,.61)
+	env.ambient_light_energy = 0.32
 	env.ssao_enabled = true
-	env.ssao_radius = 0.35
-	env.ssao_intensity = 0.7
+	env.ssao_radius = 0.32
+	env.ssao_intensity = 0.48
 	env.ssil_enabled = false
 	env.ssil_intensity = 0.6
 	env.glow_enabled = true
@@ -193,7 +236,7 @@ func build_lighting() -> void:
 	for i in range(3):
 		lamp(Vector3(-6.4+i*3.14,1.6,-4.47),Color(.7,.85,.86),.35,2.5)
 
-func text_label(value: String, pos: Vector3, size: int, pixel: float, color: Color, angle: float = 0) -> void:
+func text_label(value: String, pos: Vector3, size: int, pixel: float, color: Color, angle: float = 0, unshaded: bool = false) -> void:
 	var label := Label3D.new()
 	label.text = value
 	label.position = pos
@@ -201,14 +244,14 @@ func text_label(value: String, pos: Vector3, size: int, pixel: float, color: Col
 	label.pixel_size = pixel
 	label.modulate = color
 	label.outline_size = 0
-	label.shaded = true
+	label.shaded = not unshaded
 	label.double_sided = false
 	label.rotation.y = angle
 	label.no_depth_test = false
 	add_child(label)
 
 func build_signage() -> void:
-	text_label("MARLOW'S  MARKET",Vector3(-1.2,3.64,7.04),80,.008,Color(.83,.8,.65))
+	text_label("MARLOW'S  MARKET",Vector3(-1.2,3.64,7.04),80,.008,Color(.9,.82,.65),0,true)
 	text_label("GROCERIES   •   COFFEE   •   COLD DRINKS",Vector3(-2.8,2.51,6.05),36,.006,Color(.85,.8,.65))
 	text_label("OPEN DAILY\n6 AM – MIDNIGHT",Vector3(-.35,1.6,6.025),32,.004,Color(.85,.8,.64))
 	text_label("THANK YOU\nFOR SHOPPING LOCAL",Vector3(-4.05,1.47,6.025),27,.004,Color(.85,.8,.64),PI)
@@ -236,7 +279,7 @@ func build_markers() -> void:
 func build_hint() -> void:
 	var canvas := CanvasLayer.new()
 	var label := Label.new()
-	label.text = "WASD  walk     MOUSE  look     SHIFT  faster     E  use     F  inspect     Q  put down     1 2  reply     ESC  release mouse"
+	label.text = "WASD  walk     MOUSE  look     SHIFT  faster     E  use     F  inspect     Q  put down     1 2  reply     F6  pixels     F7  palette     F8  analog     ESC  release mouse"
 	label.position = Vector2(24,24)
 	label.modulate = Color(.82,.8,.7,.8)
 	label.add_theme_font_size_override("font_size",14)
@@ -246,7 +289,7 @@ func build_hint() -> void:
 	var tween := create_tween()
 	tween.tween_property(label,"modulate:a",0.0,2)
 
-func capture_views() -> void:
+func capture_views(m3_views: bool) -> void:
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1600,900)
 	viewport.positional_shadow_atlas_size = 2048
@@ -254,31 +297,46 @@ func capture_views() -> void:
 	viewport.world_3d = get_viewport().world_3d
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(viewport)
+	viewport.add_child(RetroEffect.new())
 	var shot_camera := Camera3D.new()
 	shot_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	shot_camera.fov = 75.0
 	shot_camera.near = 0.055
 	viewport.add_child(shot_camera)
 	shot_camera.current = true
+	var output_dir := "res://local/screenshots/m3" if m3_views else "res://local/screenshots"
 	var views := [
-		["01_outside_to_store",Vector3(-3.4,1.62,19.5),Vector3(-1,1.7,5.8)],
-		["02_checkout_to_aisles",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)],
-		["03_aisle_to_exit",Vector3(-1.5,1.62,-1.6),Vector3(.6,1.4,6.4)],
-		["04_office_rear_corridor",Vector3(5.7,1.62,-3.15),Vector3(7.5,1.1,-5.2)],
-		["04b_staff_corridor",Vector3(4.23,1.62,2.5),Vector3(4.2,1.3,-5.8)]]
-	DirAccess.make_dir_recursive_absolute("res://local/screenshots")
+		["01_main_store_entrance",Vector3(-3.4,1.62,19.5),Vector3(-1,1.7,5.8)],
+		["02_checkout_register",Vector3(-1.8,1.62,4.9),Vector3(-5.6,1.1,4.25)],
+		["03_aisle_snacks",Vector3(-8.0,1.62,2.7),Vector3(-6.0,1.35,-1.2)],
+		["04_aisle_pantry",Vector3(-4.55,1.62,2.7),Vector3(-3.0,1.3,-1.2)],
+		["05_aisle_everyday",Vector3(1.45,1.62,2.7),Vector3(0.0,1.3,-1.2)],
+		["06_coffee_station",Vector3(-7.5,1.62,1.5),Vector3(-8.25,1.2,-.6)],
+		["07_refrigerated_drinks",Vector3(-1.5,1.62,-1.5),Vector3(-4.4,1.25,-5.2)],
+		["08_office_cctv_desk",Vector3(5.8,1.55,-3.25),Vector3(7.55,1.0,-5.25)],
+		["09_stockroom",Vector3(7.1,1.62,1.0),Vector3(8.2,1.1,4.25)],
+		["10_rear_corridor",Vector3(4.23,1.62,2.5),Vector3(4.2,1.3,-5.8)],
+		["11_parking_lot_night",Vector3(-10.0,1.62,19.0),Vector3(-4.9,1.0,13.0)]]
+	if not m3_views:
+		views = [
+			["01_outside_to_store",Vector3(-3.4,1.62,19.5),Vector3(-1,1.7,5.8)],
+			["02_checkout_to_aisles",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)],
+			["03_aisle_to_exit",Vector3(-1.5,1.62,-1.6),Vector3(.6,1.4,6.4)],
+			["04_office_rear_corridor",Vector3(5.7,1.62,-3.15),Vector3(7.5,1.1,-5.2)],
+			["04b_staff_corridor",Vector3(4.23,1.62,2.5),Vector3(4.2,1.3,-5.8)]]
+	DirAccess.make_dir_recursive_absolute(output_dir)
 	for view in views:
 		shot_camera.position = view[1]
 		shot_camera.look_at(view[2])
 		await get_tree().create_timer(1.5).timeout
 		await RenderingServer.frame_post_draw
-		var error := viewport.get_texture().get_image().save_png("res://local/screenshots/%s.png" % view[0])
+		var error := viewport.get_texture().get_image().save_png("%s/%s.png" % [output_dir, view[0]])
 		print("CAPTURE ",view[0]," status=",error)
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	viewport.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	print("CAPTURE COMPLETE renderer=",RenderingServer.get_current_rendering_method()," resolution=1600x900")
+	print("CAPTURE COMPLETE renderer=",RenderingServer.get_current_rendering_method()," resolution=1600x900 output=",output_dir)
 	await finish_run(0)
 
 func run_world_tests() -> void:
@@ -399,6 +457,7 @@ func benchmark_views() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.msaa_3d = Viewport.MSAA_2X
 	add_child(viewport)
+	viewport.add_child(RetroEffect.new())
 	var camera := Camera3D.new()
 	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	camera.fov = 75

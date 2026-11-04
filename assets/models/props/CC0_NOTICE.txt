@@ -1,0 +1,7 @@
+CC0 assets used in this project
+
+The CCTV_A, CCTV_B, FireExtinguisher, BottleCrate, and Mug models come from the user-supplied retro_props.zip archive. Its included asset list states that models in the package are released under CC0, but the archive does not identify a creator or source URL.
+
+The Desktop PC model comes from the PSX Electronics Asset Pack by AnimiMomo Studios, supplied by the project owner. Source and CC0 terms: https://animimostudios.itch.io/psx-electronics-asset-pack-free
+
+The project contains only the selected, edited GLB models used in scenes. Source archives and unused models are not included.

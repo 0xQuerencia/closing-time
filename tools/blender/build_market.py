@@ -231,28 +231,10 @@ for y in [1.7,2.26]:
  for z in [-.79,-.41]:box('Poster tape',(-8.867,y,z),(.008,.04,.075),'cream')
 # Office furniture and stockroom.
 group='backrooms'
-box('Office desk',(7.6,.74,-5.25),(2.1,.075,.75),'wood',.02,True)
-for x in [6.7,8.5]:box('Desk leg',(x,.37,-5.25),(.065,.74,.62),'steel',.008,True)
-box('CRT case',(7.9,1.02,-5.31),(.49,.48,.4),'cream',.055)
-box('CRT display',(7.9,1.02,-5.096),(.38,.31,.015),'screen',.02)
-art_panel((7.9,1.02,-5.085),.375,.305,'cctv_standby')
-box('Keyboard',(7.9,.8,-4.96),(.42,.035,.15),'cream',.012)
-for j in range(12):box('Keyboard keys',(7.72+j*.033,.824,-4.96),(.02,.01,.11),'dark',.003)
-box('Landline',(6.9,.83,-5.15),(.25,.11,.24),'cream',.026)
-box('Handset bridge',(6.9,.937,-5.2),(.22,.045,.052),'dark',.02)
-for x in [6.78,7.02]:box('Receiver earpiece',(x,.925,-5.2),(.075,.09,.09),'dark',.025)
-for j in range(3):
- for k in range(3):box('Telephone key',(6.84+j*.046,.89,-5.1+k*.035),(.032,.012,.024),'dark',.005)
-box('Ledger',(7.3,.794,-5.06),(.25,.025,.3),'red',.005)
-cyl('Chair foot',(7.6,.08,-4.22),.32,.045,'dark');cyl('Chair stem',(7.6,.3,-4.22),.035,.43,'steel')
-box('Chair seat',(7.6,.5,-4.22),(.45,.08,.44),'dark',.045,True)
-box('Chair back',(7.6,.81,-4.04),(.45,.4,.075),'dark',.035)
-for x in [7.34,7.86]:
- box('Chair arm upright',(x,.6,-4.15),(.025,.22,.025),'steel',.01)
- box('Chair armrest',(x,.72,-4.2),(.065,.05,.34),'dark',.02)
-for j in range(5):
- a=j*math.tau/5;x=7.6+math.cos(a)*.27;z=-4.22+math.sin(a)*.27
- cyl('Chair caster',(x,.06,z),.045,.045,'rubber',12,'x')
+# Keep the desk collision in the original footprint while using a sourced model for its visuals.
+colliders.append({'name':'Office desk','p':[7.6,.74,-5.25],'s':[2.1,.075,.75]})
+for x in [6.7,8.5]:colliders.append({'name':'Desk leg','p':[x,.37,-5.25],'s':[.065,.74,.62]})
+colliders.append({'name':'Chair seat','p':[7.6,.5,-4.22],'s':[.45,.08,.44]})
 box('Notice board',(8.89,1.65,-3.6),(.035,.8,1.2),'cardboard',.02)
 for z in [-3.9,-3.4]:box('Pinned notice',(8.86,1.7,z),(.005,.32,.23),'paper')
 for z in [-1.2,1.5,4.5]:
@@ -275,8 +257,6 @@ cyl('Clock dial',(6.4,2.35,-5.825),.151,.008,'paper',32,'z')
 box('Clock minute hand',(6.4,2.4,-5.817),(.008,.1,.005),'dark')
 box('Clock hour hand',(6.35,2.35,-5.816),(.1,.008,.005),'dark')
 cyl('Wastebasket',(8.6,.22,-5.3),.17,.43,'dark',24)
-cyl('Coffee cup',(7.4,.85,-5.4),.044,.13,'paper',24)
-cyl('Coffee cup rim',(7.4,.92,-5.4),.046,.012,'cream',24)
 box('Open delivery carton',(5.75,.18,1.35),(.6,.36,.43),'cardboard',.01,True)
 for x in [5.43,6.07]:
  o=box('Carton flap',(x,.4,1.35),(.23,.018,.43),'cardboard');o.rotation_euler[1]=-.35 if x<5.75 else .35

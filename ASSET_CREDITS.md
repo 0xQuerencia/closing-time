@@ -12,7 +12,9 @@ All market geometry, fixture meshes, fictional product packaging, signage, surfa
 
 - **PSX Bystanders NPC Pack Free Sampler v1.0**, by Cordatix: `assets/models/characters/young_man.glb` and `assets/models/characters/office_worker.glb`. Source: https://cordatix.itch.io/psx-bystanders-npc-pack-free. Both models include the pack's 31 clips. The included license permits use in personal and commercial projects and in a game's own project files; it does not permit reselling or redistributing the assets as a standalone pack. Credit is appreciated but not required. The license is included beside the models.
 - **Liminal PSX Office Props Free Sampler v1.0**, by Cordatix: `desk_office.glb`, `chair_office.glb`, `crt_monitor__static.glb`, `desk_phone.glb`, and `keyboard.glb` in `assets/models/office_props/`. Source: https://cordatix.itch.io/liminal-psx-office-props-free. The included license permits use in personal and commercial projects and in a game's own project files; it does not permit reselling or redistributing the assets as a standalone pack. Credit is appreciated but not required. The license is included beside the models.
+- **PSX Electronics Asset Pack**, by AnimiMomo Studios: the edited `desktop_pc.glb` in `assets/models/props/`, exported from the single Desktop PC mesh in the user-supplied archive. The source page identifies the pack as CC0: https://animimostudios.itch.io/psx-electronics-asset-pack-free.
+- **retro_props.zip**, user-supplied: selected CCTV, fire extinguisher, bottle crate, and mug meshes are in `assets/models/props/`. Its included asset list states that the models are CC0, but the archive does not identify an author or source URL. The notice is preserved in that asset directory.
 
-Other user-supplied archives are not treated as project assets unless their provenance and license are clear. The `male_casual.zip` archive has no source or license file and was not imported.
+The `male_casual.zip` archive has no source or license file and was not imported.
 
 Fears to Fathom is a visual study reference only. This is an independent project; no affiliation is claimed and no assets from that series are redistributed.
