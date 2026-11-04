@@ -155,17 +155,18 @@ func _build_sky() -> void:
 	sky.fill_from = Vector2(0.5, 1.0)
 	sky.fill_to = Vector2(0.5, 0.0)
 	sky.gradient = Gradient.new()
-	sky.gradient.colors = PackedColorArray([Color(0.05, 0.075, 0.1, 1), Color(0.018, 0.03, 0.045, 1)])
+	sky.gradient.colors = PackedColorArray([Color(0.05, 0.075, 0.1, 0.85), Color(0.05, 0.075, 0.1, 0.0)])
 	var sky_mat := StandardMaterial3D.new()
 	sky_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sky_mat.albedo_texture = sky
+	sky_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	sky_mat.disable_fog = true
 	var backdrop := MeshInstance3D.new()
 	var back_mesh := QuadMesh.new()
-	back_mesh.size = Vector2(320, 70)
+	back_mesh.size = Vector2(900, 90)
 	backdrop.mesh = back_mesh
 	backdrop.material_override = sky_mat
-	backdrop.position = Vector3(0, 26.0, -90.0)
+	backdrop.position = Vector3(0, 18.0, -90.0)
 	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(backdrop)
 	var tree := StandardMaterial3D.new()
