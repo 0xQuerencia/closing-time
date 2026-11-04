@@ -58,6 +58,13 @@ func _ready() -> void:
 		var gameplay_capture := GameplayTests.new()
 		add_child(gameplay_capture)
 		gameplay_capture.capture(self)
+	elif "--capture-customers" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		add_gameplay(false)
+		var recording = load("res://tests/customer_motion_capture.gd").new()
+		add_child(recording)
+		recording.run(self)
 	elif "--capture-m3-gameplay" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

@@ -15,6 +15,6 @@ All market geometry, fixture meshes, fictional product packaging, signage, surfa
 - **PSX Electronics Asset Pack**, by AnimiMomo Studios: the edited `desktop_pc.glb` in `assets/models/props/`, exported from the single Desktop PC mesh in the user-supplied archive. The source page identifies the pack as CC0: https://animimostudios.itch.io/psx-electronics-asset-pack-free.
 - **retro_props.zip**, user-supplied: selected CCTV, fire extinguisher, bottle crate, and mug meshes are in `assets/models/props/`. Its included asset list states that the models are CC0, but the archive does not identify an author or source URL. The notice is preserved in that asset directory.
 
-The `male_casual.zip` archive has no source or license file and was not imported.
+The user-supplied `male_casual.zip` was identified as **PSX Casual Male Character by Vinrax**: https://vinrax.itch.io/psx-casual-male-character. Both its FBX and texture are byte-identical to the author’s official download. The author permits project use with credit. It is currently a local visual reference only, not imported or redistributed with the game; it has no supplied animation clips.
 
 Fears to Fathom is a visual study reference only. This is an independent project; no affiliation is claimed and no assets from that series are redistributed.

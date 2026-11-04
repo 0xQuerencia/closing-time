@@ -29,3 +29,19 @@ godot --headless --editor --path . --import --quit
 Validation exercises import/parsing, collision rays, capsule sweeps, and keyboard/mouse movement. It does not replace playing the scene. Logs and screenshots go to the local ignored `local/` directory.
 
 Environment meshes, fictional labels, surface maps, and electrical room tone were generated from the included source scripts with AI assistance. No assets, branding, characters, or dialogue from other games are included. See `ASSET_CREDITS.md`.
+
+## Customer movement review
+
+The two customer models have eased movement, slower browsing, interpolated animation,
+turn animations and walk playback matched to travel speed. To record both existing
+customer visits with automated scan/payment using the actual renderer:
+
+```sh
+bash tools/capture_customer_motion.sh  # Godot and FFmpeg required
+```
+
+This writes a silent 960 × 540 MP4, screenshots, sequential frames and renderer metadata
+to the ignored `local/customer-motion/after/` directory (MP4 in its parent directory).
+The simulation runs at a fixed 30 FPS and the capture samples every second frame for
+15 FPS playback. This is visual review footage, not a performance benchmark. Normal
+play still requires the player to scan and collect payment.
