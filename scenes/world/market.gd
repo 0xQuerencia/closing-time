@@ -51,7 +51,8 @@ func glass_panel(pos: Vector3, size: Vector3, tint: Color) -> void:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = tint
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.16
+	material.roughness = 0.3
+	material.metallic_specular = 0.12
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mesh.mesh = box
 	mesh.material_override = material
@@ -83,7 +84,10 @@ func lamp(pos: Vector3, color: Color, energy: float, distance: float, shadows: b
 	light.omni_range = distance
 	light.omni_attenuation = 1.35
 	light.shadow_enabled = shadows
-	light.shadow_bias = 0.04
+	light.shadow_bias = 0.025
+	light.light_size = 0.0
+	light.light_specular = 0.3
+	light.shadow_blur = 1.6
 	add_child(light)
 
 func build_lighting() -> void:
@@ -93,20 +97,36 @@ func build_lighting() -> void:
 	env.background_color = Color(.018,.03,.045)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(.49,.54,.57)
-	env.ambient_light_energy = 0.32
+	env.ambient_light_energy = 0.24
+	env.ssao_enabled = true
+	env.ssao_radius = 0.35
+	env.ssao_intensity = 0.7
+	env.ssil_enabled = false
+	env.ssil_intensity = 0.6
+	env.glow_enabled = true
+	env.glow_intensity = 0.12
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	world.environment = env
 	add_child(world)
 	for x in [-6.0,-2.0,1.4]:
 		for z in [-3.8,.1,3.6]:
-			lamp(Vector3(x,2.85,z),Color(1,.89,.71),1.25,5.3,true)
+			lamp(Vector3(x,2.85,z),Color(1,.95,.83),0.85,5.3,x == -2.0)
 	for z in [-4,1.5]:
-		lamp(Vector3(6.9,2.84,z),Color(1,.86,.65),1.05,4.0,true)
+		lamp(Vector3(6.9,2.84,z),Color(1,.91,.77),0.72,4.0,true)
 	lamp(Vector3(4.2,2.6,3.3),Color(.68,.76,.69),.45,3.6)
 	for x in [-6,-2,1.4]:
 		lamp(Vector3(x,2.65,7.0),Color(1,.87,.68),1.3,5.4,true)
 	lamp(Vector3(-9,5.1,15),Color(1,.68,.32),2.6,13,true)
 	lamp(Vector3(12,5.1,23),Color(.57,.7,.85),2.0,13,true)
+	var reflection := ReflectionProbe.new()
+	reflection.position = Vector3(0,1.6,11)
+	reflection.size = Vector3(25,7,18)
+	reflection.box_projection = true
+	reflection.intensity = 0.7
+	reflection.max_distance = 35
+	add_child(reflection)
+	for x in [-4,3]:
+		lamp(Vector3(x,4.08,7.65),Color(1,.94,.82),1.4,6.0)
 	for i in range(3):
 		lamp(Vector3(-6.4+i*3.14,1.6,-4.47),Color(.7,.85,.86),.35,2.5)
 
@@ -118,6 +138,8 @@ func text_label(value: String, pos: Vector3, size: int, pixel: float, color: Col
 	label.pixel_size = pixel
 	label.modulate = color
 	label.outline_size = 0
+	label.shaded = true
+	label.double_sided = false
 	label.rotation.y = angle
 	label.no_depth_test = false
 	add_child(label)
@@ -127,15 +149,15 @@ func build_signage() -> void:
 	text_label("GROCERIES   •   COFFEE   •   COLD DRINKS",Vector3(-2.8,2.51,6.05),36,.006,Color(.85,.8,.65))
 	text_label("OPEN DAILY\n6 AM – MIDNIGHT",Vector3(-.35,1.6,6.025),32,.004,Color(.85,.8,.64))
 	text_label("THANK YOU\nFOR SHOPPING LOCAL",Vector3(-4.05,1.47,6.025),27,.004,Color(.85,.8,.64),PI)
-	text_label("COLD DRINKS",Vector3(-3.2,2.53,-5.1),42,.006,Color(.8,.79,.68))
+	text_label("COLD DRINKS",Vector3(-3.2,2.53,-5.061),42,.0035,Color(.8,.79,.68))
 	for i in range(3):
-		text_label(["01   SNACKS","02   PANTRY","03   EVERYDAY"][i],Vector3(-6+i*3,2.04,1.52),26,.006,Color(.78,.74,.61))
+		text_label(["01   SNACKS","02   PANTRY","03   EVERYDAY"][i],Vector3(-6+i*3,2.04,1.538),26,.0024,Color(.78,.74,.61))
 	text_label("STAFF ONLY",Vector3(3.39,2.38,0),28,.004,Color(.3,.22,.12),-PI/2)
 	text_label("OFFICE",Vector3(3.39,2.38,-4.3),28,.004,Color(.3,.22,.12),-PI/2)
 	text_label("KEEP REAR DOOR CLOSED",Vector3(4.25,1.72,-5.951),23,.003,Color(.8,.78,.64))
-	text_label("SHIFT NOTES\n\nCOUNT MILK BEFORE CLOSE\n\nREAR LATCH STICKS\n\n– D.",Vector3(8.835,1.68,-3.65),22,.002,Color(.22,.19,.14),-PI/2)
+	text_label("SHIFT NOTES\n\nCOUNT MILK BEFORE CLOSE\n\nREAR LATCH STICKS\n\n– D.",Vector3(8.835,1.7,-3.9),22,.0007,Color(.22,.19,.14),-PI/2)
 	text_label("$1.99",Vector3(-6,.87,3.757),28,.002,Color(.22,.17,.11),PI)
-	text_label("COFFEE\nFRESH UNTIL 10",Vector3(-8.83,1.98,-.6),32,.004,Color(.25,.2,.13),PI/2)
+	text_label("COFFEE\nFRESH UNTIL 10",Vector3(-8.86,1.98,-.6),32,.003,Color(.25,.2,.13),PI/2)
 
 func build_markers() -> void:
 	var markers := Node3D.new()
@@ -163,22 +185,31 @@ func build_hint() -> void:
 	tween.tween_property(label,"modulate:a",0.0,2)
 
 func capture_views() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600,900)
+	viewport.world_3d = get_viewport().world_3d
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(viewport)
+	var shot_camera := Camera3D.new()
+	shot_camera.fov = 59.5
+	shot_camera.near = 0.055
+	viewport.add_child(shot_camera)
+	shot_camera.current = true
 	var views := [
 		["01_outside_to_store",Vector3(-3.4,1.62,16.4),Vector3(-1,1.7,5.8)],
 		["02_checkout_to_aisles",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)],
 		["03_aisle_to_exit",Vector3(-1.5,1.62,-1.6),Vector3(.6,1.4,6.4)],
-		["04_office_rear_corridor",Vector3(5.7,1.62,-3.15),Vector3(7.5,1.1,-5.2)]]
+		["04_office_rear_corridor",Vector3(5.7,1.62,-3.15),Vector3(7.5,1.1,-5.2)],
+		["04b_staff_corridor",Vector3(4.23,1.62,2.5),Vector3(4.2,1.3,-5.8)]]
 	DirAccess.make_dir_recursive_absolute("res://local/screenshots")
 	for view in views:
-		player.position = view[1] - Vector3(0,1.62,0)
-		player.rotation = Vector3.ZERO
-		player.camera.rotation = Vector3.ZERO
-		player.camera.look_at(view[2])
+		shot_camera.position = view[1]
+		shot_camera.look_at(view[2])
 		await get_tree().create_timer(1.5).timeout
 		await RenderingServer.frame_post_draw
-		var error := get_viewport().get_texture().get_image().save_png("res://local/screenshots/%s.png" % view[0])
+		var error := viewport.get_texture().get_image().save_png("res://local/screenshots/%s.png" % view[0])
 		print("CAPTURE ",view[0]," status=",error)
-	print("CAPTURE COMPLETE renderer=",RenderingServer.get_current_rendering_method()," resolution=",get_viewport().get_visible_rect().size)
+	print("CAPTURE COMPLETE renderer=",RenderingServer.get_current_rendering_method()," resolution=",viewport.size)
 	get_tree().quit()
 
 func run_world_tests() -> void:

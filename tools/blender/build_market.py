@@ -14,11 +14,16 @@ def mat(name,c,rough=.7,metal=0,texture=None,scale=1,emission=0):
  if emission: b.inputs['Emission Color'].default_value=(*c,1);b.inputs['Emission Strength'].default_value=emission
  if texture:
   t=m.node_tree.nodes.new('ShaderNodeTexImage');t.image=bpy.data.images.load(str(ROOT/'assets/materials'/f'{texture}.png'));m.node_tree.links.new(t.outputs['Color'],b.inputs['Base Color'])
+ if texture in ['tile','asphalt','wood']:
+  t=m.node_tree.nodes.new('ShaderNodeTexImage');t.image=bpy.data.images.load(str(ROOT/'assets/materials'/f'{texture}_rough.png'));t.image.colorspace_settings.name='Non-Color';m.node_tree.links.new(t.outputs['Color'],b.inputs['Roughness'])
+  t=m.node_tree.nodes.new('ShaderNodeTexImage');t.image=bpy.data.images.load(str(ROOT/'assets/materials'/f'{texture}_normal.png'));t.image.colorspace_settings.name='Non-Color'
+  n=m.node_tree.nodes.new('ShaderNodeNormalMap');n.inputs['Strength'].default_value=.35;m.node_tree.links.new(t.outputs['Color'],n.inputs['Color']);m.node_tree.links.new(n.outputs['Normal'],b.inputs['Normal'])
  mats[name]=m;return m
 mat('tile',(.5,.47,.41),.52,texture='tile');mat('ceiling',(.7,.68,.6),.94,texture='ceiling');mat('plaster',(.6,.57,.48),texture='plaster');mat('brick',(.3,.24,.18),texture='brick')
 mat('asphalt',(.1,.12,.13),.27,texture='asphalt');mat('wood',(.29,.21,.14),.56,texture='wood')
 for n,c,rough,metal in [('shelf',(.32,.38,.37),.52,.35),('steel',(.38,.4,.39),.3,.8),('dark',(.025,.032,.029),.7,.1),('cream',(.68,.65,.53),.65,0),('paper',(.75,.72,.62),.9,0),('red',(.36,.065,.035),.6,0),('cardboard',(.37,.25,.13),.94,0),('yellow',(.68,.51,.18),.7,0),('car',(.17,.22,.2),.34,.65),('rubber',(.018,.021,.02),.95,0),('car_glass',(.025,.05,.065),.16,.6),('green',(.1,.2,.13),.6,.25)]:mat(n,c,rough,metal)
 mat('tube',(.85,.82,.65),.5,emission=3);mat('screen',(.12,.24,.21),.4,emission=.7);mat('packaging',(1,1,1),.6,texture='packaging')
+for i,c in enumerate([(132,60,39),(167,137,67),(131,47,35),(48,94,101),(82,65,44),(79,103,58),(188,150,71),(56,92,115),(80,54,42),(91,116,130),(166,94,36),(66,100,67),(132,119,96),(130,59,40),(97,73,44),(165,133,76)]):mat('pack%d'%i,tuple(v/255 for v in c),.53)
 def xyz(p):return (p[0],-p[2],p[1])
 def register(o,name,material):
  o.name=name;o.data.materials.append(mats[material]);batches.setdefault(group,[]).append(o);return o
@@ -62,16 +67,38 @@ def label(p,w,h,index,side=1):
  for poly in me.polygons:
   for li in poly.loop_indices:me.uv_layers.active.data[li].uv=uv[me.loops[li].vertex_index]
  o=bpy.data.objects.new('Fictional product print',me);bpy.context.collection.objects.link(o);register(o,'Fictional product print','packaging')
+def wrap_label(x,y,z,radius,height,index,arc=1.05):
+ vs=[];segments=12
+ for h in [-height/2,height/2]:
+  for j in range(segments+1):
+   a=-arc+j*2*arc/segments;vs.append(xyz((x+math.sin(a)*radius,y+h,z+math.cos(a)*radius)))
+ fs=[(j,j+1,j+segments+2,j+segments+1) for j in range(segments)]
+ me=bpy.data.meshes.new('Curved printed label');me.from_pydata(vs,[],fs);me.uv_layers.new();u=index%4/4;v=1-(index//4+1)/4
+ for poly in me.polygons:
+  for li in poly.loop_indices:
+   vi=me.loops[li].vertex_index;me.uv_layers.active.data[li].uv=(u+.006+(vi%(segments+1))/segments*.238,v+.006+(vi//(segments+1))*.238)
+ o=bpy.data.objects.new('Curved printed label',me);bpy.context.collection.objects.link(o);register(o,'Curved printed label','packaging')
+def pillow_bag(x,y,z,index):
+ vs=[]
+ for h,w,d in [(0,.085,.018),(.04,.098,.043),(.16,.099,.06),(.28,.09,.035),(.32,.087,.012)]:
+  for j in range(8):
+   a=j*math.tau/8;vs.append(xyz((x+math.cos(a)*w,y+h,z+math.sin(a)*d)))
+ fs=[tuple(reversed(range(8)))]
+ for ring in range(4):
+  for j in range(8):fs.append((ring*8+j,ring*8+(j+1)%8,(ring+1)*8+(j+1)%8,(ring+1)*8+j))
+ fs.append(tuple(range(32,40)));me=bpy.data.meshes.new('Shaped foil bag');me.from_pydata(vs,[],fs)
+ o=bpy.data.objects.new('Shaped foil bag',me);bpy.context.collection.objects.link(o);register(o,'Shaped foil bag','pack%d'%index)
+
 def product(x,y,z,kind,idx,side=1):
  if kind=='can':
-  cyl('Tin', (x,y+.115,z),.067,.23,'cream');cyl('Rolled rim',(x,y+.232,z),.069,.012,'steel');label((x,y+.12,z+side*.069),.115,.19,idx,side)
+  cyl('Tin', (x,y+.115,z),.067,.23,'pack%d'%idx);cyl('Rolled rim',(x,y+.232,z),.069,.012,'steel');wrap_label(x,y+.12,z,.069,.19,idx)
  elif kind=='bottle':
-  cyl('Bottle',(x,y+.13,z),.064,.26,'green');cyl('Shoulder',(x,y+.27,z),.046,.055,'green');cyl('Cap',(x,y+.315,z),.027,.04,'cream');label((x,y+.13,z+side*.065),.11,.16,idx,side)
+  cyl('Bottle',(x,y+.13,z),.064,.26,'green');cyl('Shoulder',(x,y+.27,z),.046,.055,'green');cyl('Cap',(x,y+.315,z),.027,.04,'cream');wrap_label(x,y+.13,z,.066,.16,idx)
  elif kind=='bag':
-  o=box('Crimped snack bag',(x,y+.16,z),(.19,.32,.105),'cream',.027);o.rotation_euler[1]=r.uniform(-.07,.07)
+  pillow_bag(x,y,z,idx)
   box('Heat seal',(x,y+.315,z),(.185,.018,.08),'yellow',.003);label((x,y+.17,z+side*.055),.17,.27,idx,side)
  else:
-  box('Carton',(x,y+.18,z),(.18,.36,.13),'cream',.006);label((x,y+.18,z+side*.067),.175,.345,idx,side)
+  box('Carton',(x,y+.18,z),(.18,.36,.13),'pack%d'%idx,.006);label((x,y+.18,z+side*.067),.175,.345,idx,side)
 # Shell: retail 12.5m wide, staff wing 5.5m; 18x12m total.
 box('Sales floor',(0,-.11,0),(18,.22,12),'tile',collision=True,uvscale=2.4)
 box('Ceiling',(0,3.24,0),(18,.1,12),'ceiling',uvscale=2.4)
@@ -113,6 +140,11 @@ for x in [-6,-2,1.4,6.9]:
  for z in [-3.8,.1,3.6] if x<3 else [-4,1.5]:
   box('Fluorescent housing',(x,3.13,z),(.29,.10,1.28),'steel',.018)
   for dx in [-.075,.075]:box('Fluorescent diffuser',(x+dx,3.066,z),(.065,.035,1.16),'tube',.015)
+# Open entrance leaf: metal frame, hinge and handle, alongside doorway.
+for z in [4.925,5.975]:box('Open door stile',(2.57,1.1,z),(.06,2.2,.055),'steel',.008)
+for y in [.06,2.19]:box('Open door rail',(2.57,y,5.45),(.06,.065,1.1),'steel',.008)
+box('Open door handle',(2.5,1.05,5.07),(.08,.38,.025),'steel',.008)
+colliders.append({'name':'Open entrance leaf','p':[2.57,1.1,5.45],'s':[.06,2.2,1.1]})
 # Checkout with toe kick, laminate edge, panelled front and equipment.
 group='retail'
 box('Checkout carcass',(-6,.43,4.25),(4.1,.86,.8),'wood',.035,True,uvscale=1.5)
@@ -138,23 +170,27 @@ for j in range(4):
 # 3 gondolas, shelves 1.72m high. Irregular stock in coherent brand runs.
 for ai,x in enumerate([-6,-3,0]):
  box('Gondola base',(x,.12,-.9),(.91,.24,4.9),'shelf',.025,True)
+ colliders[-1]['p']=(x,.9,-.9);colliders[-1]['s']=(.91,1.8,4.9)
  box('Gondola spine',(x,.9,-.9),(.055,1.6,4.8),'shelf',.01)
  for z in [-3.28,1.48]:box('Upright',(x,.91,z),(.08,1.8,.065),'steel',.009)
+ box('Aisle sign board',(x,2.04,1.51),(1.02,.24,.045),'green',.012)
+ for dx in [-.35,.35]:box('Aisle sign bracket',(x+dx,1.85,1.48),(.018,.3,.025),'steel')
  for side in [-1,1]:
   # Products face along x; rotate all generated stock around aisle pivot.
   for level,h in enumerate([.28,.68,1.08,1.48]):
    box('Shelf pan',(x+side*.23,h,-.9),(.46,.035,4.85),'shelf',.008)
    box('Price rail',(x+side*.455,h+.018,-.9),(.025,.055,4.84),'cream',.004)
    for j in range(19):
-    if r.random()<.17:continue
+    if r.random()<.22 or (level==2 and 5<j<9):continue
     z=-3.1+j*.241+r.uniform(-.012,.012)
-    start=len(batches[group]);product(0,h+.02,0,['bag','box','can'][ai],(ai*4+level)%16)
+    start=len(batches[group]);product(0,h+.02,r.uniform(-.045,.04),['bag','box','can'][ai],(ai*4+level+(1 if j>12 else 0))%16)
     # Default front is +z. Rotate front to aisle's side x.
     for o in batches[group][start:]:
      old=o.location.copy();ang=side*math.pi/2
      o.location=(x+side*.25+old.x*math.cos(ang)-old.y*math.sin(ang),-z+old.x*math.sin(ang)+old.y*math.cos(ang),old.z)
      o.rotation_euler[2]+=ang
    for z in [-2.8,-1.5,-.2,1.1]:box('Shelf ticket',(x+side*.472,h+.02,z),(.006,.041,.19),'paper')
+box('Cooler sign backing',(-3.2,2.53,-5.1),(9.45,.32,.06),'green',.015)
 # Cooler row across back wall: frame, stock, transparent glass supplied in Godot.
 for i in range(6):
  x=-7.1+i*1.57
@@ -185,11 +221,20 @@ for x in [7.8,8]:
 box('Keyboard',(7.9,.8,-4.96),(.42,.035,.15),'cream',.012)
 for j in range(12):box('Keyboard keys',(7.72+j*.033,.824,-4.96),(.02,.01,.11),'dark',.003)
 box('Landline',(6.9,.83,-5.15),(.25,.11,.24),'cream',.026)
-box('Handset',(6.9,.93,-5.15),(.3,.075,.08),'dark',.03)
+box('Handset bridge',(6.9,.937,-5.2),(.22,.045,.052),'dark',.02)
+for x in [6.78,7.02]:box('Receiver earpiece',(x,.925,-5.2),(.075,.09,.09),'dark',.025)
+for j in range(3):
+ for k in range(3):box('Telephone key',(6.84+j*.046,.89,-5.1+k*.035),(.032,.012,.024),'dark',.005)
 box('Ledger',(7.3,.794,-5.06),(.25,.025,.3),'red',.005)
 cyl('Chair foot',(7.6,.08,-4.22),.32,.045,'dark');cyl('Chair stem',(7.6,.3,-4.22),.035,.43,'steel')
 box('Chair seat',(7.6,.5,-4.22),(.45,.08,.44),'dark',.045,True)
-box('Chair back',(7.6,.81,-4.04),(.45,.51,.06),'dark',.045)
+box('Chair back',(7.6,.81,-4.04),(.45,.4,.075),'dark',.035)
+for x in [7.34,7.86]:
+ box('Chair arm upright',(x,.6,-4.15),(.025,.22,.025),'steel',.01)
+ box('Chair armrest',(x,.72,-4.2),(.065,.05,.34),'dark',.02)
+for j in range(5):
+ a=j*math.tau/5;x=7.6+math.cos(a)*.27;z=-4.22+math.sin(a)*.27
+ cyl('Chair caster',(x,.06,z),.045,.045,'rubber',12,'x')
 box('Notice board',(8.89,1.65,-3.6),(.035,.8,1.2),'cardboard',.02)
 for z in [-3.9,-3.4]:box('Pinned notice',(8.86,1.7,z),(.005,.32,.23),'paper')
 for z in [-1.2,1.5,4.5]:
@@ -206,6 +251,17 @@ for z in [-1.2,1.5,4.5]:
    box('Shipping label',(7.818,y+.27,zz),(.005,.17,.25),'paper')
 box('Breaker box',(4.91,1.52,2.8),(.13,.55,.35),'shelf',.018)
 for z in [2.69,2.78,2.87]:box('Breaker switch',(4.829,1.5,z),(.025,.065,.04),'dark')
+# Low-key evidence of a working shift: wall clock, bin, cup, floor carton.
+cyl('Clock rim',(6.4,2.35,-5.85),.17,.035,'dark',32,'z')
+cyl('Clock dial',(6.4,2.35,-5.825),.151,.008,'paper',32,'z')
+box('Clock minute hand',(6.4,2.4,-5.817),(.008,.1,.005),'dark')
+box('Clock hour hand',(6.35,2.35,-5.816),(.1,.008,.005),'dark')
+cyl('Wastebasket',(8.6,.22,-5.3),.17,.43,'dark',24)
+cyl('Coffee cup',(7.4,.85,-5.4),.044,.13,'paper',24)
+cyl('Coffee cup rim',(7.4,.92,-5.4),.046,.012,'cream',24)
+box('Open delivery carton',(5.75,.18,1.35),(.6,.36,.43),'cardboard',.01,True)
+for x in [5.43,6.07]:
+ o=box('Carton flap',(x,.4,1.35),(.23,.018,.43),'cardboard');o.rotation_euler[1]=-.35 if x<5.75 else .35
 # Mop bucket and angled handle.
 cyl('Mop bucket',(5.8,.19,4.4),.22,.36,'yellow');o=cyl('Mop handle',(5.9,.9,4.4),.018,1.6,'wood');o.rotation_euler[1]=.16
 box('Inventory table',(6,.76,2.9),(1.2,.07,.65),'wood',.02,True)
@@ -226,6 +282,11 @@ for x in [-5.5,-2.5,.5]:box('Wheel stop',(x,-.01,9.65),(1.6,.19,.16),'plaster',.
 box('Canopy',(0,3.3,6.5),(18.7,.2,1.5),'cream',.025)
 box('Fascia',(0,3.62,6.95),(18.7,.6,.15),'green',.02)
 for x in [-8.5,8.5]:box('Canopy column',(x,1.6,7),(.16,3.2,.16),'cream',.01,True)
+# Fascia gooseneck sign lamps.
+for x in [-4,3]:
+ cyl('Sign lamp stem',(x,4.03,7.18),.018,.34,'steel')
+ box('Sign lamp arm',(x,4.18,7.43),(.035,.035,.5),'steel',.01)
+ box('Sign lamp hood',(x,4.12,7.68),(.28,.12,.18),'green',.025)
 # Car: tapered body mesh, glass cabin, wheel arches suggested by fenders.
 def hull(name,levels,m):
  vs=[]
