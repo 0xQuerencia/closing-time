@@ -17,8 +17,6 @@ func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManage
 	tasks = task_manager
 	layer = 10
 	var dot := ColorRect.new()
-	# Captured mouse motion lands at viewport center, beneath this decoration.
-	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dot.color = Color(0.9, 0.88, 0.8, 0.55)
 	dot.size = Vector2(4, 4)
 	dot.set_anchors_preset(Control.PRESET_CENTER)
