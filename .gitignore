@@ -1,0 +1,43 @@
+# Godot-generated files and export output
+.godot/
+.import/
+.export/
+export.cfg
+build/
+dist/
+*.log
+
+# Workstation / Blender scratch files
+*.blend1
+*.blend2
+.DS_Store
+__pycache__/
+*.pyc
+
+# Local production binder: NEVER push to the public game repository
+/AGENTS.md
+/CLAUDE.md
+/START_HERE.md
+/docs/
+/prompts/
+/planning/
+/maps/
+
+# Local agent configuration, notes and captured reference/QA material
+/.claude/
+/.codex/
+/.agents/
+/.local/
+/local/
+/private/
+/notes/
+/references/
+/screenshots/
+/recordings/
+/renders/
+/captures/
+/scripts/check_tools.sh
+
+# Local build/debug artifacts
+/tmp/
+/temp/
