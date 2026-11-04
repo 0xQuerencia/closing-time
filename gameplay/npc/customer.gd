@@ -54,8 +54,13 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	return self
 
 func _build_body() -> void:
-	var model_path := "res://assets/models/characters/young_man.glb" if profile.id == "c1" else "res://assets/models/characters/office_worker.glb"
+	var fallback_path := "res://assets/models/characters/young_man.glb" if profile.id == "c1" else "res://assets/models/characters/office_worker.glb"
+	var use_vinrax: bool = profile.id == "c1" and not OS.get_cmdline_user_args().has("--customer-art=cordatix")
+	var model_path := "res://assets/models/characters/vinrax/casual_male.glb" if use_vinrax else fallback_path
 	var model_scene := load(model_path) as PackedScene
+	if model_scene == null and use_vinrax:
+		push_warning("Vinrax model unavailable; using retained Cordatix customer")
+		model_scene = load(fallback_path) as PackedScene
 	if model_scene == null:
 		push_error("Customer visual model failed to load: " + model_path)
 		return
