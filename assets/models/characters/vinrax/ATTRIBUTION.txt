@@ -1,0 +1,12 @@
+PSX Casual Male Character by Vinrax
+https://vinrax.itch.io/psx-casual-male-character
+Author's usage statement (checked 2026-11-04):
+"License: feel free to use in your projects, just credit me"
+
+Original mesh, UVs, skin weights and 256px texture by Vinrax.
+Converted from the author's original FBX. Texture pixels preserved.
+Nine animation clips retargeted from the project's licensed Cordatix sampler.
+Animation motion by Cordatix: https://cordatix.itch.io/psx-bystanders-npc-pack-free
+See ../CORDATIX_LICENSE.txt. These clips are included as part of Closing Time,
+not offered as a standalone animation/asset pack.
+Retargeting and contact correction tooling created with OpenAI Codex assistance.
