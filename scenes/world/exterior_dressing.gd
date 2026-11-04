@@ -68,14 +68,23 @@ func _label(text: String, pos: Vector3, size: int, pixel: float, color: Color, i
 	return label
 
 func _build_puddles() -> void:
-	var puddle := _mat(Color(0.012, 0.016, 0.02), 0.04)
+	var soft := GradientTexture2D.new()
+	soft.fill = GradientTexture2D.FILL_RADIAL
+	soft.fill_from = Vector2(0.5, 0.5)
+	soft.fill_to = Vector2(1.0, 0.5)
+	soft.gradient = Gradient.new()
+	soft.gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	soft.gradient.colors = PackedColorArray([Color(0.01, 0.014, 0.02, 0.8), Color(0.01, 0.014, 0.02, 0.5), Color(0.01, 0.014, 0.02, 0.0)])
+	var puddle := _mat(Color(1, 1, 1), 0.05)
+	puddle.albedo_texture = soft
+	puddle.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	puddle.metallic_specular = 1.0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4417
 	for i in 14:
 		var quad := MeshInstance3D.new()
 		var mesh := QuadMesh.new()
-		mesh.size = Vector2(rng.randf_range(1.6, 4.4), rng.randf_range(1.0, 2.6))
+		mesh.size = Vector2(rng.randf_range(2.2, 5.5), rng.randf_range(1.4, 3.2))
 		quad.mesh = mesh
 		quad.material_override = puddle
 		quad.rotation = Vector3(-PI / 2.0, rng.randf_range(-0.5, 0.5), 0)

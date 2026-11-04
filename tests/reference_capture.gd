@@ -9,6 +9,10 @@ const VIEWS := [
 	["ref_5_exterior_right", Vector3(-6.0, 0.0, 14.0), Vector3(6.5, 1.8, 6.5)],
 	["ref_6_endcaps", Vector3(-1.5, 0.05, 4.6), Vector3(-3.4, 0.9, 1.8)],
 	["ref_7_register", Vector3(-5.8, 0.05, 5.15), Vector3(-5.8, 1.22, 4.4)],
+	["ref_9_counter_left", Vector3(-7.4, 0.05, 5.2), Vector3(-7.0, 0.95, 4.1)],
+	["ref_10_coffee", Vector3(-6.6, 0.05, -0.6), Vector3(-8.3, 1.1, -0.7)],
+	["ref_11_truck", Vector3(-1.0, 0.0, 17.5), Vector3(-4.9, 0.8, 13.0)],
+	["ref_12_office_chair", Vector3(7.6, 0.05, -2.8), Vector3(7.6, 0.6, -4.2)],
 	["ref_8_office_pc", Vector3(7.0, 0.05, -3.3), Vector3(7.6, 0.95, -5.3)],
 ]
 
