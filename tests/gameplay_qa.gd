@@ -227,7 +227,7 @@ func _qa_customer_two_delayed() -> void:
 
 func _qa_after_transactions() -> void:
 	check(game.checkout.state == Checkout.State.IDLE and game.checkout.items.is_empty(), "register idle after all sales")
-	check(game.hud._choices.text == "" and not game.dialogue.is_active(), "no stale dialogue or choices on screen")
+	check(not game.hud.choices_visible() and not game.dialogue.is_active(), "no stale dialogue or choices on screen")
 	player.enabled = true
 	player.global_position = Vector3(-7.55, 0.05, 5.6)
 	player.rotation = Vector3.ZERO

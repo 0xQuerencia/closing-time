@@ -19,3 +19,4 @@ All market geometry, fixture meshes, fictional product packaging, signage, surfa
 
 
 Fears to Fathom is a visual study reference only. This is an independent project; no affiliation is claimed and no assets from that series are redistributed.
+- **JetBrains Mono** (Regular, Medium, Bold) by JetBrains, SIL Open Font License 1.1: `assets/fonts/jetbrains_mono/`, used for the HUD. License text included beside the fonts.

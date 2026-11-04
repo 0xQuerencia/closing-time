@@ -25,7 +25,12 @@ func run(market: Node3D) -> void:
 	shopper.global_position = Vector3(-4.6, 0.0, 3.3)
 	shopper.rotation.y = 0.0  # faces the counter (-Z is forward, so turn to +Z)
 	shopper.rotation.y = PI
-	game.hud.visible = false
+	var show_hud := "--hud" in OS.get_cmdline_user_args()
+	game.hud.visible = show_hud
+	if show_hud:
+		await _hud_shots(market, game, player)
+		await market.finish_run(0)
+		return
 	var only := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--only="):
@@ -43,3 +48,36 @@ func run(market: Node3D) -> void:
 		var err := get_viewport().get_texture().get_image().save_png("res://local/screenshots/%s.png" % view[0])
 		print("REFERENCE ", view[0], " status=", err)
 	await market.finish_run(0)
+
+## HUD close-ups: prompt on a counter item, held item, checklist, choices, then a spoken line.
+func _hud_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void:
+	game.dialogue.time_scale_for_tests = 6.0
+	var item := game.spawn_product("crisps", null)
+	game.checkout.open_sale(shopper_stub(market))
+	item.place_at(game.checkout.drop_point(0), 0.0)
+	game.tasks.add_task("serve_c1", "Serve the customer", [{"id": "at_counter", "text": "Customer at the counter"}, {"id": "scanned", "text": "Scan their items"}, {"id": "paid", "text": "Take payment at the register"}])
+	game.tasks.complete_objective("serve_c1", "at_counter")
+	var cola := game.spawn_product("cola", Vector3(-7.55, 0.955, 4.4))
+	game.interactor.pick_up(cola)
+	game.dialogue.start("c1_talk")
+	player.global_position = Vector3(-4.6, 0.05, 5.0)
+	var d: Vector3 = item.global_position + Vector3(0, 0.1, 0) - (player.global_position + Vector3(0, 1.62, 0))
+	player.rotation = Vector3(0, atan2(-d.x, -d.z), 0)
+	player.camera.rotation = Vector3(atan2(d.y, Vector2(d.x, d.z).length()), 0, 0)
+	for i in 40:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("res://local/screenshots/hud_1_choices.png")
+	game.dialogue.choose(0)
+	for i in 25:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("res://local/screenshots/hud_2_line.png")
+	var h := game.hud
+	print("RECTS viewport=", get_viewport().get_visible_rect().size, " task=", h._task_box.get_global_rect(), " vis=", h._task_box.visible, " speech=", h._speech_box.get_global_rect(), " vis=", h._speech_box.visible, " choices=", h._choice_box.get_global_rect(), " n=", h._choice_box.get_child_count(), " prompt=", h._prompt_box.get_global_rect(), " vis=", h._prompt_box.visible)
+	print("REFERENCE hud done")
+
+func shopper_stub(market: Node3D) -> Node3D:
+	var stub := Node3D.new()
+	market.add_child(stub)
+	return stub
