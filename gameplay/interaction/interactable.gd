@@ -7,7 +7,11 @@ signal inspected(actor: Node)
 @export var display_name := "Object"
 @export var verb := "Use"
 @export_multiline var description := ""
-var enabled := true
+## A disabled interactable is also invisible to the aiming ray, so it can never shadow another one.
+var enabled := true:
+	set(value):
+		enabled = value
+		collision_layer = LAYER if value else 0
 
 func _init() -> void:
 	collision_layer = LAYER

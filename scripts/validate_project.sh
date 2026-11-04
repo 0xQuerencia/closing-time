@@ -29,3 +29,9 @@ if rg -n 'SCRIPT ERROR|ERROR:' local/validation-mouse-capture.log; then
 fi
 rg 'MOUSE CAPTURE TESTS COMPLETE' local/validation-mouse-capture.log
 echo '[PASS] Centered mouse look through the gameplay HUD'
+"$G" --headless --path . -- --test-story > local/validation-story.log 2>&1
+if rg -n 'SCRIPT ERROR|ERROR:' local/validation-story.log; then
+  echo '[FAIL] Godot reported story test errors'; exit 1
+fi
+rg 'STORY TESTS COMPLETE' local/validation-story.log
+echo '[PASS] Story: state machine, once-only beats, chores, clues and a full accelerated night'

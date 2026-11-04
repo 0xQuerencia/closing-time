@@ -21,6 +21,8 @@ var bag_placed := false
 var latch_is_lifted := false
 var locked := false
 var _lever: MeshInstance3D
+var _placed: Array[Product] = []
+var _bin: TrashBin
 
 func build(owner_game: Gameplay) -> ShiftTasks:
 	game = owner_game
@@ -63,17 +65,18 @@ func stock_slot(slot: RestockSlot, product: Product) -> bool:
 	slot.filled = true
 	product.place_at(slot.global_position, 0.0)
 	product.enabled = false
+	_placed.append(product)
 	slot.ghost.visible = false
 	filled += 1
 	restocked.emit(filled)
 	return true
 
 func _build_bin() -> void:
-	var bin := TrashBin.new()
-	bin.tasks = self
-	bin.position = BIN_POINT
-	bin.build()
-	add_child(bin)
+	_bin = TrashBin.new()
+	_bin.tasks = self
+	_bin.position = BIN_POINT
+	_bin.build()
+	add_child(_bin)
 
 func make_bag(actor: Node) -> bool:
 	if bag_made or actor.held != null:
@@ -98,6 +101,7 @@ func place_bag(product: Product) -> bool:
 	bag_placed = true
 	product.place_at(Vector3(BAG_SPOT.x - 0.12, 0.0, BAG_SPOT.z), 0.4)
 	product.enabled = false
+	_placed.append(product)
 	trash_placed.emit()
 	return true
 
@@ -133,6 +137,24 @@ func _build_latch() -> void:
 	plate.rotation.x = PI / 2.0
 	plate.position = key_lock.position + Vector3(0, 0, 0.012)
 	add_child(plate)
+
+## Chores undone: stocked items removed, bag back in the bin, latch down and unlocked.
+func reset() -> void:
+	for product in _placed:
+		if is_instance_valid(product):
+			product.queue_free()
+	_placed.clear()
+	for slot in slots:
+		slot.filled = false
+		slot.ghost.visible = true
+	filled = 0
+	taken = 0
+	bag_made = false
+	bag_placed = false
+	latch_is_lifted = false
+	locked = false
+	_lever.rotation.z = 0.0
+	_bin.show_bag()
 
 func lift_latch() -> bool:
 	if latch_is_lifted or locked:
@@ -255,6 +277,8 @@ class TrashBin extends Interactable:
 		wall_shape.position.y = 0.4
 		wall.add_child(wall_shape)
 		add_child(wall)
+	func show_bag() -> void:
+		_stub.visible = true
 	func can_interact(actor: Node) -> bool:
 		return not tasks.bag_made and actor.held == null
 	func blocked_reason(actor: Node) -> String:

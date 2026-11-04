@@ -13,6 +13,7 @@ var _envelope: Node3D
 var _flap: MeshInstance3D
 var _prints: Array[MeshInstance3D] = []
 var _print_spot: ClueSpot
+var _envelope_spot: ClueSpot
 var _chime: AudioStreamPlayer3D
 
 func build(world: Node3D) -> Clues:
@@ -109,7 +110,7 @@ func _build_envelope() -> void:
 	label.position = Vector3(0, 0.0045, 0.02)
 	label.outline_size = 0
 	_envelope.add_child(label)
-	_spot("cash_envelope", Vector3(0.3, 0.14, 0.2), ENVELOPE_NEAT + Vector3(0, 0.05, 0), func():
+	_envelope_spot = _spot("cash_envelope", Vector3(0.3, 0.14, 0.2), ENVELOPE_NEAT + Vector3(0, 0.05, 0), func():
 		return "The cash drop envelope. Moved. The flap has been peeled open." if active else "Cash drop envelope. Sealed. Dina wants it in the drawer by 11:55.")
 
 func _build_prints() -> void:
@@ -144,6 +145,7 @@ func activate() -> bool:
 	_spare_key.visible = false
 	_envelope.position = ENVELOPE_MOVED
 	_envelope.rotation.y = 0.55
+	_envelope_spot.position = ENVELOPE_MOVED + Vector3(0, 0.05, 0)
 	_flap.get_parent().rotation.x = -0.75
 	for quad in _prints:
 		quad.visible = true
@@ -155,6 +157,19 @@ func _exit_tree() -> void:
 	if _chime:
 		_chime.stop()
 		_chime.stream = null
+
+## Back to the normal state (checkpoint retry, tests). Clues seen so far are forgotten.
+func reset() -> void:
+	active = false
+	seen.clear()
+	_spare_key.visible = true
+	_envelope.position = ENVELOPE_NEAT
+	_envelope.rotation.y = 0.0
+	_envelope_spot.position = ENVELOPE_NEAT + Vector3(0, 0.05, 0)
+	_flap.get_parent().rotation.x = 0.0
+	for quad in _prints:
+		quad.visible = false
+	_print_spot.enabled = false
 
 class ClueSpot extends Interactable:
 	signal seen(clue_id: String)
