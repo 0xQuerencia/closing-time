@@ -52,6 +52,7 @@ func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManage
 	tasks.task_added.connect(func(_id): _refresh_tasks())
 	tasks.objective_completed.connect(func(_t, _o): _refresh_tasks())
 	tasks.task_completed.connect(func(_id): _refresh_tasks())
+	tasks.cleared.connect(_refresh_tasks)
 	_on_held(null)
 	_refresh_tasks()
 

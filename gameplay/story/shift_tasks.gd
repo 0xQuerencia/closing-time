@@ -167,6 +167,23 @@ func reset() -> void:
 	_lever.rotation.z = 0.0
 	_bin.show_bag()
 
+## Put the chores back as they were at a checkpoint (shelves stocked, bag out, latch locked).
+func restore(filled_count: int, bag_out: bool, latch_on: bool) -> void:
+	reset()
+	for i in mini(filled_count, slots.size()):
+		var product := game.spawn_product(STOCK_IDS[taken % STOCK_IDS.size()], null)
+		taken += 1
+		stock_slot(slots[i], product)
+	if bag_out:
+		bag_made = true
+		bag_placed = true
+		_bin._stub.visible = false
+	if latch_on:
+		latch_is_lifted = true
+		locked = true
+		_lever.rotation.z = 0.0
+		latch_locked.emit()
+
 func is_door_open() -> bool:
 	return door_ajar.is_valid() and door_ajar.call()
 

@@ -63,6 +63,12 @@ func _ready() -> void:
 		var security_tests := SecurityTests.new()
 		add_child(security_tests)
 		security_tests.run_security(self)
+	elif "--test-threat" in OS.get_cmdline_user_args():
+		player.enabled = false
+		add_gameplay(false)
+		var threat_tests := ThreatTests.new()
+		add_child(threat_tests)
+		threat_tests.run_threat(self)
 	elif "--timed-playthrough" in OS.get_cmdline_user_args():
 		player.require_mouse_capture = false
 		player.enabled = false
@@ -120,8 +126,11 @@ func _ready() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		benchmark_views()
 	else:
-		build_hint()
-		add_gameplay(true)
+		add_gameplay(false)
+		gameplay.persist_saves = true
+		player.enabled = false
+		gameplay.flow.start_requested.connect(func(): player.enabled = true)
+		gameplay.flow.show_title()
 
 func add_gameplay(auto_customers: bool) -> void:
 	gameplay = Gameplay.new()
@@ -399,7 +408,7 @@ func run_world_tests() -> void:
 		["front glass",Vector3(-4,1,5),Vector3(-4,1,7),true],
 		["front doors (closed)",Vector3(1.7,1,5),Vector3(1.7,1,7),true],
 		["rear door",Vector3(4.25,1,-5),Vector3(4.25,1,-7),true],
-		["office passage",Vector3(4.1,1,-4.3),Vector3(5.5,1,-4.3),false],
+		["office door (closed)",Vector3(4.1,1,-4.3),Vector3(5.5,1,-4.3),true],
 		["stock passage",Vector3(3,1,0),Vector3(5.5,1,0),false]]
 	for check in checks:
 		var query := PhysicsRayQueryParameters3D.create(check[1],check[2])
@@ -412,6 +421,7 @@ func run_world_tests() -> void:
 			print("WORLD TEST PASS: ",check[0])
 	# Sweep the actual capsule through realistic routes and into obstructions. The entrance is walked with the doors open.
 	gameplay.security.front_door.snap(true)
+	gameplay.security.office_door.snap(true)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	for route in [["entrance",Vector3(1.7,.03,5),Vector3(0,0,2),false],["wall",Vector3(-8,.03,3),Vector3(-2,0,0),true],["shelf",Vector3(-4.5,.03,0),Vector3(-2,0,0),true],["office",Vector3(4.1,.03,-4.3),Vector3(1.4,0,0),false]]:

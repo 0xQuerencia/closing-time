@@ -4,6 +4,7 @@ extends Node
 signal task_added(task_id: String)
 signal objective_completed(task_id: String, objective_id: String)
 signal task_completed(task_id: String)
+signal cleared
 var tasks := {}  # id -> {title, objectives: [{id, text, done}], done}
 
 func add_task(id: String, title: String, objectives: Array) -> void:
@@ -42,3 +43,7 @@ func completed_count() -> int:
 
 func active_ids() -> Array:
 	return tasks.keys().filter(func(k): return not tasks[k].done)
+
+func clear() -> void:
+	tasks.clear()
+	cleared.emit()

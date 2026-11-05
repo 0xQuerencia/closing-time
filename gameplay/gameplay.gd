@@ -17,6 +17,7 @@ var clues: Clues
 var director: StoryDirector
 var security: Security
 var phone_ui: PhoneUI
+var flow: FlowUI
 var markers := {}
 var profiles: Array[Dictionary] = []
 var next_profile := 0
@@ -65,8 +66,20 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	add_child(director)
 	director.setup(self)
 	_stock_shelves()
+	flow = FlowUI.new().setup(self)
+	add_child(flow)
+	director.threat.ending.connect(flow.show_ending)
+	flow.retry_requested.connect(retry)
+	flow.start_requested.connect(begin_shift)
+	flow.continue_requested.connect(continue_game)
+	flow.restart_requested.connect(restart_game)
+	flow.quit_requested.connect(func(): get_tree().quit())
 	if auto_customers:
-		director.start()
+		begin_shift()
+
+func begin_shift() -> void:
+	if director.start():
+		save_checkpoint("shift_start")
 
 func _unhandled_input(event: InputEvent) -> void:
 	for i in GameInput.CHOICES.size():
@@ -137,3 +150,36 @@ func _on_sale_completed(_tx: Dictionary) -> void:
 
 func _on_customer_finished(customer: Customer) -> void:
 	customer_finished.emit(customer)
+
+# --- checkpoints --------------------------------------------------------------------------------
+
+var checkpoint_data := {}
+var persist_saves := false  # only the shipped game writes to disk; tests keep checkpoints in memory
+
+func save_checkpoint(checkpoint: String) -> void:
+	checkpoint_data = SaveGame.snapshot(self, checkpoint)
+	if persist_saves:
+		SaveGame.write(checkpoint_data)
+
+## Rebuild the shop at the last checkpoint and start the next beat. Used for retry and for Continue.
+func load_checkpoint(data := {}) -> bool:
+	var source := data if not data.is_empty() else checkpoint_data
+	if source.is_empty() or not SaveGame.apply(self, source):
+		return false
+	checkpoint_data = source
+	if source.checkpoint == "closing_time":
+		director.threat.begin()
+	return true
+
+func retry() -> void:
+	if not load_checkpoint() and director.step != StoryDirector.Step.IDLE:
+		restart_game()
+
+func continue_game() -> void:
+	var data := SaveGame.read()
+	if data.is_empty() or data.checkpoint == "shift_start" or not load_checkpoint(data):
+		begin_shift()
+
+func restart_game() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()

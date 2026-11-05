@@ -43,3 +43,19 @@ func message_count() -> int:
 	for name in threads:
 		total += threads[name].size()
 	return total
+
+func export_state() -> Dictionary:
+	var out := {}
+	for name in threads:
+		out[name] = (threads[name] as Array).duplicate(true)
+	return {"threads": out, "delivered": _delivered.keys()}
+
+func import_state(state: Dictionary) -> void:
+	for name in threads:
+		threads[name] = []
+		for entry in state.threads.get(name, []):
+			threads[name].append((entry as Dictionary).duplicate(true))
+	_delivered = {}
+	for id in state.delivered:
+		_delivered[id] = true
+	read_changed.emit()
