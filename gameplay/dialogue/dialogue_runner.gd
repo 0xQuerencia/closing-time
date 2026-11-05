@@ -4,7 +4,7 @@ extends Node
 signal line_shown(speaker: String, text: String)
 signal choices_shown(options: Array)
 signal finished(conversation_id: String)
-const BASE_HOLD := 1.5
+const BASE_HOLD := 1.3
 const PER_CHAR := 0.045
 var flags := {}
 var active_id := ""

@@ -6,8 +6,8 @@ signal step_changed(step: Step)
 signal event_logged(entry: String)
 enum Step { IDLE, INTRO, MARA, BEN, WORK, LEON_1, LEON_1_AWAY, LEON_2, ANOMALY, CAMERAS, BLACKOUT, POWER_BACK, SECURITY_DONE }
 const LEON_RETURN_AFTER_CHORES := 2
-const LEON_RETURN_MIN_AWAY := 10.0
-const LEON_RETURN_MAX_AWAY := 90.0
+const LEON_RETURN_MIN_AWAY := 6.0
+const LEON_RETURN_MAX_AWAY := 60.0
 var game: Gameplay
 var phone: PhoneModel
 var clock: StoryClock
@@ -41,8 +41,8 @@ func start() -> bool:
 		return false
 	_set_step(Step.INTRO)
 	_add_chores()
-	_later(6.0, func(): _text("dina_1", "Dina", "Please count the back cooler. And double-check the loading door.", 23, 26))
-	_later(12.0, func(): _spawn("mara", Step.MARA))
+	_later(3.0, func(): _text("dina_1", "Dina", "Please count the back cooler. And double-check the loading door.", 23, 26))
+	_later(6.0, func(): _spawn("mara", Step.MARA))
 	return true
 
 func _process(delta: float) -> void:
@@ -80,15 +80,15 @@ func _on_customer_finished(customer: Customer) -> void:
 			if step != Step.MARA:
 				return
 			_set_step(Step.BEN)
-			_later(5.0, func(): _text("dina_2", "Dina", "Remember the freezer count. And the back latch sticks. Lift it before you turn the key.", 23, 33))
-			_later(9.0, func(): _spawn("ben", Step.BEN))
+			_later(3.0, func(): _text("dina_2", "Dina", "Remember the freezer count. And the back latch sticks. Lift it before you turn the key.", 23, 33))
+			_later(5.0, func(): _spawn("ben", Step.BEN))
 		"ben":
 			if step != Step.BEN:
 				return
 			_set_step(Step.WORK)
-			_later(4.0, func(): _text("kay_1", "Kay", "Still doing inventory? Respectfully, why?", 23, 44))
-			_later(14.0, func(): _text("dina_3", "Dina", "Cash drop goes in the office drawer by 11:55. Don't leave it on the desk.", 23, 49))
-			_later(26.0, func(): _spawn("leon1", Step.LEON_1))
+			_later(2.0, func(): _text("kay_1", "Kay", "Still doing inventory? Respectfully, why?", 23, 44))
+			_later(8.0, func(): _text("dina_3", "Dina", "Cash drop goes in the office drawer by 11:55. Don't leave it on the desk.", 23, 49))
+			_later(14.0, func(): _spawn("leon1", Step.LEON_1))
 		"leon1":
 			if step != Step.LEON_1:
 				return
@@ -111,11 +111,11 @@ func _anomaly() -> void:
 		{"id": "spare_key", "text": "Check the key hooks"},
 		{"id": "cash_envelope", "text": "Check the cash drop"},
 		{"id": "boot_prints", "text": "Follow the wet prints"}])
-	_later(5.0, func(): _text("kay_2", "Kay", "A man bought the same water twice and acted like I'd never seen him.", 0, 7, true))
-	_later(14.0, func(): _text("kay_3", "Kay", "Maybe he really likes hydration.", 0, 8))
-	_later(24.0, func(): _text("dina_4", "Dina", "If the alarm trips, call the police, not me.", 0, 9))
+	_later(3.0, func(): _text("kay_2", "Kay", "A man bought the same water twice and acted like I'd never seen him.", 0, 7, true))
+	_later(8.0, func(): _text("kay_3", "Kay", "Maybe he really likes hydration.", 0, 8))
+	_later(13.0, func(): _text("dina_4", "Dina", "If the alarm trips, call the police, not me.", 0, 9))
 	if beats != null:
-		get_tree().create_timer(75.0).timeout.connect(beats.begin)  # real time: a player who ignores the clues still gets the cameras
+		get_tree().create_timer(40.0).timeout.connect(beats.begin)  # real time: a player who ignores the clues still gets the cameras
 
 # --- chores and clues -------------------------------------------------------------------------
 

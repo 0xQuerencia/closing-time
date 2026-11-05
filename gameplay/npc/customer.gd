@@ -4,7 +4,7 @@ extends CharacterBody3D
 enum Phase { ARRIVE, BROWSE, QUEUE, TRANSACTION, LEAVE, GONE }
 signal phase_changed(phase: Phase)
 signal finished(customer: Customer)
-const SPEED := 1.15
+const SPEED := 1.4
 const ACCELERATION := 1.8
 const BRAKING := 2.8
 const TURN_SPEED := 2.6
@@ -170,7 +170,7 @@ func run() -> void:
 	_set_phase(Phase.BROWSE)
 	await _walk(route.browse)
 	await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
-	await _wait(2.2)
+	await _wait(1.4)
 	var basket: Array[Product] = []
 	for item_id in profile.items:
 		basket.append(game.spawn_product(item_id, null))

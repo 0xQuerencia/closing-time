@@ -11,6 +11,7 @@ const SPOOK_DISTANCE := 3.2
 var rear_door: Door
 var spooked := false
 var inside := false
+var leaving := false
 
 func prepare(rear: Door) -> Intruder:
 	rear_door = rear
@@ -40,7 +41,7 @@ func wait_in_vestibule(seconds: float) -> void:
 	while left > 0.0 and not spooked:
 		await get_tree().physics_frame
 		left -= get_physics_process_delta_time()
-		if _player_flat_distance() < SPOOK_DISTANCE:
+		if _player_flat_distance() < SPOOK_DISTANCE and not game.security.cctv.viewing:  # sitting at the monitor, you are not near him
 			spooked = true
 
 func _player_flat_distance() -> float:
@@ -56,6 +57,7 @@ func walk_to_camera(camera_point: Vector3) -> void:
 	await _wait(2.6)
 
 func leave_building() -> void:
+	leaving = true
 	var back: Array[Vector3] = [Vector3(4.25, 0, -5.4), THRESHOLD, OUTSIDE]
 	rear_door.request_open(self)
 	await _wait(0.9)

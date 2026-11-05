@@ -7,11 +7,11 @@ var director: StoryDirector
 var game: Gameplay
 var sec: Security
 var begun := false
-var camera_check_delay := 6.0
-var blackout_delay := 7.0
-var entry_delay := 5.0
-var entry_fallback := 22.0
-var walk_fallback := 45.0
+var camera_check_delay := 3.0
+var blackout_delay := 5.0
+var entry_delay := 3.0
+var entry_fallback := 15.0
+var walk_fallback := 30.0
 var walk_waits_for_player := true
 
 func setup(owner: StoryDirector) -> SecurityBeats:
@@ -50,7 +50,7 @@ func _on_feed_viewed(index: int) -> void:
 			director._later(blackout_delay, blackout)
 	elif director.step == StoryDirector.Step.POWER_BACK and index == 1:
 		if director._once("walk_armed"):
-			director._later(3.0, camera_walk)
+			director._later(2.0, camera_walk)
 
 # --- the outage ---------------------------------------------------------------------------------
 
@@ -64,7 +64,7 @@ func blackout() -> void:
 	game.tasks.add_task("power", "Restore the power", [
 		{"id": "cover", "text": "Open the breaker panel"}, {"id": "main", "text": "Switch the main on"}, {"id": "security", "text": "Switch the security breaker on"}])
 	game.interactor.message.emit("Power's out.  T  phone light")
-	director._later(4.0, func(): director._text("dina_6", "Dina", "The panel says you're on battery. Breaker box is in the back hall past the stockroom. Try the main.", 0, 15))
+	director._later(3.0, func(): director._text("dina_6", "Dina", "The panel says you're on battery. Breaker box is in the back hall past the stockroom. Try the main.", 0, 15))
 	director._later(entry_fallback, leon_enters)
 
 func _on_cover_opened() -> void:
@@ -89,7 +89,7 @@ func power_back() -> void:
 	director.clock.advance_to(0, 21)
 	director._record("power_back")
 	game.tasks.add_task("rear_cam", "Look at the rear camera", [{"id": "look", "text": "Check the rear hall camera"}])
-	director._later(5.0, func(): director._text("dina_7", "Dina", "Panel shows the power's back. Can you look at the rear camera for me?", 0, 22))
+	director._later(3.0, func(): director._text("dina_7", "Dina", "Panel shows the power's back. Can you look at the rear camera for me?", 0, 22))
 	director._later(walk_fallback, camera_walk)
 
 # --- Leon ---------------------------------------------------------------------------------------
@@ -113,18 +113,23 @@ func camera_walk() -> void:
 	director._record("camera_walk")
 	if director.spawn_enabled:
 		var leon := sec.intruder
-		if not is_instance_valid(leon) or not leon.inside:
+		if is_instance_valid(leon) and leon.leaving:
+			await leon.left_building  # already walking out after being spooked: let him finish, then he comes back
+		if not is_instance_valid(leon) or not leon.inside or leon.leaving:
 			if is_instance_valid(leon):
 				leon.queue_free()
 			sec.intruder = null
 			leon = sec.spawn_intruder()
 			await leon.enter_building()
+			director._record("walk_leon_inside")
 		if walk_waits_for_player:
 			var waited := 0.0
-			while is_instance_valid(leon) and leon._player_flat_distance() < 4.0 and waited < 40.0:
+			while is_instance_valid(leon) and not sec.cctv.viewing and leon._player_flat_distance() < 4.0 and waited < 40.0:
 				await get_tree().create_timer(0.5).timeout
 				waited += 0.5
+		director._record("walk_started")
 		await leon.walk_to_camera(Cctv.CAMS[1].pos - Vector3(0, 1.6, 0))
+		director._record("walk_arrived")
 	sec.cctv.kill_feed(1)
 	director._record("rear_camera_lost")
 	director.flags["rear_cam_lost"] = true
@@ -140,4 +145,4 @@ func finish() -> void:
 	game.tasks.complete_objective("rear_cam", "look")
 	director.flags["m4_complete"] = true
 	director._record("security_done")
-	director._later(3.0, func(): director._text("dina_8", "Dina", "The police said fifteen minutes. Lock the front door and stay up front. I'm driving over.", 0, 29))
+	director._later(2.0, func(): director._text("dina_8", "Dina", "The police said fifteen minutes. Lock the front door and stay up front. I'm driving over.", 0, 29))

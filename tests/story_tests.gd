@@ -91,13 +91,13 @@ func _test_state_machine() -> void:
 	check(d.step == StoryDirector.Step.LEON_1_AWAY, "Leon waits: no chores, only 5 s")
 	d._chores_done = {"restock": true, "trash": true}
 	d._process(6.0)
-	check(d.step == StoryDirector.Step.LEON_2 and d.spawn_log.count("leon2") == 1, "two chores plus 11 s brings him back, once")
+	check(d.step == StoryDirector.Step.LEON_2 and d.spawn_log.count("leon2") == 1, "two chores plus 6 s brings him back, once")
 	d._process(100.0)
 	check(d.spawn_log.count("leon2") == 1, "no second return")
 	var timeout := _fresh_director()
 	timeout._set_step(StoryDirector.Step.LEON_1_AWAY)
 	timeout._process(StoryDirector.LEON_RETURN_MAX_AWAY + 1.0)
-	check(timeout.spawn_log == ["leon2"], "with no chores done he still returns after 90 s (no softlock)")
+	check(timeout.spawn_log == ["leon2"], "with no chores done he still returns after the 60 s cap (no softlock)")
 	d.game.clues.active = false
 	d._on_customer_finished(_fake_customer("leon2"))
 	check(d.step == StoryDirector.Step.ANOMALY and game.clues.active, "Leon's second visit ends in the anomaly")
