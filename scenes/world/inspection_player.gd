@@ -4,6 +4,7 @@ var camera: Camera3D
 var enabled := true
 var require_mouse_capture := true
 var head_bob := false
+var sensitivity := 1.0
 var elapsed := 0.0
 
 func _ready() -> void:
@@ -34,8 +35,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if enabled and event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or not require_mouse_capture):
-		rotate_y(-event.relative.x * 0.002)
-		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * 0.002, -1.35, 1.35)
+		rotate_y(-event.relative.x * 0.002 * sensitivity)
+		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * 0.002 * sensitivity, -1.35, 1.35)
 
 func _physics_process(delta: float) -> void:
 	if not enabled:
