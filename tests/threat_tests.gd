@@ -25,6 +25,7 @@ func run_threat(market: Node3D) -> void:
 	await _test_route_caught_and_retry()
 	await _test_route_escape()
 	await _test_route_secured()
+	await _test_adoption()
 	await _test_office_unlocked_is_fatal()
 	await _test_rescue_timeout()
 	await _test_save_and_flow()
@@ -270,7 +271,7 @@ func _test_chase_fairness() -> void:
 	_place(leon, Vector3(-1.5, 0, -4.3), Vector3(2.4, 0, -4.3))
 	leon.begin_hunt()
 	leon.state = Stalker.State.CHASE
-	var walked := await _run_player(Vector3(0.0, 0.0, -4.3), Vector3(2.4, 0.0, 0.0), 1.9, leon)
+	var walked := await _run_player(Vector3(-0.6, 0.0, -4.3), Vector3(2.4, 0.0, 0.0), 1.9, leon)
 	check(not walked and threat.ended == "caught", "walking away is not enough: he catches a walking player")
 	await _after_ending()
 	threat.clear_actors()
@@ -313,7 +314,7 @@ func _test_route_escape() -> void:
 	await aim(Vector3(1.9, 0.0, 4.9), _front_bolt().global_position)
 	check(_prompt() == "Lock the front door", "you can lock the front door when told to")
 	game.interactor.interact()
-	check(sec.front_door.locked and game.tasks.tasks.closing.objectives[0].done, "locking it ticks the task")
+	check(sec.front_door.locked, "the front door locks")
 	game.interactor.interact()
 	check(not sec.front_door.locked, "unlock it again to leave")
 	await aim(Vector3(1.9, 0.0, 4.9), sec.front_door.leaves[0].body.global_position)
@@ -333,7 +334,7 @@ func _test_route_secured() -> void:
 	var leon := await _hunting_leon("secured")
 	await aim(Vector3(6.0, 0.0, -4.5), _office_bolt().global_position)
 	game.interactor.interact()
-	check(sec.office_door.locked and threat.is_secured(), "inside the locked office you are secured")
+	check(sec.office_door.locked and threat.is_secured() and game.tasks.tasks.closing.objectives[0].done, "inside the locked office you are secured and the task ticks")
 	await aim(Vector3(6.9, 0.0, -4.4), sec.landline.global_position)
 	check(_prompt() == "Call the police", "the office phone offers the call (prompt='%s')" % _prompt())
 	game.dialogue.time_scale_for_tests = 0.2
@@ -362,6 +363,18 @@ func _test_office_unlocked_is_fatal() -> void:
 	check(await wait_until(func(): return threat.ended != "", 40), "but with the door open Leon walks in")
 	check(threat.ended == "caught", "and gets you before the police do (ended=%s)" % threat.ended)
 	await _after_ending()
+	threat.clear_actors()
+
+func _test_adoption() -> void:
+	await _to_closing()
+	var waiting := sec.spawn_intruder()
+	waiting.global_position = Vector3(4.25, 0.0, -0.9)
+	waiting.inside = true
+	await _settle(2)
+	threat.begin()
+	check(threat.stalker == waiting and waiting.state == Stalker.State.PATROL and game.director.log.has("leon_hunting"), "the Leon who looked into the camera is the one who hunts: nothing respawns")
+	check(not game.director.log.has("leon_returns"), "no second entrance on the first run")
+	check(await wait_until(func(): return waiting.global_position.distance_to(Vector3(4.25, 0.0, 0.0)) < 1.5, 10), "he walks off toward the stockroom door first, not into the office")
 	threat.clear_actors()
 
 func _test_rescue_timeout() -> void:

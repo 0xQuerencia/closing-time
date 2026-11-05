@@ -7,11 +7,11 @@ signal caught
 enum State { DORMANT, PATROL, INVESTIGATE, CHASE, SEARCH, AT_DOOR, CAUGHT, LEAVING }
 const PATROL_SPEED := 1.3
 const INVESTIGATE_SPEED := 1.6
-const CHASE_SPEED := 2.3
+const CHASE_SPEED := 2.2
 const SIGHT_RANGE := 11.0
 const SIGHT_HALF_ANGLE := deg_to_rad(62.0)
 const CLOSE_NOTICE := 1.7
-const CATCH_DISTANCE := 1.05
+const CATCH_DISTANCE := 0.95
 const FOUND_HIDING_DISTANCE := 1.5
 const LOSE_SIGHT_AFTER := 2.5
 const SEARCH_SECONDS := 6.0
@@ -37,10 +37,10 @@ var _noise_timer := 0.0
 var _stuck := 0.0
 var _last_pos := Vector3.ZERO
 
-func begin_hunt() -> void:
-	_patrol_index = 0
+func begin_hunt(start_index := 0) -> void:
+	_patrol_index = start_index % PATROL_ROUTE.size()
 	_set_state(State.PATROL)
-	_goto(graph.point(PATROL_ROUTE[0]))
+	_goto(graph.point(PATROL_ROUTE[_patrol_index]))
 
 func stand_down() -> void:
 	_set_state(State.DORMANT)

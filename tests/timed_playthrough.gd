@@ -10,6 +10,7 @@ const OUT := "res://local/screenshots/timing"
 var pace_scale := 1.0
 var t0 := 0
 var marks: Array = []
+var ending_plan := "secured"
 var play := 0.0  # seconds of play with every frame clamped to 100 ms, so one-off loading hitches don't count
 var frames := 0
 var worst_frame := 0.0
@@ -31,15 +32,17 @@ func _mark(label: String) -> void:
 func _think(seconds: float) -> void:
 	await get_tree().create_timer(seconds * pace_scale).timeout
 
-func _walk_to(pos: Vector3) -> void:
+func _walk_to(pos: Vector3, speed := WALK_SPEED) -> void:
 	player.enabled = false  # the bot owns the body; leaving the desk hands control back, which would let physics shove it
 	var from := player.global_position
-	var seconds := from.distance_to(pos) * PATH_DETOUR / WALK_SPEED * pace_scale
+	var seconds := from.distance_to(pos) * PATH_DETOUR / speed * pace_scale
 	var elapsed := 0.0
 	while elapsed < seconds:
 		await get_tree().physics_frame
 		elapsed += get_physics_process_delta_time()
 		player.global_position = from.lerp(pos, clampf(elapsed / seconds, 0.0, 1.0))
+		player.velocity = (pos - from).normalized() * speed
+	player.velocity = Vector3.ZERO
 	player.global_position = pos
 
 func _look_press(from: Vector3, target: Vector3, read := 0.7) -> void:
@@ -58,6 +61,8 @@ func _shot(shot_name: String) -> void:
 
 func _pace_arg() -> void:
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--ending="):
+			ending_plan = arg.trim_prefix("--ending=")
 		if arg.begins_with("--pace="):
 			match arg.trim_prefix("--pace="):
 				"fast":
@@ -96,6 +101,7 @@ func run_timed(market: Node3D) -> void:
 	await _investigate_back()
 	await _security()
 	_mark("M4 complete")
+	await _climax()
 	await _shot("timed_end")
 	_report()
 	await world.finish_run(1 if failures else 0)
@@ -258,6 +264,80 @@ func _security() -> void:
 	await wait_until(func(): return game.phone.has_delivered("dina_8"), 10)
 	await _read_phone()
 
+# --- M5 ----------------------------------------------------------------------------------------
+
+func _climax() -> void:
+	var threat := game.director.threat
+	await wait_until(func(): return threat.active, 10)
+	_mark("climax begins (Leon is loose)")
+	var ended := false
+	match ending_plan:
+		"escape":
+			ended = await _run_escape()
+		"caught", "caught_then_secured":
+			await _stand_and_wait_to_be_caught()
+			if ending_plan == "caught_then_secured":
+				_mark("retry from checkpoint")
+				game.flow.press("retry")
+				await _think(1.0)
+				await _secure_office()
+		_:
+			await _secure_office()
+	await wait_until(func(): return threat.ended != "", 120)
+	_mark("ending: %s (player %s, leon %s state %s)" % [threat.ended, player.global_position, str(threat.stalker.global_position) if is_instance_valid(threat.stalker) else "-", str(threat.stalker.state) if is_instance_valid(threat.stalker) else "-"])
+	check(threat.ended != "", "the night reaches an ending")
+	await _shot("timed_ending_" + threat.ended)
+
+func _secure_office() -> void:
+	var sec := game.security
+	sec.cctv.leave()
+	sec.cctv.settle()
+	await _walk_to(Vector3(6.0, 0.05, -4.5))
+	await aim(Vector3(6.0, 0.05, -4.5), _bolt_of(sec.office_door).global_position)
+	await _think(0.6)
+	game.interactor.interact()
+	_mark("office locked in")
+	await _walk_to(Vector3(6.9, 0.05, -4.4))
+	await aim(Vector3(6.9, 0.05, -4.4), sec.landline.global_position)
+	await _think(0.6)
+	game.interactor.interact()
+	_mark("calling the police")
+	await wait_until(func(): return sec.landline.called, 40)
+	_mark("call finished")
+
+func _bolt_of(door: Door) -> Node:
+	return door.leaves[0].body.get_children().filter(func(c): return c is Door.DoorBolt)[0]
+
+func _run_escape() -> bool:
+	var sec := game.security
+	# A player would watch CAM 1 and go when he has walked off toward the west aisles; the bot just reads his position.
+	var leon := game.director.threat.stalker
+	leon.state_changed.connect(func(st): _mark("leon state %d at %s, player %s" % [st, leon.global_position, player.global_position]))
+	await wait_until(func(): return is_instance_valid(leon) and leon.global_position.x < -1.0, 90)
+	_mark("leon is in the west aisles, going")
+	sec.cctv.leave()
+	sec.cctv.settle()
+	for waypoint in [Vector3(5.9, 0.05, -4.3), Vector3(4.25, 0.05, -4.3), Vector3(2.4, 0.05, -3.5), Vector3(2.4, 0.05, 2.9), Vector3(1.9, 0.05, 4.9)]:
+		# Walking is quiet and running is heard through walls, so walk until he turns on you, then run.
+		var steps := maxi(1, int(player.global_position.distance_to(waypoint) / 1.5))
+		var start := player.global_position
+		for i in range(1, steps + 1):
+			var chasing: bool = is_instance_valid(leon) and leon.state == Stalker.State.CHASE
+			await _walk_to(start.lerp(waypoint, float(i) / steps), 2.8 if chasing else 1.9)
+			if game.director.threat.ended != "":
+				return true
+	await aim(Vector3(1.9, 0.05, 4.9), sec.front_door.leaves[0].body.global_position)
+	game.interactor.interact()
+	await _walk_to(Vector3(1.7, 0.05, 7.8), 2.8)
+	return true
+
+func _stand_and_wait_to_be_caught() -> void:
+	game.security.cctv.leave()
+	game.security.cctv.settle()
+	await _walk_to(Vector3(-1.5, 0.05, 5.2))
+	player.enabled = false
+	await wait_until(func(): return game.director.threat.ended == "caught", 150)
+
 func _report() -> void:
 	print("---- TIMED PLAYTHROUGH (scripted bot, pace x%.1f; not a human playtest) ----" % pace_scale)
 	var named := {
@@ -266,7 +346,8 @@ func _report() -> void:
 		"three clues found": "anomaly + clues",
 		"blackout": "M4 cameras",
 		"power restored": "M4 outage + breaker",
-		"M4 complete": "M4 rear camera"}
+		"M4 complete": "M4 rear camera",
+		"climax begins (Leon is loose)": "M4 -> climax handoff"}
 	var prev := 0.0
 	for m in marks:
 		if named.has(m.label):

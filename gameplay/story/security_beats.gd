@@ -133,9 +133,7 @@ func camera_walk() -> void:
 	sec.cctv.kill_feed(1)
 	director._record("rear_camera_lost")
 	director.flags["rear_cam_lost"] = true
-	if director.spawn_enabled and is_instance_valid(sec.intruder):
-		await sec.intruder.leave_building()
-	finish()
+	finish()  # he does not leave: the threat beat takes him over, still standing in the hall
 
 func finish() -> void:
 	if not director._once("security_done"):
@@ -145,5 +143,5 @@ func finish() -> void:
 	game.tasks.complete_objective("rear_cam", "look")
 	director.flags["m4_complete"] = true
 	director._record("security_done")
-	director._later(2.0, func(): director._text("dina_8", "Dina", "The police said fifteen minutes. Lock the front door and stay up front. I'm driving over.", 0, 29))
-	director._later(4.0, director.threat.begin)
+	director._later(2.0, func(): director._text("dina_8", "Dina", "Police are fifteen minutes out. Don't go looking for him. Get out the front, or lock the office and call them back. I'm on my way.", 0, 29))
+	director._later(1.5, director.threat.begin)

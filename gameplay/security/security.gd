@@ -159,14 +159,7 @@ func pulse_rear_door() -> void:
 func spawn_intruder() -> Intruder:
 	if is_instance_valid(intruder):
 		return intruder
-	var profile := {"id": "leon_rear", "name": "Leon", "model": "vinrax", "outfit": "leon_overshirt", "cap": true, "route": {}}
-	intruder = Intruder.new()
-	intruder.setup(game, profile)
-	intruder.prepare(rear_door)
-	intruder._excused = true
-	world.add_child(intruder)
-	intruder.global_position = Intruder.OUTSIDE
-	return intruder
+	return spawn_stalker()
 
 ## Leon on the hunt: same model as the rear intruder, but he walks the store on his own.
 func spawn_stalker() -> Stalker:

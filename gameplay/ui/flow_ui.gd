@@ -107,6 +107,7 @@ func _present(next_mode: String, title: String, body: String, footer: String) ->
 		get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	game.hud.visible = false
+	game.phone_ui.visible = false
 
 func hide_all() -> void:
 	mode = "none"
@@ -114,6 +115,7 @@ func hide_all() -> void:
 	if is_inside_tree():
 		get_tree().paused = false
 	game.hud.visible = true
+	game.phone_ui.visible = true
 	if not DisplayServer.get_name() == "headless":
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 

@@ -42,13 +42,24 @@ func begin() -> void:
 	threat_time = 0.0
 	director.clock.advance_to(0, 31)
 	game.tasks.add_task("closing", "Get through the night", [
-		{"id": "lock_front", "text": "Lock the front door"},
+		{"id": "lock_office", "text": "Lock the office door, or get out the front"},
 		{"id": "call", "text": "Call the police (office phone)"}])
-	if sec.front_door.locked:
-		game.tasks.complete_objective("closing", "lock_front")
+	if sec.office_door.locked:
+		game.tasks.complete_objective("closing", "lock_office")
 	director._record("threat_begin")
 	game.save_checkpoint("closing_time")
-	director._later(entry_delay, leon_returns)
+	var waiting := sec.intruder as Stalker
+	if director.spawn_enabled and is_instance_valid(waiting) and waiting.inside:
+		_adopt(waiting)  # first time through he never left: he is standing in the rear hall
+	else:
+		director._later(entry_delay, leon_returns)
+
+func _adopt(leon: Stalker) -> void:
+	director._once("leon_returns")
+	stalker = leon
+	stalker.caught.connect(_on_caught)
+	director._record("leon_hunting")
+	stalker.begin_hunt(1)  # past the office door first: the office is the last place he looks
 
 func leon_returns() -> void:
 	if ended != "" or not director._once("leon_returns"):
@@ -61,7 +72,7 @@ func leon_returns() -> void:
 	await stalker.enter_building()
 	if ended != "" or not is_instance_valid(stalker):
 		return
-	director._text("dina_9", "Dina", "Was that the back door? Get out the front or lock yourself in. Don't go looking.", 0, 33)
+	director._text("dina_9", "Dina", "Was that the back door again? Get out or lock yourself in.", 0, 33)
 	stalker.begin_hunt()
 
 func _physics_process(delta: float) -> void:
@@ -70,7 +81,7 @@ func _physics_process(delta: float) -> void:
 		return
 	threat_time += delta
 	var player: CharacterBody3D = game.player
-	if player.global_position.z > ESCAPE_Z and player.enabled:
+	if player.global_position.z > ESCAPE_Z:
 		end("escape")
 		return
 	if police_left >= 0.0:
@@ -88,12 +99,12 @@ func in_office() -> bool:
 func is_secured() -> bool:
 	return in_office() and sec.office_door.locked
 
-func _on_front_lock(locked: bool) -> void:
-	if locked and active:
-		game.tasks.complete_objective("closing", "lock_front")
-
-func _on_office_lock(_locked: bool) -> void:
+func _on_front_lock(_locked: bool) -> void:
 	pass
+
+func _on_office_lock(locked: bool) -> void:
+	if locked and active:
+		game.tasks.complete_objective("closing", "lock_office")
 
 func _on_call_started() -> void:
 	if not active:

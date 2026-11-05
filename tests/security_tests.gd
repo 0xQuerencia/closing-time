@@ -44,6 +44,7 @@ func _prompt() -> String:
 	return game.interactor.current_prompt().text
 
 func _reset_world() -> void:
+	game.director.threat.clear_actors()
 	sec.power.reset()
 	for door in [sec.front_door, sec.rear_door, sec.breaker.cover]:
 		door.set_locked(false, true)
@@ -339,8 +340,9 @@ func _test_story_chain(with_leon: bool) -> void:
 	check(await wait_until(func(): return d.step >= StoryDirector.Step.SECURITY_DONE, 90 if with_leon else 8), "%s: looking at the rear camera finishes the sequence" % label)
 	check(d.flags.get("m4_complete", false) and sec.cctv.is_feed_dead(1), "%s: the rear feed is lost and M4 is flagged" % label)
 	if with_leon:
-		check(await wait_until(func(): return sec.intruder == null or not is_instance_valid(sec.intruder) or not sec.intruder.inside, 40), "%s: Leon is back outside" % label)
+		check(await wait_until(func(): return is_instance_valid(sec.intruder) and sec.intruder.inside and (sec.intruder as Stalker).state == Stalker.State.PATROL, 20), "%s: Leon stays inside and starts hunting, he does not go home" % label)
 		check(await wait_until(func(): return sec.rear_door.is_closed(), 10), "%s: the rear door is shut behind him" % label)
+		check(game.director.threat.stalker == sec.intruder and d.log.has("leon_hunting"), "%s: the same Leon is handed to the threat beat" % label)
 	var order := ["cameras_begin", "msg_dina_5", "blackout", "leon_rear_entry", "power_back", "camera_walk", "rear_camera_lost", "security_done"]
 	var last := -1
 	var ordered := true
