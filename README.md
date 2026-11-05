@@ -1,16 +1,29 @@
 # Closing Time
 
-A first-person night-shift thriller set at Marlow's Market. This repository currently contains the **M1 environment slice**: an explorable convenience store, checkout, stocked aisles, refrigeration, office, stockroom, rear corridor, and a small night parking lot. Story and customer interactions are still to come.
+A short first-person horror game set on one night shift at Marlow's Market. You are Jamie, the night clerk. Serve the few customers who come in, do your chores, and notice when something is wrong. A fired ex-clerk has a spare key. Plan on about 10 to 15 minutes.
 
-Open `project.godot` in **Godot 4.6.3** and press **F6** on `scenes/world/market_root.tscn`, or **F5** from the project. From a terminal:
+It is a human threat, not a monster: no jumpscares, no ghosts. There are three endings: get out the front door, lock yourself in the office and hold out until the police arrive, or get caught and try again from the checkpoint.
+
+## Play
 
 ```sh
-godot --path .
+godot --path .            # Godot 4.6.3
+godot --headless --path . --export-release "Linux" build/linux/ClosingTime.x86_64   # Linux build
 ```
 
-WASD walks, mouse looks, Shift walks faster, B toggles subtle head bob, Escape releases or recaptures the mouse. Click the game to recapture it. The front entrance is held open for exploration; the rear delivery door is closed. This milestone uses a temporary inspection controller.
+| Key | Action |
+| --- | --- |
+| WASD, mouse | move, look |
+| Shift | run (noisy: Leon hears it) |
+| E | use, scan, talk, hide |
+| F | look closely |
+| Q | put an item down |
+| 1 / 2 / 3 | choose a reply |
+| Tab | phone |
+| T | phone light |
+| Esc | pause |
 
-The desktop renderer is Forward+, with MSAA 2×. World scale is meters; eye height is 1.62 m. No VHS filter is applied. The register and security monitor are static environmental props.
+The game saves a checkpoint at the start of the shift and again before the final stretch. Continue on the title screen reloads the last one.
 
 ## Check and reproduce
 
@@ -26,9 +39,9 @@ blender --factory-startup -b --python tools/blender/build_market.py
 godot --headless --editor --path . --import --quit
 ```
 
-Validation exercises import/parsing, collision rays, capsule sweeps, and keyboard/mouse movement. It does not replace playing the scene. Logs and screenshots go to the local ignored `local/` directory.
+Validation runs seven headless stages: import and parsing, the world, gameplay systems, mouse look, the story, security (doors, power, cameras) and the threat (Leon's pathing and senses, hiding, all three endings, retry, saves and menus). `godot --path . -- --qa-gameplay` drives the real renderer with synthetic key and mouse input, and `-- --timed-playthrough [--ending=escape|secured|caught_then_secured] [--pace=slow]` plays a scripted run in real time and prints how long each stretch takes. That bot is a script, not a human playtest. It does not replace playing the game. Logs and screenshots go to the local ignored `local/` directory.
 
-Environment meshes, fictional labels, surface maps, and electrical room tone were generated from the included source scripts with AI assistance. No assets, branding, characters, or dialogue from other games are included. See `ASSET_CREDITS.md`.
+The game code, tests, environment meshes, fictional labels, surface maps and sounds were produced with AI coding assistants working from the author's design and direction, and generated from the source scripts included here. No assets, branding, characters, or dialogue from other games are included. See `ASSET_CREDITS.md`.
 
 ## Customer movement review
 
