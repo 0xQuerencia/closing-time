@@ -20,21 +20,21 @@ func _grade_environment(world: Node) -> void:
 		var env := (node as WorldEnvironment).environment
 		if env == null:
 			continue
-		env.ambient_light_energy *= 0.62
+		env.ambient_light_energy *= 0.70
 		env.fog_enabled = true
 		env.fog_light_color = Color(0.05, 0.065, 0.08)
-		env.fog_density = 0.011
+		env.fog_density = 0.009
 		env.fog_sky_affect = 0.0
 		env.adjustment_enabled = true
-		env.adjustment_contrast = 1.08
-		env.adjustment_saturation = 0.9
+		env.adjustment_contrast = 1.05
+		env.adjustment_saturation = 0.92
 
 func _dim_lights(world: Node) -> void:
 	var tubes: Array[Light3D] = []
 	for node in world.find_children("*", "Light3D", false, false):
 		var light := node as Light3D
 		if light.position.y > 2.0 and light.position.y < 3.0:
-			light.light_energy *= 0.78
+			light.light_energy *= 0.84
 			light.light_color = light.light_color.lerp(Color(0.86, 0.95, 0.9), 0.35)
 			tubes.append(light)
 	if not tubes.is_empty():

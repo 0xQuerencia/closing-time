@@ -36,7 +36,7 @@ The paper in the top-right is the complete shift checklist. During play, the **N
 bash scripts/validate_project.sh
 # Render five views from the running Godot scene at 1600 × 900:
 godot --path . -- --capture
-# Inspect refined shelf packaging and coffee props without retro post effects:
+# Inspect refined products, checkout and stockroom props without retro post effects:
 godot --path . -- --capture-assets
 # Capture the in-game NEXT card and full Shift Guide:
 godot --path . -- --capture-reference --guide

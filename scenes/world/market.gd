@@ -278,6 +278,8 @@ func build_lighting() -> void:
 			lamp(Vector3(x,2.85,z),Color(1,.95,.83),0.85,5.3,x == -2.0)
 	for z in [-4,1.5]:
 		lamp(Vector3(6.9,2.84,z),Color(1,.91,.77),0.72,4.0,true)
+	# Give the active stockroom aisle enough practical light to read carton labels.
+	lamp(Vector3(6.9,2.84,3.0),Color(1,.91,.78),0.82,4.4,false)
 	var utility_fixture := MeshInstance3D.new()
 	var diffuser := CylinderMesh.new()
 	diffuser.top_radius = .14
@@ -411,7 +413,10 @@ func capture_views(m3_views: bool) -> void:
 			["04_snack_seals",Vector3(-7.0,1.62,-.7),Vector3(-6.23,1.45,-1.15)],
 			["05_tin_rims",Vector3(1.05,1.62,-.7),Vector3(.25,1.42,-1.15)],
 			["06_carton_folds",Vector3(-4.1,1.62,-.7),Vector3(-3.23,1.44,-1.15)],
-			["07_store_context",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)]]
+			["07_store_context",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)],
+			["08_checkout_fixtures",Vector3(-5.4,1.62,6.0),Vector3(-5.9,1.02,4.35)],
+			["09_stockroom_restock",Vector3(6.0,1.58,1.7),Vector3(6.55,.82,2.75)],
+			["10_stockroom_hand_truck",Vector3(6.0,1.52,.95),Vector3(6.65,.78,.33)]]
 	DirAccess.make_dir_recursive_absolute(output_dir)
 	for view in views:
 		shot_camera.position = view[1]

@@ -229,6 +229,19 @@ cyl('Clerk coffee cup',(-7.6,1.03,4.5),.045,.16,'paper',24)
 cyl('Cup lid',(-7.6,1.116,4.5),.048,.015,'dark',24)
 for j in range(3):
  o=box('Loose receipt',(-7.2+j*.035,.959+j*.002,4.3+j*.02),(.07,.002,.17),'paper');o.rotation_euler[2]=j*.12
+# Small, contained impulse rack: wrapped sweets and gum beside the scanner.
+# Keep its footprint inside the counter and clear of the customer's scan area.
+box('Counter impulse tray',(-7.03,1.035,4.62),(.42,.15,.43),'red',.025)
+for x in [-7.22,-6.84]:box('Counter tray divider',(x,1.12,4.62),(.018,.16,.4),'cream',.006)
+for row in range(2):
+ for j in range(3):
+  idx=(row*3+j+2)%16;x=-7.15+j*.12;z=4.50+row*.19
+  box('Counter gum pack',(x,1.19,z),(.092,.16,.045),'pack%d'%idx,.006)
+  label((x,1.19,z+.024),.084,.125,idx)
+# A restrained service label and card-reader receipt slot make the transaction
+# hardware read as a small-town checkout instead of a plain black block.
+box('Card reader display',(-4.7,1.11,3.845),(.095,.045,.008),'screen',.006)
+box('Card reader slot',(-4.7,1.135,3.832),(.042,.004,.003),'dark')
 # 3 gondolas, shelves 1.72m high. Irregular stock in coherent brand runs.
 for ai,x in enumerate([-6,-3,0]):
  box('Gondola base',(x,.12,-.9),(.91,.24,4.9),'shelf',.025,True)
@@ -307,6 +320,10 @@ for y in [1.7,2.26]:
  for z in [-.79,-.41]:box('Poster tape',(-8.867,y,z),(.008,.04,.075),'cream')
 # Office furniture and stockroom.
 group='backrooms'
+# A working ceiling fluorescent over the inventory aisle, distinct from the
+# darker rear office and active only while the store circuit has power.
+box('Stockroom fluorescent housing',(6.9,3.13,3.0),(.25,.09,1.05),'steel',.014)
+for dx in [-.06,.06]:box('Stockroom fluorescent diffuser',(6.9+dx,3.075,3.0),(.045,.025,.94),'tube',.01)
 # Keep the desk collision in the original footprint while using a sourced model for its visuals.
 colliders.append({'name':'Office desk','p':[7.6,.74,-5.25],'s':[2.1,.075,.75]})
 for x in [6.7,8.5]:colliders.append({'name':'Desk leg','p':[x,.37,-5.25],'s':[.065,.74,.62]})
@@ -322,9 +339,16 @@ for z in [-1.2,1.5,4.5]:
   for j in range(3):
    if r.random()<.2:continue
    zz=z-.6+j*.58
-   box('Sealed carton',(8.25,y+.26,zz),(.85,.5,.49),'cardboard',.018)
-   box('Packing tape',(8.25,y+.515,zz),(.12,.006,.49),'cream')
-   art_panel((7.816,y+.27,zz),.25,.17,'shipping',-math.pi/2)
+   # Alternate case sizes and rotate a few labels to break up the repeated
+   # identical-box pattern while keeping each carton securely on its shelf.
+   width,depth,height=[(.72,.46,.42),(.82,.50,.48),(.62,.44,.38)][(j+int(y*10)+int(z))%3]
+   cx=8.25+(-.035 if j==1 else .025 if j==2 else 0)
+   cy=y+height/2+.045
+   box('Sealed carton',(cx,cy,zz),(width,height,depth),'cardboard',.018)
+   box('Packing tape',(cx,cy+height/2+.004,zz),(.085,.006,depth*.96),'cream',.002)
+   # Folded top flaps and a narrow case seam catch the overhead practicals.
+   box('Carton top seam',(cx,cy+height/2+.006,zz),(.012,.004,depth*.92),'cardboard')
+   art_panel((cx-width/2-.004,cy,zz),.24,.15,'shipping',-math.pi/2)
 box('Breaker box',(4.91,1.52,2.8),(.13,.55,.35),'shelf',.018)
 for z in [2.69,2.78,2.87]:box('Breaker switch',(4.829,1.5,z),(.025,.065,.04),'dark')
 # Low-key evidence of a working shift: wall clock, bin, cup, floor carton.
@@ -341,6 +365,24 @@ cyl('Mop bucket',(5.8,.19,4.4),.22,.36,'yellow');o=cyl('Mop handle',(5.9,.9,4.4)
 box('Inventory table',(6,.76,2.9),(1.2,.07,.65),'wood',.02,True)
 for x in [5.5,6.5]:box('Table leg',(x,.38,2.9),(.06,.76,.5),'steel',.006)
 box('Inventory sheet',(6,.801,2.9),(.25,.003,.32),'paper')
+# Working stockroom details: hand truck parked beside the inventory table,
+# with rubber wheels, a toe plate, solid uprights and a curved grip.
+box('Hand truck toe plate',(6.63,.09,.52),(.48,.045,.36),'steel',.025)
+for x in [6.43,6.83]:
+ box('Hand truck rail',(x,.67,.33),(.035,1.18,.045),'steel',.014)
+ cyl('Hand truck wheel',(x,.16,.31),.145,.065,'rubber',16,'x')
+ cyl('Hand truck hub',(x+(-.034 if x<6.6 else .034),.16,.31),.045,.008,'steel',12,'x')
+for y in [.43,.78,1.05]:box('Hand truck crossbar',(6.63,y,.33),(.43,.035,.04),'steel',.012)
+tube_path('Hand truck grip',[(6.43,1.25,.33),(6.43,1.32,.33),(6.83,1.32,.33),(6.83,1.25,.33)],.025,'dark')
+# A small open picking carton on the inventory table, with folded flaps and
+# three visible cans to suggest the active restock chore.
+box('Open picking carton',(6,.84,2.82),(.4,.12,.48),'cardboard',.012)
+for x,ang in [(5.79,-.34),(6.21,.34)]:
+ flap=box('Picking carton flap',(x,.92,2.82),(.025,.012,.46),'cardboard',.004);flap.rotation_euler[1]=ang
+for index,z in enumerate([2.67,2.82,2.97]):
+ lathe('Restock tin',(6,.79,z),[(0,0),(.003,.036),(.01,.04),(.11,.04),(.12,.038),(.12,0)],'pack%d'%[2,10,13][index],16)
+ cyl('Restock tin lid',(6,.911,z),.037,.003,'steel',16)
+ wrap_label(6,.845,z,.0405,.075,[2,10,13][index],.9)
 # Exterior pavement and bounded lot; road + modest terrain silhouettes.
 group='exterior'
 box('Parking asphalt',(0,-.23,15),(28,.22,18),'asphalt',collision=True,uvscale=3)
