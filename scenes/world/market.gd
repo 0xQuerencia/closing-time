@@ -63,6 +63,13 @@ func _ready() -> void:
 		var security_tests := SecurityTests.new()
 		add_child(security_tests)
 		security_tests.run_security(self)
+	elif "--timed-playthrough" in OS.get_cmdline_user_args():
+		player.require_mouse_capture = false
+		player.enabled = false
+		add_gameplay(false)
+		var timed := TimedPlaythrough.new()
+		add_child(timed)
+		timed.run_timed(self)
 	elif "--qa-gameplay" in OS.get_cmdline_user_args():
 		player.require_mouse_capture = false
 		add_gameplay(false)
