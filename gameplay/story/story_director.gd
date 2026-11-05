@@ -4,7 +4,7 @@ extends Node
 ## leaving, chores, clues), never by one long timer, so a slow or dawdling player cannot stall it.
 signal step_changed(step: Step)
 signal event_logged(entry: String)
-enum Step { IDLE, INTRO, MARA, BEN, WORK, LEON_1, LEON_1_AWAY, LEON_2, ANOMALY, CAMERAS, BLACKOUT, POWER_BACK, SECURITY_DONE }
+enum Step { IDLE, INTRO, MARA, BEN, WORK, LEON_1, LEON_1_AWAY, LEON_2, ANOMALY, CAMERAS, BLACKOUT, POWER_BACK, SECURITY_DONE, THREAT, ENDED }
 const LEON_RETURN_AFTER_CHORES := 2
 const LEON_RETURN_MIN_AWAY := 6.0
 const LEON_RETURN_MAX_AWAY := 60.0
@@ -21,6 +21,7 @@ var _fired := {}
 var _away := 0.0
 var _chores_done := {}
 var beats: SecurityBeats
+var threat: ThreatBeats
 
 func setup(owner_game: Gameplay) -> StoryDirector:
 	game = owner_game
@@ -34,6 +35,8 @@ func setup(owner_game: Gameplay) -> StoryDirector:
 	game.clues.clue_seen.connect(_on_clue_seen)
 	beats = SecurityBeats.new().setup(self)
 	add_child(beats)
+	threat = ThreatBeats.new().setup(self)
+	add_child(threat)
 	return self
 
 func start() -> bool:

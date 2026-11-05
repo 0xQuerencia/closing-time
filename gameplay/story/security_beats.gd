@@ -146,3 +146,4 @@ func finish() -> void:
 	director.flags["m4_complete"] = true
 	director._record("security_done")
 	director._later(2.0, func(): director._text("dina_8", "Dina", "The police said fifteen minutes. Lock the front door and stay up front. I'm driving over.", 0, 29))
+	director._later(4.0, director.threat.begin)
