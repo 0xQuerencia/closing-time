@@ -138,8 +138,7 @@ for z in [-4.3,0]:
 for z,l in [(-5.55,.9),(-3.1,1.25),(-1.55,1.7),(2.85,4.5)]:box('Corridor partition',(5,1.6,z),(.12,3.2,l),'plaster',collision=True,uvscale=2)
 box('Office entry header',(5,2.7,-4.3),(.12,1,1.25),'plaster',collision=True)
 box('Office divider',(7,1.6,-2.45),(4,3.2,.13),'plaster',collision=True,uvscale=2)
-# Real door leaf parked open into office; rear door closed.
-box('Office open leaf',(5.55,1.08,-4.91),(1.05,2.16,.055),'wood',.018,True)
+# Office, rear and front doors are runtime Door objects (gameplay/security/door.gd).
 # Rear steel door and push bar are runtime Door objects (gameplay/security/door.gd).
 for x in [3.7,4.8]:box('Rear door frame',(x,1.1,-5.94),(.075,2.2,.1),'steel',.008)
 box('Rear frame header',(4.25,2.21,-5.94),(1.17,.075,.1),'steel',.008)

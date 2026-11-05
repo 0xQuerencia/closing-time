@@ -14,6 +14,9 @@ var front_door: Door
 var rear_door: Door
 var flashlight: Flashlight
 var intruder: Intruder
+var office_door: Door
+var hiding: HidingSpot
+var landline: Landline
 
 func build(owner_game) -> Security:
 	game = owner_game
@@ -33,6 +36,9 @@ func build(owner_game) -> Security:
 	flashlight = Flashlight.new()
 	add_child(flashlight)
 	flashlight.build(game.player)
+	_build_office_door()
+	hiding = HidingSpot.new().build(game)
+	landline = Landline.new().build(game)
 	game.checkout.terminal.powered = func(): return power.powered("register")
 	game.shift.door_ajar = func(): return rear_door.is_open
 	game.shift.latch_locked.connect(func(): rear_door.set_locked(true))
@@ -87,6 +93,22 @@ func _build_front_door() -> void:
 	bolt.add_child(grab)
 	right_body.add_child(bolt)
 	_bar(right_body, Vector3(0.05, 0.12, 0.04), Vector3(-0.29, -0.075, 0.035), _material(Color(0.62, 0.5, 0.2), 0.35, 0.8))
+
+func _build_office_door() -> void:
+	var wood := _material(Color(0.36, 0.25, 0.16), 0.8)
+	office_door = Door.new().setup(world, "office door", Vector3(5.0, 0.0, -4.3), -PI / 2.0, Vector3(1.1, 2.16, 0.045), false, wood)
+	var body: StaticBody3D = office_door.leaves[0].body
+	var bolt := Door.DoorBolt.new()
+	bolt.door = office_door
+	bolt.position = Vector3(-0.38, -0.075, -0.06)
+	var grab := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.14, 0.14, 0.08)
+	grab.shape = box
+	bolt.add_child(grab)
+	body.add_child(bolt)
+	_bar(body, Vector3(0.05, 0.12, 0.03), Vector3(-0.38, -0.075, -0.045), _material(Color(0.62, 0.5, 0.2), 0.35, 0.8))
+	_bar(body, Vector3(0.16, 0.03, 0.05), Vector3(0.4, -0.05, -0.03), _material(Color(0.62, 0.5, 0.2), 0.35, 0.8))
 
 func _build_rear_door() -> void:
 	var steel := _material(Color(0.2, 0.26, 0.29), 0.55, 0.3)
@@ -145,3 +167,18 @@ func spawn_intruder() -> Intruder:
 	world.add_child(intruder)
 	intruder.global_position = Intruder.OUTSIDE
 	return intruder
+
+## Leon on the hunt: same model as the rear intruder, but he walks the store on his own.
+func spawn_stalker() -> Stalker:
+	if is_instance_valid(intruder):
+		intruder.queue_free()
+	var profile := {"id": "leon_rear", "name": "Leon", "model": "vinrax", "outfit": "leon_overshirt", "cap": true, "route": {}}
+	var stalker := Stalker.new()
+	stalker.setup(game, profile)
+	stalker.prepare(rear_door)
+	stalker.office_door = office_door
+	stalker._excused = true
+	world.add_child(stalker)
+	stalker.global_position = Intruder.OUTSIDE
+	intruder = stalker
+	return stalker

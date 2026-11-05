@@ -331,5 +331,43 @@
     "text": "Slow night, that's all."
    }
   }
+ },
+ "police_call": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Dispatcher",
+    "text": "Emergency. What's the address?",
+    "next": "b"
+   },
+   "b": {
+    "speaker": "Jamie",
+    "text": "Marlow's Market, Route 9. Someone broke in the back. He's inside.",
+    "next": "c"
+   },
+   "c": {
+    "speaker": "Dispatcher",
+    "text": "Are you in a safe place? Stay where you are.",
+    "next": "d"
+   },
+   "d": {
+    "speaker": "Jamie",
+    "text": "Office. I'm locking it.",
+    "next": "e"
+   },
+   "e": {
+    "speaker": "Dispatcher",
+    "text": "Units are on the way. Stay quiet and stay on."
+   }
+  }
+ },
+ "leon_caught": {
+  "start": "a",
+  "nodes": {
+   "a": {
+    "speaker": "Leon",
+    "text": "Where's the cash drop?"
+   }
+  }
  }
 }

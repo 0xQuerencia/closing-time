@@ -111,6 +111,15 @@ func request_open(_actor: Node = null) -> bool:
 func request_close() -> void:
 	_set_target(false)
 
+## Someone tries a locked handle: a dull knock and the leaf shivers in its frame.
+func rattle() -> void:
+	_sound_shut.play()
+	var pivot: Node3D = leaves[0].pivot
+	var base := pivot.rotation.y
+	var tween := create_tween()
+	for offset in [0.03, -0.02, 0.025, 0.0]:
+		tween.tween_property(pivot, "rotation:y", base + offset, 0.05)
+
 func toggle(actor: Node = null) -> bool:
 	if is_open:
 		_held_open = false
