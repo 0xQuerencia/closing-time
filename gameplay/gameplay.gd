@@ -124,9 +124,9 @@ func _spawn_profile(profile: Dictionary) -> Customer:
 	world.add_child(customer)
 	customer.global_position = profile.start
 	tasks.add_task("serve_" + profile.id, "Serve the customer", [
-		{"id": "at_counter", "text": "Customer at the counter"},
-		{"id": "scanned", "text": "Scan their items"},
-		{"id": "paid", "text": "Take payment at the register"}])
+		{"id": "at_counter", "text": "Customer at the counter", "guide": "Meet them at the front counter and wait for the sale to open."},
+		{"id": "scanned", "text": "Scan their items", "guide": "Aim at each item on the counter and press E to scan it."},
+		{"id": "paid", "text": "Take payment at the register", "guide": "Aim at the card terminal and press E to take payment."}], 100)
 	customer.finished.connect(_on_customer_finished)
 	customer.run()
 	return customer

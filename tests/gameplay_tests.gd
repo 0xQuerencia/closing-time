@@ -56,7 +56,7 @@ func wait_until(condition: Callable, seconds: float) -> bool:
 	return true
 
 func _test_bindings() -> void:
-	for action in [GameInput.INTERACT, GameInput.INSPECT, GameInput.DROP, &"choice_1"]:
+	for action in [GameInput.INTERACT, GameInput.INSPECT, GameInput.DROP, GameInput.GUIDE, &"choice_1"]:
 		check(InputMap.has_action(action), "input action " + String(action))
 	player.camera.rotation = Vector3.ZERO
 	player.global_position = Vector3(-8.0, 0.05, 2.0)
@@ -142,6 +142,10 @@ func _test_tasks() -> void:
 	check(t.complete_objective("x", "a") and completed.is_empty(), "first objective does not finish the task")
 	check(not t.complete_objective("x", "a") and not t.complete_objective("x", "zzz"), "repeat and unknown objectives are rejected")
 	check(t.complete_objective("x", "b") and completed == ["x"] and t.is_complete("x"), "task completes only when every objective is done")
+	t.add_task("routine", "Routine", [{"id": "r", "text": "Routine step", "guide": "Go to the routine"}], 10)
+	t.add_task("urgent", "Urgent", [{"id": "u", "text": "Urgent step", "guide": "Go to the urgent thing"}], 20)
+	var guide := t.current_guide()
+	check(guide.task_id == "urgent" and guide.objective == "Urgent step" and guide.hint == "Go to the urgent thing", "NEXT guide selects the most urgent incomplete step")
 	t.queue_free()
 
 func _find(node_name: String) -> Node:

@@ -21,9 +21,14 @@ godot --headless --path . --export-release "Linux" build/linux/ClosingTime.x86_6
 | 1 / 2 / 3 | choose a reply |
 | Tab | phone |
 | T | phone light |
+| G | shift guide |
 | Esc | pause |
 
 The game saves a checkpoint at the start of the shift and again before the final stretch. Continue on the title screen reloads the last one.
+
+## Staying oriented
+
+The paper in the top-right is the complete shift checklist. During play, the **NEXT** card in the upper-left chooses the most useful unfinished step and tells you where to start and what interaction to use. Customer and security tasks take priority over routine chores, so follow that card when several tasks are open. Press `G` at any time for the full control and current-task guide; it is also available from the title and pause menus.
 
 ## Check and reproduce
 
@@ -33,6 +38,8 @@ bash scripts/validate_project.sh
 godot --path . -- --capture
 # Inspect refined shelf packaging and coffee props without retro post effects:
 godot --path . -- --capture-assets
+# Capture the in-game NEXT card and full Shift Guide:
+godot --path . -- --capture-reference --guide
 # Regenerate original textures, audio and Blender models:
 python tools/textures/generate.py  # Pillow required
 python tools/audio/generate.py

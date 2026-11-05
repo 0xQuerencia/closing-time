@@ -37,7 +37,8 @@ func begin() -> void:
 	begun = true
 	director._set_step(StoryDirector.Step.CAMERAS)
 	game.tasks.add_task("cameras", "Check the cameras", [
-		{"id": "shop", "text": "Shop floor camera"}, {"id": "rear", "text": "Rear hall camera"}])
+		{"id": "shop", "text": "Shop floor camera", "guide": "Go to the office computer and use E to view the shop floor feed."},
+		{"id": "rear", "text": "Rear hall camera", "guide": "Use the office computer's next feed to check the rear hall."}], 130)
 	director._record("cameras_begin")
 	director._later(camera_check_delay, func(): director._text("dina_5", "Dina", "The alarm company called me. Rear door sensor tripped for a few seconds after midnight. Can you check the cameras on the office computer?", 0, 11))
 
@@ -62,7 +63,9 @@ func blackout() -> void:
 	sec.power.trip_all()
 	director._record("blackout")
 	game.tasks.add_task("power", "Restore the power", [
-		{"id": "cover", "text": "Open the breaker panel"}, {"id": "main", "text": "Switch the main on"}, {"id": "security", "text": "Switch the security breaker on"}])
+		{"id": "cover", "text": "Open the breaker panel", "guide": "The breaker box is in the back hall past the stockroom. Use E on its cover."},
+		{"id": "main", "text": "Switch the main on", "guide": "With the cover open, use E on the large main breaker."},
+		{"id": "security", "text": "Switch the security breaker on", "guide": "Use E on the smaller security breaker beside the main."}], 140)
 	game.interactor.message.emit("Power's out.  T  phone light")
 	director._later(3.0, func(): director._text("dina_6", "Dina", "The panel says you're on battery. Breaker box is in the back hall past the stockroom. Try the main.", 0, 15))
 	director._later(entry_fallback, leon_enters)
@@ -88,7 +91,7 @@ func power_back() -> void:
 	director._set_step(StoryDirector.Step.POWER_BACK)
 	director.clock.advance_to(0, 21)
 	director._record("power_back")
-	game.tasks.add_task("rear_cam", "Look at the rear camera", [{"id": "look", "text": "Check the rear hall camera"}])
+	game.tasks.add_task("rear_cam", "Look at the rear camera", [{"id": "look", "text": "Check the rear hall camera", "guide": "Return to the office computer and view the rear hall feed."}], 150)
 	director._later(3.0, func(): director._text("dina_7", "Dina", "Panel shows the power's back. Can you look at the rear camera for me?", 0, 22))
 	director._later(walk_fallback, camera_walk)
 

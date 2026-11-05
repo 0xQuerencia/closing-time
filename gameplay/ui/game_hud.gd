@@ -20,6 +20,10 @@ var _speech: RichTextLabel
 var _choices: VBoxContainer
 var _slip: PanelContainer
 var _slip_list: VBoxContainer
+var _guide: PanelContainer
+var _guide_task: Label
+var _guide_step: Label
+var _guide_hint: Label
 var _clock: Label
 var _message_left := 0.0
 var _line_left := 0.0
@@ -42,6 +46,7 @@ func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManage
 	_place(_held_hint, 0.0, 1.0, 28, -34, 500)
 	_build_speech()
 	_build_slip()
+	_build_guide()
 	_clock = _label(22, INK)
 	_place(_clock, 0.0, 0.0, 28, 22, 200)
 	dialogue.line_shown.connect(_on_line)
@@ -53,8 +58,13 @@ func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManage
 	tasks.objective_completed.connect(func(_t, _o): _refresh_tasks())
 	tasks.task_completed.connect(func(_id): _refresh_tasks())
 	tasks.cleared.connect(_refresh_tasks)
+	tasks.task_added.connect(func(_id): _refresh_guide())
+	tasks.objective_completed.connect(func(_t, _o): _refresh_guide())
+	tasks.task_completed.connect(func(_id): _refresh_guide())
+	tasks.cleared.connect(_refresh_guide)
 	_on_held(null)
 	_refresh_tasks()
+	_refresh_guide()
 
 ## The centre dot and prompt only make sense while the player is walking around.
 func set_crosshair(shown: bool) -> void:
@@ -156,6 +166,40 @@ func _build_slip() -> void:
 	_slip.rotation = deg_to_rad(1.6)
 	_slip.visible = false
 
+func _build_guide() -> void:
+	_guide = PanelContainer.new()
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color(0.035, 0.05, 0.055, 0.88)
+	panel.border_color = Color(0.62, 0.68, 0.63, 0.34)
+	panel.set_border_width_all(1)
+	panel.shadow_color = Color(0, 0, 0, 0.45)
+	panel.shadow_size = 5
+	panel.shadow_offset = Vector2(3, 4)
+	panel.content_margin_left = 14
+	panel.content_margin_right = 14
+	panel.content_margin_top = 10
+	panel.content_margin_bottom = 11
+	_guide.add_theme_stylebox_override("panel", panel)
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.custom_minimum_size = Vector2(390, 0)
+	column.add_theme_constant_override("separation", 1)
+	var heading := _label(15, DIM)
+	heading.text = "NEXT   ·   G  full guide"
+	column.add_child(heading)
+	_guide_task = _label(21, INK)
+	_guide_task.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_guide_task)
+	_guide_step = _label(18, PAPER)
+	_guide_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_guide_step)
+	_guide_hint = _label(16, DIM)
+	_guide_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_guide_hint)
+	_guide.add_child(column)
+	_place(_guide, 0.0, 0.0, 28, 57, 430)
+	_guide.visible = false
+
 ## Ink on the paper slip: no outline, slightly uneven baseline comes from the tilt of the slip.
 func _paper_label(text: String, size: int, color: Color) -> Label:
 	var l := Label.new()
@@ -218,6 +262,17 @@ func _clear_choices() -> void:
 func _on_held(item: Product) -> void:
 	_held.text = "" if item == null else item.display_name
 	_held_hint.text = "" if item == null else "Q  put down      F  look"
+
+func _refresh_guide() -> void:
+	if _guide == null or tasks == null:
+		return
+	var next := tasks.current_guide()
+	_guide.visible = not next.is_empty()
+	if next.is_empty():
+		return
+	_guide_task.text = str(next.title)
+	_guide_step.text = str(next.objective)
+	_guide_hint.text = str(next.hint) if str(next.hint) != "" else "Use the paper checklist in the top-right if you need the full shift."
 
 func _refresh_tasks() -> void:
 	for child in _slip_list.get_children():

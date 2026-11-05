@@ -42,8 +42,8 @@ func begin() -> void:
 	threat_time = 0.0
 	director.clock.advance_to(0, 31)
 	game.tasks.add_task("closing", "Get through the night", [
-		{"id": "lock_office", "text": "Lock the office door, or get out the front"},
-		{"id": "call", "text": "Call the police (office phone)"}])
+		{"id": "lock_office", "text": "Lock the office door, or get out the front", "guide": "Choose a route: reach the lit front exit, or get inside the office and lock its door."},
+		{"id": "call", "text": "Call the police (office phone)", "guide": "If you chose the office, use E on the landline to call the police."}], 200)
 	if sec.office_door.locked:
 		game.tasks.complete_objective("closing", "lock_office")
 	director._record("threat_begin")

@@ -29,6 +29,7 @@ var _buttons: VBoxContainer
 var _footer: Label
 var settings := {"retro": true, "sensitivity": 1.0, "bob": false}
 var _return_to := "title"
+var _guide_return := "game"
 const SETTINGS_PATH := "user://settings.cfg"
 const SENSITIVITIES := [0.6, 1.0, 1.6]
 
@@ -115,6 +116,31 @@ func show_settings() -> void:
 	_button("back", "Back", func(): show_title() if _return_to == "title" else show_pause())
 	first.grab_focus()
 
+func show_guide(return_to := "game") -> void:
+	_guide_return = return_to
+	_clear_buttons()
+	_present("guide", "SHIFT GUIDE", _guide_body(), "G / Esc  close")
+	var first := _button("back", "Back", _close_guide)
+	first.grab_focus()
+
+func _guide_body() -> String:
+	var current := game.tasks.current_guide()
+	var now := "No open task. Take a breath and check the paper when the next message arrives."
+	if not current.is_empty():
+		now = "NOW\n%s\n%s" % [current.title, current.objective]
+		if str(current.hint) != "":
+			now += "\n" + str(current.hint)
+	return ("The paper in the top-right is the full shift checklist. NEXT in the upper-left picks one useful step so you never have to guess what to do first.\n\n" +
+		"%s\n\nCONTROLS\nWASD  move     Mouse  look     Shift  run\nE  use / scan / talk     F  inspect     Q  put down\nTab  phone     T  phone light     1 / 2 / 3  reply\nEsc  pause     G  open this guide") % now
+
+func _close_guide() -> void:
+	if _guide_return == "title":
+		show_title()
+	elif _guide_return == "pause":
+		show_pause()
+	else:
+		hide_all()
+
 func _label(size: int, color: Color) -> Label:
 	var l := Label.new()
 	l.add_theme_font_override("font", FONT)
@@ -170,10 +196,11 @@ func hide_all() -> void:
 
 func show_title() -> void:
 	_clear_buttons()
-	_present("title", "CLOSING TIME", "Marlow's Market.  Night shift.  11:24 PM.", "WASD move   Shift run   E use   F look   Q put down   Tab phone   T light   Esc pause")
+	_present("title", "CLOSING TIME", "Marlow's Market.  Night shift.  11:24 PM.", "WASD move   Shift run   E use   F look   Q put down   Tab phone   T light   G guide   Esc pause")
 	var first := _button("start", "Start shift", func(): _begin(false))
 	if SaveGame.exists():
 		_button("continue", "Continue", func(): _begin(true))
+	_button("guide", "How to play", func(): show_guide("title"))
 	_button("settings", "Settings", show_settings)
 	_button("quit", "Quit", func(): quit_requested.emit())
 	first.grab_focus()
@@ -190,6 +217,7 @@ func show_pause() -> void:
 	_present("pause", "PAUSED", "", "")
 	var first := _button("resume", "Resume", hide_all)
 	_button("restart", "Restart from the last checkpoint", func(): hide_all(); retry_requested.emit())
+	_button("guide", "Shift guide", func(): show_guide("pause"))
 	_button("settings", "Settings", show_settings)
 	_button("title", "Main menu", func(): restart_requested.emit())
 	_button("quit", "Quit", func(): quit_requested.emit())
@@ -209,9 +237,23 @@ func show_ending(kind: String) -> void:
 	first.grab_focus()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(GameInput.GUIDE):
+		if mode == "guide":
+			_close_guide()
+		elif mode == "title":
+			show_guide("title")
+		elif mode == "pause":
+			show_guide("pause")
+		elif mode == "none" and game.director.step >= StoryDirector.Step.INTRO and game.director.step < StoryDirector.Step.ENDED and not game.security.cctv.viewing:
+			show_guide("game")
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		if mode == "pause":
 			hide_all()
+			get_viewport().set_input_as_handled()
+		elif mode == "guide":
+			_close_guide()
 			get_viewport().set_input_as_handled()
 		elif mode == "settings":
 			show_title() if _return_to == "title" else show_pause()

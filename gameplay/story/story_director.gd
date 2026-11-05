@@ -111,9 +111,9 @@ func _anomaly() -> void:
 	if game.security != null:
 		game.security.pulse_rear_door()
 	game.tasks.add_task("look_back", "Something's off in back", [
-		{"id": "spare_key", "text": "Check the key hooks"},
-		{"id": "cash_envelope", "text": "Check the cash drop"},
-		{"id": "boot_prints", "text": "Follow the wet prints"}])
+		{"id": "spare_key", "text": "Check the key hooks", "guide": "Go to the office and inspect the hooks beside the desk."},
+		{"id": "cash_envelope", "text": "Check the cash drop", "guide": "In the office, inspect the cash envelope on the desk."},
+		{"id": "boot_prints", "text": "Follow the wet prints", "guide": "Leave the office and follow the wet prints toward the rear hall."}], 120)
 	_later(3.0, func(): _text("kay_2", "Kay", "A man bought the same water twice and acted like I'd never seen him.", 0, 7, true))
 	_later(8.0, func(): _text("kay_3", "Kay", "Maybe he really likes hydration.", 0, 8))
 	_later(13.0, func(): _text("dina_4", "Dina", "If the alarm trips, call the police, not me.", 0, 9))
@@ -125,11 +125,15 @@ func _anomaly() -> void:
 func _add_chores() -> void:
 	var tasks := game.tasks
 	tasks.add_task("restock", "Stock three products", [
-		{"id": "s1", "text": "Fill a shelf gap (1/3)"}, {"id": "s2", "text": "Fill a shelf gap (2/3)"}, {"id": "s3", "text": "Fill a shelf gap (3/3)"}])
+		{"id": "s1", "text": "Fill a shelf gap (1/3)", "guide": "Go to the open stock carton in the back, take a product, and carry it to an orange shelf gap."},
+		{"id": "s2", "text": "Fill a shelf gap (2/3)", "guide": "Take another product from the open stock carton and carry it to an orange shelf gap."},
+		{"id": "s3", "text": "Fill a shelf gap (3/3)", "guide": "Take the last product from the stock carton and carry it to an orange shelf gap."}], 10)
 	tasks.add_task("trash", "Bag the trash", [
-		{"id": "bag", "text": "Tie off the trash bag"}, {"id": "rear", "text": "Leave it by the rear door"}])
+		{"id": "bag", "text": "Tie off the trash bag", "guide": "Use E on the full bin beside the checkout counter."},
+		{"id": "rear", "text": "Leave it by the rear door", "guide": "Carry the tied bag through the back hall and use E at the rear door."}], 10)
 	tasks.add_task("latch", "Check the rear-door latch", [
-		{"id": "lift", "text": "Lift the latch"}, {"id": "lock", "text": "Turn the key"}])
+		{"id": "lift", "text": "Lift the latch", "guide": "Go to the rear loading door and use E on the sticking latch."},
+		{"id": "lock", "text": "Turn the key", "guide": "After lifting the latch, use E on the small key below it."}], 10)
 	game.shift.restocked.connect(func(n): tasks.complete_objective("restock", "s%d" % n))
 	game.shift.trash_bagged.connect(func(): tasks.complete_objective("trash", "bag"))
 	game.shift.trash_placed.connect(func(): tasks.complete_objective("trash", "rear"))

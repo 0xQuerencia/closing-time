@@ -7,13 +7,15 @@ signal task_completed(task_id: String)
 signal cleared
 var tasks := {}  # id -> {title, objectives: [{id, text, done}], done}
 
-func add_task(id: String, title: String, objectives: Array) -> void:
+## `priority` controls which open task appears in the player's NEXT guide. Higher values
+## are more urgent (a customer or a security problem should outrank routine stock work).
+func add_task(id: String, title: String, objectives: Array, priority: int = 0) -> void:
 	if tasks.has(id):
 		return
 	var list := []
 	for o in objectives:
-		list.append({"id": o.id, "text": o.text, "done": false})
-	tasks[id] = {"title": title, "objectives": list, "done": false}
+		list.append({"id": o.id, "text": o.text, "guide": o.get("guide", ""), "done": false})
+	tasks[id] = {"title": title, "objectives": list, "done": false, "priority": priority}
 	task_added.emit(id)
 
 func complete_objective(task_id: String, objective_id: String) -> bool:
@@ -43,6 +45,33 @@ func completed_count() -> int:
 
 func active_ids() -> Array:
 	return tasks.keys().filter(func(k): return not tasks[k].done)
+
+## Returns the most useful next step for a player who has lost the thread of the shift.
+## The task slip remains the complete record; this is deliberately only one actionable step.
+func current_guide() -> Dictionary:
+	var selected_task: Dictionary = {}
+	var selected_id := ""
+	var selected_priority := -2147483648
+	for id in tasks:
+		var task: Dictionary = tasks[id]
+		if task.done:
+			continue
+		var priority := int(task.get("priority", 0))
+		if selected_id == "" or priority > selected_priority:
+			selected_id = id
+			selected_task = task
+			selected_priority = priority
+	if selected_id == "":
+		return {}
+	for objective in selected_task.objectives:
+		if objective.done:
+			continue
+		return {
+			"task_id": selected_id,
+			"title": selected_task.title,
+			"objective": objective.text,
+			"hint": objective.get("guide", "")}
+	return {}
 
 func clear() -> void:
 	tasks.clear()

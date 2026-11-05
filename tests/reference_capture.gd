@@ -17,6 +17,7 @@ const VIEWS := [
 ]
 
 func run(market: Node3D) -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var player: CharacterBody3D = market.player
 	var game: Gameplay = market.gameplay
 	DirAccess.make_dir_recursive_absolute("res://local/screenshots")
@@ -31,6 +32,10 @@ func run(market: Node3D) -> void:
 		return
 	var show_hud := "--hud" in OS.get_cmdline_user_args()
 	game.hud.visible = show_hud
+	if "--guide" in OS.get_cmdline_user_args():
+		await _guide_shots(market, game, player)
+		await market.finish_run(0)
+		return
 	if show_hud:
 		await _hud_shots(market, game, player)
 		await market.finish_run(0)
@@ -52,6 +57,27 @@ func run(market: Node3D) -> void:
 		var err := get_viewport().get_texture().get_image().save_png("res://local/screenshots/%s.png" % view[0])
 		print("REFERENCE ", view[0], " status=", err)
 	await market.finish_run(0)
+
+func _guide_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void:
+	game.hud.visible = true
+	game.phone_ui.visible = true
+	game.director.delay_scale = 1.0
+	game.director.start()
+	player.global_position = Vector3(-6.9, 0.05, 5.2)
+	player.rotation = Vector3(0, -0.36, 0)
+	player.camera.rotation = Vector3.ZERO
+	for i in 40:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	DirAccess.make_dir_recursive_absolute("res://local/guide")
+	get_viewport().get_texture().get_image().save_png("res://local/guide/guide_next.png")
+	game.flow.show_guide("game")
+	for i in 20:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("res://local/guide/guide_full.png")
+	game.flow.hide_all()
+	print("GUIDE screenshots saved to res://local/guide")
 
 ## HUD close-ups: prompt on a counter item, held item, checklist, choices, then a spoken line.
 func _hud_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void:
