@@ -41,3 +41,9 @@ if rg -n 'SCRIPT ERROR|ERROR:' local/validation-security.log; then
 fi
 rg 'SECURITY TESTS COMPLETE' local/validation-security.log
 echo '[PASS] Security: doors and locks, rear sensor, breaker and blackout, CCTV, and the rear entry'
+"$G" --headless --path . -- --test-threat > local/validation-threat.log 2>&1
+if rg -n 'SCRIPT ERROR|ERROR:' local/validation-threat.log; then
+  echo '[FAIL] Godot reported threat test errors'; exit 1
+fi
+rg 'THREAT TESTS COMPLETE' local/validation-threat.log
+echo '[PASS] Threat: Leon pathing and senses, hiding, three endings, retry, saves and menus'

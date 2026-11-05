@@ -336,7 +336,7 @@ func _test_story_chain(with_leon: bool) -> void:
 	sec.cctv.settle()
 	sec.cctv.select(1)
 	await _settle(2)
-	check(await wait_until(func(): return d.step == StoryDirector.Step.SECURITY_DONE, 90 if with_leon else 8), "%s: looking at the rear camera finishes the sequence" % label)
+	check(await wait_until(func(): return d.step >= StoryDirector.Step.SECURITY_DONE, 90 if with_leon else 8), "%s: looking at the rear camera finishes the sequence" % label)
 	check(d.flags.get("m4_complete", false) and sec.cctv.is_feed_dead(1), "%s: the rear feed is lost and M4 is flagged" % label)
 	if with_leon:
 		check(await wait_until(func(): return sec.intruder == null or not is_instance_valid(sec.intruder) or not sec.intruder.inside, 40), "%s: Leon is back outside" % label)

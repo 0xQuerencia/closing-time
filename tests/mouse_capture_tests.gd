@@ -11,6 +11,12 @@ func run() -> void:
 	player.require_mouse_capture = DisplayServer.get_name() != "headless" # Real renderer uses actual capture.
 	for frame in range(3):
 		await process_frame
+	if market.gameplay.flow.mode != "title":
+		failures += 1
+		push_error("the game did not open on the title screen")
+	market.gameplay.flow.press("start")
+	for frame in range(3):
+		await process_frame
 	var yaw: float = player.rotation.y
 	var pitch: float = player.camera.rotation.x
 	var motion := InputEventMouseMotion.new()
