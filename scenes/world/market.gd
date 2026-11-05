@@ -76,6 +76,13 @@ func _ready() -> void:
 		var m5_capture := ThreatCapture.new()
 		add_child(m5_capture)
 		m5_capture.run(self)
+	elif "--capture-hold" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		add_gameplay(false)
+		var hold_capture := HoldCapture.new()
+		add_child(hold_capture)
+		hold_capture.run(self)
 	elif "--timed-playthrough" in OS.get_cmdline_user_args():
 		player.require_mouse_capture = false
 		player.enabled = false

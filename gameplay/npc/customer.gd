@@ -19,6 +19,7 @@ var impatience_delay := 22.0
 var held_product: Product
 var talk: TalkInteractable
 var _hand: Marker3D
+var _carry: CarryPose
 var _animation_player: AnimationPlayer
 var _current_animation: StringName
 var _idle_time := 0.0
@@ -54,6 +55,11 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	add_collision_exception_with(game.player)
 	return self
 
+const HAND_RIGS := [
+	{"hand": "hand_right", "upper": "upper_arm_right", "lower": "forearm_right", "offset": Vector3(0, 0.05, 0), "tilt": Vector3(PI, 0, 0),
+	"upper_axis": Vector3.RIGHT, "lower_axis": Vector3.RIGHT, "upper_angle": 0.0, "lower_angle": 1.1},
+	{"hand": "RightHand", "upper": "RightUpperArm", "lower": "RightLowerArm", "offset": Vector3(0, 0.05, 0), "tilt": Vector3(PI / 2, 0, 0),
+	"upper_axis": Vector3.BACK, "lower_axis": Vector3.BACK, "upper_angle": 0.0, "lower_angle": -1.1}]
 const MODELS := {
 	"vinrax": "res://assets/models/characters/vinrax/casual_male.glb",
 	"young_man": "res://assets/models/characters/young_man.glb",
@@ -94,6 +100,35 @@ func _build_body() -> void:
 	_hand = Marker3D.new()
 	_hand.position = Vector3(0.3, 1.05, -0.12)
 	add_child(_hand)
+	_rig_hand(model)
+
+## Hold items in the right hand: ride the hand bone so the arm swing carries them, and bend the elbow.
+func _rig_hand(model: Node) -> void:
+	var skeletons := model.find_children("*", "Skeleton3D", true, false)
+	if skeletons.is_empty():
+		return
+	var skeleton := skeletons[0] as Skeleton3D
+	var rig: Dictionary = {}
+	for candidate in HAND_RIGS:
+		if skeleton.find_bone(candidate.hand) >= 0:
+			rig = candidate
+			break
+	if rig.is_empty():
+		return
+	var attach := BoneAttachment3D.new()
+	attach.bone_name = rig.hand
+	skeleton.add_child(attach)
+	_hand.reparent(attach, false)
+	_hand.position = rig.offset
+	_hand.rotation = rig.tilt
+	_carry = CarryPose.new()
+	_carry.upper_bone = rig.upper
+	_carry.lower_bone = rig.lower
+	_carry.upper_axis = rig.upper_axis
+	_carry.lower_axis = rig.lower_axis
+	_carry.upper_angle = rig.upper_angle
+	_carry.lower_angle = rig.lower_angle
+	skeleton.add_child(_carry)
 
 ## Outfit variant of the shared texture (same UVs, only the clothing recoloured).
 func _apply_outfit(model: Node, texture_path: String) -> void:
@@ -317,6 +352,10 @@ func _face(point: Vector3) -> void:
 		rotation.y = rotate_toward(rotation.y, yaw, TURN_SPEED * get_physics_process_delta_time())
 		await get_tree().physics_frame
 	_animate()
+
+func _process(delta: float) -> void:
+	if _carry != null:
+		_carry.amount = move_toward(_carry.amount, 1.0 if held_product != null else 0.0, delta * 3.0)
 
 func _animate() -> void:
 	if Vector2(velocity.x, velocity.z).length() > 0.1:
