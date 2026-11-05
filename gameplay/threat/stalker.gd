@@ -36,6 +36,9 @@ var _rattle_timer := 0.0
 var _noise_timer := 0.0
 var _stuck := 0.0
 var _last_pos := Vector3.ZERO
+var steps_taken := 0
+var _step_clock := 0.0
+var _step_sound: AudioStreamPlayer3D
 
 func begin_hunt(start_index := 0) -> void:
 	_patrol_index = start_index % PATROL_ROUTE.size()
@@ -289,7 +292,25 @@ func _steer(aim: Vector3, speed: float, delta: float) -> void:
 	velocity.z = horizontal.y
 	_gravity(delta)
 	move_and_slide()
+	_footsteps(delta)
 	_animate_stalk()
+
+## A dull heel on the floor, quicker when he runs. It is the main way to know where he is.
+func _footsteps(delta: float) -> void:
+	var speed := Vector2(get_real_velocity().x, get_real_velocity().z).length()
+	if speed < 0.3:
+		return
+	_step_clock -= delta * speed
+	if _step_clock > 0.0:
+		return
+	_step_clock = 0.62
+	steps_taken += 1
+	if _step_sound == null:
+		_step_sound = Tone.player(Tone.stream(78.0, 110, 0.9, 0.5), Vector3(0, 0.05, 0), 6.0)
+		_step_sound.max_distance = 16.0
+		add_child(_step_sound)
+	_step_sound.pitch_scale = 1.0 + (steps_taken % 2) * 0.12
+	_step_sound.play()
 
 func _stop(delta: float) -> void:
 	var horizontal := Vector2(velocity.x, velocity.z).move_toward(Vector2.ZERO, 9.0 * delta)

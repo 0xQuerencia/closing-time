@@ -375,6 +375,7 @@ func _test_adoption() -> void:
 	check(threat.stalker == waiting and waiting.state == Stalker.State.PATROL and game.director.log.has("leon_hunting"), "the Leon who looked into the camera is the one who hunts: nothing respawns")
 	check(not game.director.log.has("leon_returns"), "no second entrance on the first run")
 	check(await wait_until(func(): return waiting.global_position.distance_to(Vector3(4.25, 0.0, 0.0)) < 1.5, 10), "he walks off toward the stockroom door first, not into the office")
+	check(await wait_until(func(): return waiting.steps_taken >= 3, 15), "he makes footsteps as he walks (%d)" % waiting.steps_taken)
 	threat.clear_actors()
 
 func _test_rescue_timeout() -> void:
