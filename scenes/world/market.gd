@@ -37,7 +37,7 @@ func _ready() -> void:
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		capture_views(false)
-	elif "--capture-m3" in OS.get_cmdline_user_args():
+	elif "--capture-m3" in OS.get_cmdline_user_args() or "--capture-assets" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		capture_views(true)
@@ -369,7 +369,13 @@ func capture_views(m3_views: bool) -> void:
 	viewport.world_3d = get_viewport().world_3d
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(viewport)
-	viewport.add_child(RetroEffect.new())
+	var asset_review := "--capture-assets" in OS.get_cmdline_user_args()
+	var finish := RetroEffect.new()
+	if asset_review:
+		finish.pixelation_enabled = false
+		finish.palette_enabled = false
+		finish.analog_enabled = false
+	viewport.add_child(finish)
 	var shot_camera := Camera3D.new()
 	shot_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	shot_camera.fov = 75.0
@@ -396,6 +402,16 @@ func capture_views(m3_views: bool) -> void:
 			["03_aisle_to_exit",Vector3(-1.5,1.62,-1.6),Vector3(.6,1.4,6.4)],
 			["04_office_rear_corridor",Vector3(5.7,1.62,-3.15),Vector3(7.5,1.1,-5.2)],
 			["04b_staff_corridor",Vector3(4.23,1.62,2.5),Vector3(4.2,1.3,-5.8)]]
+	if asset_review:
+		output_dir = "res://local/asset-polish/after"
+		views = [
+			["01_coffee_eye_height",Vector3(-7.2,1.62,.8),Vector3(-8.3,1.22,-.65)],
+			["02_coffee_front",Vector3(-7.25,1.35,-.95),Vector3(-8.35,1.23,-.95)],
+			["03_bottle_shoulders",Vector3(-4.4,1.62,-3.75),Vector3(-4.1,1.47,-4.85)],
+			["04_snack_seals",Vector3(-7.0,1.62,-.7),Vector3(-6.23,1.45,-1.15)],
+			["05_tin_rims",Vector3(1.05,1.62,-.7),Vector3(.25,1.42,-1.15)],
+			["06_carton_folds",Vector3(-4.1,1.62,-.7),Vector3(-3.23,1.44,-1.15)],
+			["07_store_context",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)]]
 	DirAccess.make_dir_recursive_absolute(output_dir)
 	for view in views:
 		shot_camera.position = view[1]
@@ -404,6 +420,17 @@ func capture_views(m3_views: bool) -> void:
 		await RenderingServer.frame_post_draw
 		var error := viewport.get_texture().get_image().save_png("%s/%s.png" % [output_dir, view[0]])
 		print("CAPTURE ",view[0]," status=",error)
+	if asset_review:
+		var metadata := FileAccess.open(output_dir + "/capture.json", FileAccess.WRITE)
+		metadata.store_string(JSON.stringify({
+			"date": Time.get_datetime_string_from_system(true),
+			"engine": Engine.get_version_info().string,
+			"renderer": RenderingServer.get_current_rendering_method(),
+			"resolution": [1600,900],
+			"source": "running Godot world scene",
+			"retro_effects": false,
+			"views": views
+		}, "\t"))
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	viewport.queue_free()
 	await get_tree().process_frame

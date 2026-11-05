@@ -63,6 +63,31 @@ def cyl(name,p,radius,depth,m,vertices=16,axis='y'):
  o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o);o.location=xyz(p)
  for f in me.polygons:f.use_smooth=len(f.vertices)==4
  return register(o,name,m)
+def lathe(name,p,profile,m,vertices=20):
+ # Profile is a closed radial cross-section in meters; retain crisp horizontal rims.
+ vs=[xyz((p[0]+radius*math.cos(j*math.tau/vertices),p[1]+h,p[2]+radius*math.sin(j*math.tau/vertices))) for h,radius in profile for j in range(vertices)]
+ fs=[]
+ for ring in range(len(profile)-1):
+  for j in range(vertices):fs.append((ring*vertices+j,(ring+1)*vertices+j,(ring+1)*vertices+(j+1)%vertices,ring*vertices+(j+1)%vertices))
+ me=bpy.data.meshes.new(name);me.from_pydata(vs,[],fs);me.update()
+ o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o)
+ for f in me.polygons:
+  ring=f.index//vertices
+  f.use_smooth=abs(profile[ring+1][0]-profile[ring][0])>.001
+ return register(o,name,m)
+def tube_path(name,points,radius,m,vertices=8):
+ vs=[]
+ for i,p in enumerate(points):
+  tangent=Vector(points[min(i+1,len(points)-1)])-Vector(points[max(0,i-1)])
+  tangent.normalize();normal=tangent.cross(Vector((0,0,1))).normalized();binormal=tangent.cross(normal).normalized()
+  for j in range(vertices):vs.append(xyz(Vector(p)+radius*(normal*math.cos(j*math.tau/vertices)+binormal*math.sin(j*math.tau/vertices))))
+ fs=[tuple(reversed(range(vertices)))]
+ for i in range(len(points)-1):
+  for j in range(vertices):fs.append((i*vertices+j,i*vertices+(j+1)%vertices,(i+1)*vertices+(j+1)%vertices,(i+1)*vertices+j))
+ fs.append(tuple(range((len(points)-1)*vertices,len(points)*vertices)))
+ me=bpy.data.meshes.new(name);me.from_pydata(vs,[],fs);me.update()
+ o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o)
+ return register(o,name,m)
 def label(p,w,h,index,side=1):
  # Front-facing UV rectangle, atlas cell inset prevents bleeding.
  x,y,z=p;verts=[xyz((x-w/2,y-h/2,z)),xyz((x+w/2,y-h/2,z)),xyz((x+w/2,y+h/2,z)),xyz((x-w/2,y+h/2,z))]
@@ -90,8 +115,16 @@ def pillow_bag(x,y,z,index):
  fs=[tuple(reversed(range(8)))]
  for ring in range(4):
   for j in range(8):fs.append((ring*8+j,ring*8+(j+1)%8,(ring+1)*8+(j+1)%8,(ring+1)*8+j))
- fs.append(tuple(range(32,40)));me=bpy.data.meshes.new('Shaped foil bag');me.from_pydata(vs,[],fs)
+ fs.append(tuple(range(32,40)));me=bpy.data.meshes.new('Shaped foil bag');me.from_pydata(vs,[],[tuple(reversed(face)) for face in fs])
  o=bpy.data.objects.new('Shaped foil bag',me);bpy.context.collection.objects.link(o);register(o,'Shaped foil bag','pack%d'%index)
+ me.materials.append(mats['packaging']);me.uv_layers.new()
+ u=index%4/4;v=1-(index//4+1)/4
+ for poly in me.polygons:
+  if 1<=poly.index<=32 and (poly.index-1)%8<4:
+   poly.material_index=1
+   for li in poly.loop_indices:
+    vi=me.loops[li].vertex_index;ring,j=divmod(vi,8)
+    me.uv_layers.active.data[li].uv=(u+.006+(.5+.5*math.cos(j*math.tau/8))*.238,v+.006+[0,.125,.5,.875,1][ring]*.238)
 
 def art_panel(p,w,h,material,angle=0):
  me=bpy.data.meshes.new('Printed artwork');me.from_pydata([xyz((-w/2,-h/2,0)),xyz((w/2,-h/2,0)),xyz((w/2,h/2,0)),xyz((-w/2,h/2,0))],[],[(0,1,2,3)]);me.uv_layers.new()
@@ -100,15 +133,35 @@ def art_panel(p,w,h,material,angle=0):
  return o
 
 def product(x,y,z,kind,idx,side=1):
+ # Keep each fictional label on a plausible container (no water in foil snack bags).
+ labels={'bag':[0,1,7,14,15],'can':[2,10,11,13],'bottle':[3,5,9,10,11],'box':[1,4,6,8,12,13,15]}
+ choices=labels[kind];idx=choices[idx%len(choices)]
  if kind=='can':
-  cyl('Tin', (x,y+.115,z),.067,.23,'pack%d'%idx);cyl('Rolled rim',(x,y+.232,z),.069,.012,'steel');wrap_label(x,y+.12,z,.069,.19,idx)
+  lathe('Pressed tin body',(x,y,z),[(0,0),(.003,.059),(.014,.065),(.025,.067),(.207,.067),(.22,.064),(.228,.064),(.228,0)],'pack%d'%idx,16)
+  for h in [.008,.226]:
+   lathe('Rolled tin seam',(x,y+h,z),[(-.004,.063),(-.004,.068),(0,.07),(.004,.068),(.004,.063)],'steel',16)
+  cyl('Recessed tin lid',(x,y+.23,z),.061,.003,'steel',16)
+  wrap_label(x,y+.118,z,.0675,.185,idx)
  elif kind=='bottle':
-  cyl('Bottle',(x,y+.13,z),.064,.26,'green');cyl('Shoulder',(x,y+.27,z),.046,.055,'green');cyl('Cap',(x,y+.315,z),.027,.04,'cream');wrap_label(x,y+.13,z,.066,.16,idx)
+  lathe('Contoured drink bottle',(x,y,z),[(0,0),(.004,.048),(.012,.06),(.026,.064),(.21,.064),(.235,.06),(.257,.047),(.28,.026),(.305,.024),(.305,0)],'green',16)
+  lathe('Bottle foot moulding',(x,y,z),[(.016,.061),(.02,.066),(.027,.066),(.031,.064)],'green',16)
+  lathe('Screw cap',(x,y,z),[(.299,0),(.299,.028),(.304,.029),(.329,.029),(.334,.025),(.334,0)],'cream',16)
+  cyl('Tamper seal',(x,y+.296,z),.027,.008,'cream',16)
+  for j in range(12):
+   angle=j*math.tau/12
+   cyl('Cap grip',(x+.029*math.cos(angle),y+.316,z+.029*math.sin(angle)),.0015,.021,'cream',6)
+  wrap_label(x,y+.127,z,.0645,.16,idx)
  elif kind=='bag':
   pillow_bag(x,y,z,idx)
-  box('Heat seal',(x,y+.315,z),(.185,.018,.08),'yellow',.003);label((x,y+.17,z+side*.055),.17,.27,idx,side)
+  for h in [.008,.313]:
+   box('Crimped foil seal',(x,y+h,z),(.176,.014,.025),'pack%d'%idx,.002)
+   for j in range(8):box('Seal pleat',(x-.075+j*.021,y+h,z+side*.014),(.003,.012,.003),'pack%d'%idx)
  else:
-  box('Carton',(x,y+.18,z),(.18,.36,.13),'pack%d'%idx,.006);label((x,y+.18,z+side*.067),.175,.345,idx,side)
+  box('Carton',(x,y+.18,z),(.18,.36,.13),'pack%d'%idx,.004)
+  label((x,y+.18,z+side*.066),.175,.345,idx,side)
+  box('Folded carton lid',(x,y+.359,z),(.172,.003,.12),'pack%d'%idx,.001)
+  box('Carton tuck seam',(x,y+.361,z+.032),(.169,.001,.0015),'cardboard')
+  box('Carton side fold',(x+.091,y+.18,z-.049),(.001,.34,.003),'cardboard')
 # Shell: retail 12.5m wide, staff wing 5.5m; 18x12m total.
 box('Sales floor',(0,-.11,0),(18,.22,12),'tile',collision=True,uvscale=2.4)
 box('Ceiling',(0,3.24,0),(18,.1,12),'ceiling',uvscale=2.4)
@@ -225,17 +278,30 @@ for i in range(6):
 # Coffee station left wall behind aisle.
 box('Coffee cabinet',(-8.35,.46,-.6),(.9,.92,2.2),'wood',.02,True)
 box('Coffee worktop',(-8.33,.95,-.6),(1,.055,2.3),'cream',.02)
+mat('coffee_glass',(.23,.14,.07),.24,.05)
+mat('appliance_metal',(.39,.41,.38),.42,.35)
 for z in [-1.3,-.6]:
- box('Coffee warmer plate',(-8.3,.995,z),(.46,.035,.44),'dark',.01)
- box('Coffee tower',(-8.5,1.27,z),(.17,.56,.4),'cream',.02)
- box('Coffee head',(-8.35,1.5,z),(.4,.14,.4),'red',.025)
- cyl('Coffee brew basket',(-8.27,1.4,z),.085,.07,'dark',20,'y')
- cyl('Coffee spout',(-8.27,1.36,z),.012,.04,'steel',8,'y')
- cyl('Coffee pot',(-8.27,1.12,z),.085,.2,'dark',20,'y');cyl('Coffee lid',(-8.27,1.235,z),.09,.03,'steel',20,'y')
- box('Coffee pot handle',(-8.17,1.14,z),(.03,.13,.035),'dark',.01)
- for k in range(3):cyl('Coffee button',(-8.145,1.5,z-.09+k*.09),.016,.012,'yellow',12,'x')
- cyl('Coffee ready lamp',(-8.145,1.455,z),.008,.012,'tube',8,'x')
-for j in range(5):cyl('Cup stack',(-8.2,1.04,.05+j*.1),.04,.13,'paper')
+ box('Coffee warmer base',(-8.33,.997,z),(.47,.04,.43),'dark',.018)
+ cyl('Warmer inset',(-8.23,1.021,z),.105,.012,'steel',24)
+ box('Coffee tower',(-8.55,1.27,z),(.16,.56,.38),'appliance_metal',.025)
+ box('Coffee head',(-8.37,1.51,z),(.46,.15,.4),'cream',.03)
+ box('Coffee fascia',(-8.131,1.51,z),(.012,.105,.34),'red',.009)
+ for k in [-1,1]:
+  cyl('Coffee rocker switch',(-8.12,1.515,z+k*.095),.015,.012,'dark',12,'x')
+ cyl('Coffee ready lamp',(-8.12,1.48,z),.007,.013,'tube',8,'x')
+ lathe('Brew basket',(-8.23,1.365,z),[(0,.06),(.025,.082),(.065,.088),(.07,0)],'dark',20)
+ cyl('Coffee spout',(-8.23,1.352,z),.012,.03,'steel',12)
+ lathe('Rounded coffee carafe',(-8.23,1.03,z),[(0,0),(.008,.066),(.025,.09),(.055,.102),(.13,.1),(.17,.08),(.19,.057),(.205,.057),(.205,0)],'coffee_glass',24)
+ lathe('Carafe base band',(-8.23,1.03,z),[(.005,.065),(.012,.085),(.024,.09),(.028,.089)],'steel',24)
+ lathe('Carafe lid',(-8.23,1.03,z),[(.197,0),(.197,.064),(.209,.068),(.219,.054),(.222,0)],'dark',24)
+ tube_path('Carafe open handle',[(-8.175,1.23,z),(-8.10,1.23,z),(-8.073,1.205,z),(-8.073,1.125,z),(-8.10,1.10,z),(-8.14,1.10,z)],.013,'dark')
+ box('Carafe collar',(-8.17,1.221,z),(.045,.025,.038),'dark',.008)
+for j in range(5):
+ z=.05+j*.1
+ lathe('Tapered paper cup',(-8.2,.978,z),[(0,0),(0,.029),(.125,.042),(.129,.043),(.132,.042),(.132,.038),(.125,.038),(.006,.025),(.006,0)],'paper',16)
+ for h in [.08,.093,.106]:
+  radius=.029+h*.1
+  lathe('Nested cup rim',(-8.2,.978,z),[(h,radius),(h+.003,radius+.002),(h+.005,radius)],'paper',16)
 art_panel((-8.875,1.98,-.6),.43,.58,'coffee_poster',math.pi/2)
 for y in [1.7,2.26]:
  for z in [-.79,-.41]:box('Poster tape',(-8.867,y,z),(.008,.04,.075),'cream')

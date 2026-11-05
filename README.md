@@ -31,6 +31,8 @@ The game saves a checkpoint at the start of the shift and again before the final
 bash scripts/validate_project.sh
 # Render five views from the running Godot scene at 1600 × 900:
 godot --path . -- --capture
+# Inspect refined shelf packaging and coffee props without retro post effects:
+godot --path . -- --capture-assets
 # Regenerate original textures, audio and Blender models:
 python tools/textures/generate.py  # Pillow required
 python tools/audio/generate.py
