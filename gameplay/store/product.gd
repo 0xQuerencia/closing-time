@@ -83,52 +83,100 @@ func _build() -> void:
 	add_child(_shape)
 
 func _build_trash_bag(size: Vector3) -> void:
-	# A tied, angular bin liner with visible folded sides; keep the silhouette readable
-	# both in the player's hand and when left on the floor.
-	var body_mesh := SphereMesh.new()
-	body_mesh.radius = size.x * 0.49
-	body_mesh.height = size.y * 0.82
-	body_mesh.radial_segments = 10
-	body_mesh.rings = 5
+	# Low-poly, flat-shaded bin liner: lumpy octagonal sack, pinched neck, knot and two flared ears.
+	var stretch := size.z / size.x
+	var half := size.x * 0.5
+	var profile := [
+		[0.00, 0.50, 0.30], [0.07, 0.86, 0.50], [0.30, 1.00, 0.88], [0.52, 0.92, 0.80],
+		[0.70, 0.60, 0.62], [0.82, 0.24, 0.50]]
 	var body := MeshInstance3D.new()
 	body.name = "Gathered plastic sack"
-	body.mesh = body_mesh
-	body.scale = Vector3(1.0, 1.12, size.z / size.x)
-	body.position.y = size.y * 0.39
-	body.material_override = _material(Color(0.19, 0.20, 0.19), 0.88)
+	body.mesh = _faceted_lathe(profile, 8, half, size.y, stretch, 0.07, 3)
+	body.material_override = _bag_material(0.5)
 	add_child(body)
 	var neck := MeshInstance3D.new()
-	var neck_mesh := CylinderMesh.new()
-	neck_mesh.top_radius = 0.035
-	neck_mesh.bottom_radius = 0.067
-	neck_mesh.height = 0.11
-	neck_mesh.radial_segments = 8
-	neck.mesh = neck_mesh
-	neck.position = Vector3(0, size.y * 0.81, 0)
-	neck.material_override = _material(Color(0.13, 0.145, 0.14), 0.9)
+	neck.mesh = _faceted_lathe([[0.82, 0.30, 0.9], [0.88, 0.13, 0.7], [0.93, 0.16, 0.8]], 6, half, size.y, 1.0, 0.0, 5)
+	neck.material_override = _bag_material(0.25)
 	add_child(neck)
-	var tie := MeshInstance3D.new()
-	var knot := SphereMesh.new()
-	knot.radius = 0.044
-	knot.height = 0.07
-	knot.radial_segments = 8
-	knot.rings = 4
-	tie.mesh = knot
-	tie.scale = Vector3(1, 1, 0.8)
-	tie.position = Vector3(0, size.y * 0.96, 0)
-	tie.material_override = _material(Color(0.28, 0.29, 0.27), 0.86)
-	add_child(tie)
+	var knot := MeshInstance3D.new()
+	knot.mesh = _faceted_lathe([[0.90, 0.20, 1.0], [0.94, 0.30, 1.0], [0.985, 0.22, 1.0], [1.0, 0.05, 1.0]], 6, half, size.y, 1.0, 0.05, 7)
+	knot.material_override = _bag_material(0.55)
+	add_child(knot)
 	for side in [-1.0, 1.0]:
-		var fold := MeshInstance3D.new()
-		var fold_mesh := BoxMesh.new()
-		fold_mesh.size = Vector3(0.035, 0.14, 0.025)
-		fold.mesh = fold_mesh
-		fold.position = Vector3(side * 0.09, size.y * 0.87, 0.015)
-		fold.rotation.z = side * -0.28
-		fold.material_override = _material(Color(0.24, 0.25, 0.23), 0.9)
-		add_child(fold)
+		var ear := MeshInstance3D.new()
+		ear.mesh = _bag_ear(side, size)
+		ear.material_override = _bag_material(0.45, true)
+		add_child(ear)
 	_collider(size + Vector3(0.02, 0.02, 0.02))
 	_shape.position.y = size.y / 2.0
+
+func _bag_material(rough: float, double_sided := false) -> StandardMaterial3D:
+	var m := _material(Color(0.17, 0.19, 0.18), rough)
+	m.vertex_color_use_as_albedo = true
+	m.metallic_specular = 0.45
+	if double_sided:
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return m
+
+## Flat-shaded lathe from [height_fraction, radius_fraction, brightness] rings, closed top and bottom, jittered per vertex.
+func _faceted_lathe(profile: Array, sides: int, half: float, height: float, stretch: float, jitter: float, seed_value: int) -> ArrayMesh:
+	var rings: Array = []
+	for r in profile.size():
+		var row: Array = []
+		var ring: Array = profile[r]
+		for i in sides:
+			var ang := TAU * i / sides + (0.2 if r % 2 == 1 else 0.0)
+			var wobble := 1.0 + jitter * sin(float(i * 7 + r * 13 + seed_value) * 1.7)
+			var rad: float = half * float(ring[1]) * wobble
+			var lift := jitter * 0.4 * height * cos(float(i * 5 + r * 3 + seed_value))
+			rings.append(Vector3(cos(ang) * rad, float(ring[0]) * height + lift * 0.3, sin(ang) * rad * stretch))
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	for r in profile.size() - 1:
+		var shade_a := Color.WHITE * float(profile[r][2])
+		var shade_b := Color.WHITE * float(profile[r + 1][2])
+		for i in sides:
+			var j := (i + 1) % sides
+			var v0: Vector3 = rings[r * sides + i]
+			var v1: Vector3 = rings[r * sides + j]
+			var v2: Vector3 = rings[(r + 1) * sides + j]
+			var v3: Vector3 = rings[(r + 1) * sides + i]
+			_tri(st, v0, v2, v1, shade_a, shade_b, shade_a)
+			_tri(st, v0, v3, v2, shade_a, shade_b, shade_b)
+	var bottom := Vector3(0, float(profile[0][0]) * height, 0)
+	var last: int = profile.size() - 1
+	var top := Vector3(0, float(profile[last][0]) * height + 0.004, 0)
+	for i in sides:
+		var j := (i + 1) % sides
+		_tri(st, bottom, rings[i], rings[j], Color.WHITE * 0.35, Color.WHITE * float(profile[0][2]), Color.WHITE * float(profile[0][2]))
+		_tri(st, top, rings[last * sides + j], rings[last * sides + i], Color.WHITE * 0.45, Color.WHITE * float(profile[last][2]) * 0.8, Color.WHITE * float(profile[last][2]) * 0.8)
+	st.generate_normals()
+	return st.commit()
+
+func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, ca: Color, cb: Color, cc: Color) -> void:
+	st.set_color(ca)
+	st.add_vertex(a)
+	st.set_color(cb)
+	st.add_vertex(b)
+	st.set_color(cc)
+	st.add_vertex(c)
+
+## A crinkled plastic ear flaring out from the knot.
+func _bag_ear(side: float, size: Vector3) -> ArrayMesh:
+	var y := size.y
+	var base := Vector3(side * 0.012, y * 0.95, 0)
+	var tip_a := Vector3(side * 0.085, y * 0.99 + 0.02, 0.025)
+	var tip_b := Vector3(side * 0.095, y * 0.95 - 0.02, -0.02)
+	var mid := Vector3(side * 0.055, y * 0.98 + 0.005, 0.0)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	_tri(st, base, tip_a, mid, Color.WHITE * 0.7, Color.WHITE * 1.1, Color.WHITE * 0.9)
+	_tri(st, base, mid, tip_b, Color.WHITE * 0.7, Color.WHITE * 0.9, Color.WHITE * 0.6)
+	_tri(st, mid, tip_a, tip_b, Color.WHITE * 0.9, Color.WHITE * 1.1, Color.WHITE * 0.6)
+	st.generate_normals()
+	return st.commit()
 
 func _material(color: Color, rough: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
