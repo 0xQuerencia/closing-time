@@ -310,7 +310,7 @@ func _sync_rig() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
-	if event.is_action_pressed(GameInput.PHONE):
+	if event.is_action_pressed(GameInput.PHONE, false, true):  # exact match: Alt+Tab to another window is not the phone
 		toggle()
 	elif open and event.is_action_pressed(GameInput.PHONE_NEXT):
 		_switch(1)

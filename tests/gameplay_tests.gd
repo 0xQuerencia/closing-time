@@ -24,6 +24,7 @@ func run(market: Node3D) -> void:
 	await _test_routes()
 	await _test_head_look()
 	await _test_soundscape()
+	_test_alt_tab()
 	game.dialogue.time_scale_for_tests = 1.0
 	Engine.time_scale = TIME_SCALE
 	await _test_customer_cycles()
@@ -265,6 +266,25 @@ func _test_soundscape() -> void:
 	player.enabled = was_enabled
 	player.global_position = CLERK
 	await _settle()
+
+## Switching windows with Alt+Tab must not pull the phone out; a plain Tab still does.
+func _test_alt_tab() -> void:
+	var phone := game.phone_ui
+	var was_visible := phone.visible
+	phone.visible = true
+	var key := InputEventKey.new()
+	key.physical_keycode = KEY_TAB
+	key.keycode = KEY_TAB
+	key.pressed = true
+	key.alt_pressed = true
+	var before := phone.open
+	phone._unhandled_input(key)
+	check(phone.open == before, "Alt+Tab leaves the phone where it was")
+	key.alt_pressed = false
+	phone._unhandled_input(key)
+	check(phone.open != before, "Tab alone raises or lowers the phone")
+	phone._unhandled_input(key)
+	phone.visible = was_visible
 
 func _test_routes() -> void:
 	var probe := CharacterBody3D.new()
