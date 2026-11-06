@@ -26,6 +26,7 @@ func run(market: Node3D) -> void:
 	await _office_door()
 	await _leon_in_hall()
 	await _leon_in_shop()
+	await _leon_chase_run()
 	await _hiding()
 	await _endings()
 	print("M5 CAPTURE COMPLETE dir=", OUT)
@@ -86,6 +87,23 @@ func _leon_in_shop() -> void:
 	leon.rotation.y = atan2(1.0, 0.0)
 	await _stand(Vector3(-4.6, 0.0, 3.9), Vector3(-2.2, 1.4, 3.4))
 	await _shot("m5_07_leon_close")
+
+func _leon_chase_run() -> void:
+	var leon := threat.stalker
+	leon.global_position = Vector3(4.2, 0.0, -2.0)
+	leon.velocity = Vector3.ZERO
+	await _stand(Vector3(4.25, 0.0, 3.4), Vector3(4.2, 1.4, -2.0))
+	leon._goto(player.global_position)
+	leon._set_state(Stalker.State.CHASE)
+	for i in 32:
+		await get_tree().physics_frame
+	# Keep this art review focused on the run pose; transient dialogue and task
+	# panels otherwise obscure Leon in the screenshot.
+	game.hud.visible = false
+	game.phone_ui.visible = false
+	await _shot("m5_08_leon_chase_run")
+	game.hud.visible = true
+	game.phone_ui.visible = true
 
 func _hiding() -> void:
 	threat.stalker.stand_down()

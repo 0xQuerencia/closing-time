@@ -23,6 +23,7 @@ const ENDINGS := {
 var game: Gameplay
 var mode := "none"
 var _root: Control
+var _column: VBoxContainer
 var _title: Label
 var _body: Label
 var _buttons: VBoxContainer
@@ -47,27 +48,27 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(shade)
-	var column := VBoxContainer.new()
-	column.set_anchors_preset(Control.PRESET_CENTER)
-	column.custom_minimum_size = Vector2(760, 0)
-	column.position = Vector2(-380, -190)
-	column.add_theme_constant_override("separation", 14)
-	_root.add_child(column)
+	_column = VBoxContainer.new()
+	_column.set_anchors_preset(Control.PRESET_CENTER)
+	_column.custom_minimum_size = Vector2(760, 0)
+	_column.position = Vector2(-380, -190)
+	_column.add_theme_constant_override("separation", 14)
+	_root.add_child(_column)
 	_title = _label(64, INK)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_title)
+	_column.add_child(_title)
 	_body = _label(22, DIM)
 	_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_body)
+	_column.add_child(_body)
 	_buttons = VBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 6)
 	_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_child(_buttons)
+	_column.add_child(_buttons)
 	_footer = _label(17, DIM)
 	_footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_footer)
+	_column.add_child(_footer)
 	_load_settings()
 	hide_all()
 	return self
@@ -122,6 +123,14 @@ func show_guide(return_to := "game") -> void:
 	_present("guide", "SHIFT GUIDE", _guide_body(), "G / Esc  close")
 	var first := _button("back", "Back", _close_guide)
 	first.grab_focus()
+	call_deferred("_center_guide")
+
+func _center_guide() -> void:
+	await get_tree().process_frame
+	if mode == "guide":
+		_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		var viewport_size := get_viewport().get_visible_rect().size
+		_column.position = (viewport_size - _column.size) * 0.5
 
 func _guide_body() -> String:
 	var current := game.tasks.current_guide()
@@ -130,7 +139,7 @@ func _guide_body() -> String:
 		now = "NOW\n%s\n%s" % [current.title, current.objective]
 		if str(current.hint) != "":
 			now += "\n" + str(current.hint)
-	return ("The paper in the top-right is the full shift checklist. NEXT in the upper-left picks one useful step so you never have to guess what to do first.\n\n" +
+	return ("Follow NEXT in the upper-left for your immediate objective. The paper in the top-right tracks every open chore. Each step tells you the room, landmark, and button to use.\n\n" +
 		"%s\n\nCONTROLS\nWASD  move     Mouse  look     Shift  run\nE  use / scan / talk     F  inspect     Q  put down\nTab  phone     T  phone light     1 / 2 / 3  reply\nEsc  pause     G  open this guide") % now
 
 func _close_guide() -> void:
@@ -176,6 +185,15 @@ func _present(next_mode: String, title: String, body: String, footer: String) ->
 	mode = next_mode
 	_title.text = title
 	_body.text = body.replace("\\n", "\n")
+	_body.add_theme_font_size_override("font_size", 26 if next_mode == "guide" else 22)
+	_column.anchor_left = 0.5
+	_column.anchor_right = 0.5
+	_column.anchor_top = 0.5
+	_column.anchor_bottom = 0.5
+	_column.offset_left = -380
+	_column.offset_right = 380
+	_column.offset_top = -190
+	_column.offset_bottom = -190
 	_footer.text = footer
 	_root.visible = true
 	if is_inside_tree():

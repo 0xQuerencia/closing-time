@@ -1,5 +1,5 @@
 extends SceneTree
-const CLIPS := ["Idle", "IdleShift", "IdleWait", "CounterIdle", "LookAround", "Walk", "Stroll", "TurnLeft", "TurnRight"]
+const CLIPS := ["Idle", "IdleShift", "IdleWait", "CounterIdle", "LookAround", "Walk", "Run", "Stroll", "TurnLeft", "TurnRight"]
 var failures := 0
 
 func _initialize() -> void:

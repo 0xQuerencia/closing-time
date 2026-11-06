@@ -63,7 +63,7 @@ func blackout() -> void:
 	sec.power.trip_all()
 	director._record("blackout")
 	game.tasks.add_task("power", "Restore the power", [
-		{"id": "cover", "text": "Open the breaker panel", "guide": "The breaker box is in the back hall past the stockroom. Use E on its cover."},
+		{"id": "cover", "text": "Open the breaker panel", "guide": "Go through the stockroom into the narrow rear hall. Press E on the gray breaker box cover."},
 		{"id": "main", "text": "Switch the main on", "guide": "With the cover open, use E on the large main breaker."},
 		{"id": "security", "text": "Switch the security breaker on", "guide": "Use E on the smaller security breaker beside the main."}], 140)
 	game.interactor.message.emit("Power's out.  T  phone light")

@@ -46,9 +46,11 @@ func run(market: Node3D) -> void:
 				checkout_age += get_process_delta_time()
 			if checkout_age > 3.0 and not paid:
 				for item in game.checkout.items:
-					game.checkout.scan(item)
-				game.checkout.take_payment()
-				paid = true
+					if not item.scanned:
+						game.checkout.scan(item)
+				# Ben's scripted first card attempt declines; keep retrying until the sale
+				# actually closes so this capture records his complete visit and exit.
+				paid = game.checkout.take_payment()
 			age += get_process_delta_time()
 			await get_tree().process_frame
 		if is_instance_valid(customer):

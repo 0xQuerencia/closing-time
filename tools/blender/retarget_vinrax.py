@@ -22,7 +22,7 @@ MAP = {
     'thigh_right': 'RightUpperLeg', 'shin.R': 'RightLowerLeg', 'foot_right': 'RightFoot',
 }
 CLIPS = ['Idle', 'IdleShift', 'IdleWait', 'CounterIdle', 'LookAround',
-         'Walk', 'Stroll', 'TurnLeft', 'TurnRight']
+         'Walk', 'Run', 'Stroll', 'TurnLeft', 'TurnRight']
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.context.scene.render.fps = 30

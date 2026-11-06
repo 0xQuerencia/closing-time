@@ -125,15 +125,15 @@ func _anomaly() -> void:
 func _add_chores() -> void:
 	var tasks := game.tasks
 	tasks.add_task("restock", "Stock three products", [
-		{"id": "s1", "text": "Fill a shelf gap (1/3)", "guide": "Go to the open stock carton in the back, take a product, and carry it to an orange shelf gap."},
-		{"id": "s2", "text": "Fill a shelf gap (2/3)", "guide": "Take another product from the open stock carton and carry it to an orange shelf gap."},
-		{"id": "s3", "text": "Fill a shelf gap (3/3)", "guide": "Take the last product from the stock carton and carry it to an orange shelf gap."}], 10)
+		{"id": "s1", "text": "Fill a shelf gap (1/3)", "guide": "In the back stockroom, take one item from the open carton. Bring it to any glowing orange gap on the middle aisle shelves and press E."},
+		{"id": "s2", "text": "Fill a shelf gap (2/3)", "guide": "Return to the open carton in the back stockroom for another item, then press E at an orange gap on the middle aisle shelves."},
+		{"id": "s3", "text": "Fill a shelf gap (3/3)", "guide": "Take the last item from the open stockroom carton and press E at the final orange gap on the middle aisle shelves."}], 10)
 	tasks.add_task("trash", "Bag the trash", [
-		{"id": "bag", "text": "Tie off the trash bag", "guide": "Use E on the full bin beside the checkout counter."},
-		{"id": "rear", "text": "Leave it by the rear door", "guide": "Carry the tied bag through the back hall and use E at the rear door."}], 10)
+		{"id": "bag", "text": "Tie off the trash bag", "guide": "At the left end of the checkout counter, press E on the full trash bin to tie the bag."},
+		{"id": "rear", "text": "Leave it by the rear door", "guide": "Carry the tied bag through the staff hall to the rear loading door, then press E beside the door."}], 10)
 	tasks.add_task("latch", "Check the rear-door latch", [
-		{"id": "lift", "text": "Lift the latch", "guide": "Go to the rear loading door and use E on the sticking latch."},
-		{"id": "lock", "text": "Turn the key", "guide": "After lifting the latch, use E on the small key below it."}], 10)
+		{"id": "lift", "text": "Lift the latch", "guide": "At the rear loading door at the end of the staff hall, press E on the metal latch above the handle."},
+		{"id": "lock", "text": "Turn the key", "guide": "Press E on the small key cylinder directly below the raised rear-door latch."}], 10)
 	game.shift.restocked.connect(func(n): tasks.complete_objective("restock", "s%d" % n))
 	game.shift.trash_bagged.connect(func(): tasks.complete_objective("trash", "bag"))
 	game.shift.trash_placed.connect(func(): tasks.complete_objective("trash", "rear"))

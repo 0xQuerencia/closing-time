@@ -71,7 +71,8 @@ play still requires the player to scan and collect payment.
 ## Customer character art
 
 Customer 1 uses **Vinrax's PSX Casual Male**, with the original 256px texture and
-nine retargeted clips from the licensed Cordatix sampler. Customer 2 retains the
+ten retargeted clips from the licensed Cordatix sampler, including a run cycle
+used by Leon during a chase. Customer 2 retains the
 Cordatix office worker. Attribution and source links are in `ASSET_CREDITS.md`.
 The M3.1 movement, browsing, blending and transaction logic are preserved.
 
