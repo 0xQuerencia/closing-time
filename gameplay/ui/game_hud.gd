@@ -238,6 +238,20 @@ func _process(delta: float) -> void:
 	_list_left = maxf(0.0, _list_left - delta)
 	_objective_box.modulate.a = move_toward(_objective_box.modulate.a, 1.0 if _objective_left > 0.0 else 0.0, delta * FADE_SPEED)
 	_list_box.modulate.a = move_toward(_list_box.modulate.a, 1.0 if _list_left > 0.0 else 0.0, delta * FADE_SPEED)
+	_keep_objective_clear()
+
+## On narrow windows the centred objective would run into the shift list: drop it below the list while both are up.
+func _keep_objective_clear() -> void:
+	var top := 0.0
+	if _list_box.modulate.a > 0.0 and _objective_box.modulate.a > 0.0 and _objective.text != "":
+		var width := minf(FONT.get_string_size(_objective.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x, _objective.size.x)
+		var view := get_viewport().get_visible_rect().size
+		var text_rect := Rect2(view.x * 0.5 - width * 0.5, view.y * 0.14, width, _objective_box.size.y)
+		var list_rect := _list_box.get_global_rect().grow(8.0)
+		if text_rect.intersects(list_rect):
+			top = list_rect.end.y + 10.0 - view.y * 0.14
+	_objective_box.offset_top = top
+	_objective_box.offset_bottom = top
 
 ## A player who has made no progress for a while gets the objective and its hint again.
 func _tick_objective(delta: float) -> void:
