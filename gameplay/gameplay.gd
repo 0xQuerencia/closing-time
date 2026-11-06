@@ -6,6 +6,7 @@ const CUSTOMER_GAP := 7.0
 var world: Node3D
 var player: CharacterBody3D
 var interactor: Interactor
+var soundscape: Soundscape
 var checkout: Checkout
 var dialogue: DialogueRunner
 var tasks: TaskManager
@@ -63,6 +64,8 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	security = Security.new()
 	add_child(security)
 	security.build(self)
+	soundscape = Soundscape.new().setup(self)
+	add_child(soundscape)
 	director = StoryDirector.new()
 	add_child(director)
 	director.setup(self)

@@ -34,6 +34,8 @@ var _passing_cooldown := 0.0
 var _passing_left := 0.0
 var _gesture: StringName
 var _gesture_left := 0.0
+var _stride := 0.0
+var _feet: AudioStreamPlayer3D
 const GLANCE_SPOTS := [Vector3(-5.6, 1.0, 4.3), Vector3(-4.2, 1.0, 4.4), Vector3(-6.5, 1.4, 1.2), Vector3(1.7, 1.4, 5.0)]
 const BACK_OF_STORE := Vector3(4.2, 1.5, -3.0)
 const IDLE_CLIPS := [&"Idle", &"IdleShift", &"IdleWait", &"CounterIdle"]
@@ -354,6 +356,7 @@ func _walk_to(target: Vector3, final_point: bool = true) -> void:
 			velocity.z = horizontal.y
 		velocity.y = -0.1 if is_on_floor() else velocity.y - GRAVITY * delta
 		move_and_slide()
+		_step_sound(delta, -21.0)
 		_animate()
 		if yielding or remaining < best - 0.01:
 			best = minf(best, remaining)
@@ -364,6 +367,25 @@ func _walk_to(target: Vector3, final_point: bool = true) -> void:
 			push_warning("%s stalled on the way to %s; skipping waypoint" % [name, target])
 			break
 		await get_tree().physics_frame
+
+## Soft shoes on tile (or the wet lot outside), one per stride actually walked.
+func _step_sound(delta: float, db: float) -> bool:
+	_stride += Vector2(get_real_velocity().x, get_real_velocity().z).length() * delta
+	if _stride < 0.7:
+		return false
+	_stride = 0.0
+	if _feet == null:
+		_feet = AudioStreamPlayer3D.new()
+		_feet.position = Vector3(0, 0.05, 0)
+		_feet.unit_size = 3.0
+		_feet.max_distance = 18.0
+		add_child(_feet)
+	var inside := game.soundscape == null or game.soundscape.is_inside(global_position)
+	_feet.stream = Foley.take("step_tile" if inside else "step_wet")
+	_feet.volume_db = db
+	_feet.pitch_scale = randf_range(0.9, 1.0)
+	_feet.play()
+	return true
 
 func _player_in_way(dir: Vector3) -> bool:
 	var to_player: Vector3 = game.player.global_position - global_position

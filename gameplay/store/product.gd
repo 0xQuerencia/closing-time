@@ -218,6 +218,8 @@ func inspect(actor: Node) -> String:
 
 ## Carried by a player or NPC: no collision, parented to the carrier.
 func attach_to(parent: Node3D, local_pos: Vector3) -> void:
+	if parent.is_inside_tree():
+		Foley.play_at(parent, Foley.handling_kind(product_id), parent.global_position, -14.0)
 	holder = parent
 	_shape.disabled = true
 	if get_parent():
@@ -228,6 +230,8 @@ func attach_to(parent: Node3D, local_pos: Vector3) -> void:
 	rotation = Vector3.ZERO
 
 func place_at(world_pos: Vector3, yaw: float) -> void:
+	if holder != null and home_root != null and home_root.is_inside_tree():  # put down by a hand, not stocked at load
+		Foley.play_at(home_root, Foley.handling_kind(product_id), world_pos, -11.0, 0.92)
 	holder = null
 	_shape.disabled = false
 	if get_parent():

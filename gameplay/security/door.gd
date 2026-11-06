@@ -77,12 +77,28 @@ func setup(world: Node3D, label: String, centre: Vector3, yaw: float, leaf_size:
 	return self
 
 func _build_sounds() -> void:
-	_sound_open = Tone.player(Tone.stream(96.0, 260, 0.6, 0.45), Vector3(0, 1.0, 0), 5.0)
-	_sound_shut = Tone.player(Tone.stream(70.0, 200, 0.9, 0.55), Vector3(0, 1.0, 0), 6.0)
-	_sound_lock = Tone.player(Tone.stream(1500.0, 70, 1.3, 0.22), Vector3(0, 1.1, 0), 4.0)
-	for s in [_sound_open, _sound_shut, _sound_lock]:
-		s.max_distance = 18.0
-		add_child(s)
+	# Sounds come from the handle side of the leaf, where the latch is.
+	var latch := Vector3(float(leaves[0].dir) * size.x * 0.4, 1.0, 0) if not double else Vector3(0, 1.0, 0)
+	_sound_open = _foley_player("latch", latch, -8.0)
+	_sound_shut = _foley_player("glass_shut" if double else "door_shut", latch, -4.0)
+	_sound_lock = _foley_player("bolt", latch + Vector3(0, 0.1, 0), -9.0)
+
+func _foley_player(kind: String, at: Vector3, db: float) -> AudioStreamPlayer3D:
+	var p := AudioStreamPlayer3D.new()
+	p.stream = Foley.take(kind)
+	p.set_meta("foley", kind)
+	p.position = at
+	p.volume_db = db
+	p.unit_size = 4.0
+	p.max_distance = 22.0
+	add_child(p)
+	return p
+
+## A fresh take each time so a door used twice does not sound pasted.
+func _play(p: AudioStreamPlayer3D) -> void:
+	p.stream = Foley.take(p.get_meta("foley"))
+	p.pitch_scale = randf_range(0.96, 1.04)
+	p.play()
 
 func _exit_tree() -> void:
 	for s in [_sound_open, _sound_shut, _sound_lock]:
@@ -113,7 +129,7 @@ func request_close() -> void:
 
 ## Someone tries a locked handle: a dull knock and the leaf shivers in its frame.
 func rattle() -> void:
-	_sound_shut.play()
+	_play(_sound_shut)
 	var pivot: Node3D = leaves[0].pivot
 	var base := pivot.rotation.y
 	var tween := create_tween()
@@ -133,7 +149,7 @@ func set_locked(value: bool, quiet := false) -> void:
 		return
 	locked = value
 	if not quiet:
-		_sound_lock.play()
+		_play(_sound_lock)
 	lock_changed.emit(locked)
 
 ## Why the player cannot lock this door yet, or "".
@@ -156,7 +172,7 @@ func _set_target(open: bool) -> void:
 		return
 	is_open = open
 	if open:
-		_sound_open.play()
+		_play(_sound_open)
 	_close_timer = 0.0
 
 func _process(delta: float) -> void:
@@ -166,7 +182,7 @@ func _process(delta: float) -> void:
 		angle = move_toward(angle, goal, delta * OPEN_ANGLE / SWING_SECONDS)
 		_apply_angle()
 		if before > 0.0 and angle <= 0.0 and not is_open:
-			_sound_shut.play()
+			_play(_sound_shut)
 	_update_contact()
 
 func _apply_angle() -> void:

@@ -23,6 +23,7 @@ func run(market: Node3D) -> void:
 	await _test_manual_sale()
 	await _test_routes()
 	await _test_head_look()
+	await _test_soundscape()
 	game.dialogue.time_scale_for_tests = 1.0
 	Engine.time_scale = TIME_SCALE
 	await _test_customer_cycles()
@@ -225,6 +226,44 @@ func _test_head_look() -> void:
 			look.has_target = false
 			await get_tree().create_timer(1.0).timeout
 		person.queue_free()
+	await _settle()
+
+## Rain opens up as you walk out, leaks in through an open door, steps follow distance walked, and every take is real audio.
+func _test_soundscape() -> void:
+	var sound := game.soundscape
+	for kind in ["step_tile", "step_wet", "metal", "plastic", "paper", "bag", "card", "latch", "door_shut", "glass_shut", "bolt"]:
+		var wav := Foley.take(kind)
+		var peak := 0
+		for i in range(0, wav.data.size(), 2):
+			peak = maxi(peak, absi(wav.data.decode_s16(i)))
+		check(wav.data.size() > 2000 and peak > 3000 and peak <= 32767, "%s foley is audible and unclipped (peak %d)" % [kind, peak])
+	game.security.front_door.snap(false)
+	player.global_position = CLERK
+	await get_tree().create_timer(1.2).timeout
+	check(sound.outdoors < 0.05, "rain is muffled at the counter with the doors shut (%.2f)" % sound.outdoors)
+	game.security.front_door.snap(true)
+	player.global_position = Vector3(1.7, 0.05, 4.4)
+	await get_tree().create_timer(1.2).timeout
+	check(sound.outdoors > 0.2 and sound.outdoors < 0.7, "an open front door lets some of the rain in (%.2f)" % sound.outdoors)
+	player.global_position = Vector3(1.7, 0.05, 9.0)
+	await get_tree().create_timer(1.2).timeout
+	check(sound.outdoors > 0.9, "rain is all around outside (%.2f)" % sound.outdoors)
+	game.security.front_door.snap(false)
+	player.global_position = CLERK
+	var was_enabled: bool = player.enabled
+	player.enabled = true  # on the title screen the body is parked
+	await _settle(4)
+	var before := sound.steps_taken
+	for i in 60:  # 3 m at walking pace
+		player.global_position += Vector3(0.05, 0, 0)
+		await get_tree().physics_frame
+	var steps := sound.steps_taken - before
+	check(steps >= 3 and steps <= 5, "about one footstep per stride over 3 m (%d)" % steps)
+	before = sound.steps_taken
+	await _settle(30)
+	check(sound.steps_taken == before, "no footsteps while standing still")
+	player.enabled = was_enabled
+	player.global_position = CLERK
 	await _settle()
 
 func _test_routes() -> void:
