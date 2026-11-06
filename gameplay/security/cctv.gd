@@ -221,6 +221,8 @@ func _process(delta: float) -> void:
 		_next_glitch = randf_range(7.0, 16.0)
 	_glitch_left = maxf(0.0, _glitch_left - delta)
 	var live := grid.powered("security")
+	if playback and not live:
+		_toggle_playback()  # the recorder lost power, so drop back to the live (dark) screen
 	var dead: bool = feeds[selected].dead
 	_record_clock -= delta
 	if live and _record_clock <= 0.0:
@@ -344,9 +346,14 @@ func select(index: int) -> void:
 	selected = index
 	if playback:
 		_playback_frames = _tape_frames(index)
-		_playback_cursor = _first_sighting_index(index)
-		if _playback_cursor < 0:
-			_playback_cursor = _playback_frames.size() - 1
+		if _playback_frames.is_empty():
+			playback = false  # nothing recorded on that camera yet, so show it live
+			_playback_cursor = -1
+			_set_live_hint()
+		else:
+			_playback_cursor = _first_sighting_index(index)
+			if _playback_cursor < 0:
+				_playback_cursor = _playback_frames.size() - 1
 	else:
 		_playback_cursor = -1
 		_set_live_hint()
@@ -404,6 +411,9 @@ func _set_live_hint() -> void:
 
 func _toggle_playback() -> void:
 	if not playback:
+		if not is_live():
+			_hint.text = "No signal. The recorder has no power."
+			return
 		_playback_frames = _tape_frames(selected)
 		if _playback_frames.is_empty():
 			_hint.text = "No frames saved yet. Check again in a moment."
@@ -434,7 +444,7 @@ func cycle(step: int) -> void:
 ## A feed counts as viewed when its powered picture is visible at the seated desk.
 func _watch_screen() -> void:
 	var watching := -1
-	if viewing and is_live() and not feeds[selected].dead:
+	if viewing and not playback and is_live() and not feeds[selected].dead:
 		watching = selected
 	if watching != _watching and watching >= 0:
 		viewed[watching] = true

@@ -177,6 +177,9 @@ func _arm_message_arrival() -> void:
 	var entry: Dictionary = _arrival_queue[0].entry
 	# A couple of weak-signal texts reach the pocket phone a moment late.
 	var delay := 1.35 if entry.get("id", "") in ["kay_2", "dina_5", "dina_7"] else 0.0
+	if delay <= 0.0:
+		_show_queued_message()  # Timer.start(0) would reuse the previous wait_time
+		return
 	_arrival_timer.start(delay)
 
 func _show_queued_message() -> void:

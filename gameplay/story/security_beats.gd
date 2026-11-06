@@ -42,10 +42,21 @@ func begin() -> void:
 	director._record("cameras_begin")
 	director._later(camera_check_delay, func(): director._text("dina_5", "Dina", "The alarm company called me. Rear door sensor tripped for a few seconds after midnight. Can you check the cameras on the office computer?", 0, 11))
 
+## Only the shop and rear-hall feeds belong to the cameras task; the parking-lot feed is extra.
+static func objective_for_feed(index: int) -> String:
+	if index == 0:
+		return "shop"
+	if index == 1:
+		return "rear"
+	return ""
+
 func _on_feed_viewed(index: int) -> void:
 	if not begun:
 		return
-	game.tasks.complete_objective("cameras", "shop" if index == 0 else "rear")
+	var objective := objective_for_feed(index)
+	if objective == "":
+		return
+	game.tasks.complete_objective("cameras", objective)
 	if director.step == StoryDirector.Step.CAMERAS and game.tasks.is_complete("cameras"):
 		if director._once("blackout_armed"):
 			director._later(blackout_delay, blackout)

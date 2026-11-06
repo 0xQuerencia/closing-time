@@ -44,7 +44,7 @@ func start() -> bool:
 		return false
 	_set_step(Step.INTRO)
 	_add_chores()
-	if spawn_enabled:
+	if spawn_enabled and get_tree().get_nodes_in_group("opening_witness").is_empty():
 		game.world.add_child(OpeningWitness.new())
 	_later(3.0, func(): _text("dina_1", "Dina", "Please count the back cooler. And double-check the loading door.", 23, 26))
 	_later(6.0, func(): _spawn("mara", Step.MARA))
