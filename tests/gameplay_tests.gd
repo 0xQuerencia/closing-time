@@ -25,6 +25,7 @@ func run(market: Node3D) -> void:
 	await _test_head_look()
 	await _test_soundscape()
 	_test_alt_tab()
+	await _test_door_swing()
 	game.dialogue.time_scale_for_tests = 1.0
 	Engine.time_scale = TIME_SCALE
 	await _test_customer_cycles()
@@ -285,6 +286,47 @@ func _test_alt_tab() -> void:
 	check(phone.open != before, "Tab alone raises or lowers the phone")
 	phone._unhandled_input(key)
 	phone.visible = was_visible
+
+## Doors ease into the open stop and gather speed as they swing shut, in about the old swing time.
+func _test_door_swing() -> void:
+	var door := game.security.office_door
+	door.snap(false)
+	door.request_open()
+	var samples := []  # [seconds, angle]
+	var start := Time.get_ticks_msec()
+	while not door.is_fully_open() and Time.get_ticks_msec() - start < 3000:
+		await get_tree().process_frame
+		samples.append([(Time.get_ticks_msec() - start) / 1000.0, door.angle])
+	var open_time: float = samples.back()[0]
+	check(door.is_fully_open() and open_time < 1.4, "office door opens fully in %.2f s" % open_time)
+	check(_rate(samples, 0.35, 0.6) > _rate(samples, 0.88, 0.99) * 1.5, "it slows into the open stop")
+	samples.clear()
+	start = Time.get_ticks_msec()
+	door.request_close()
+	while not door.is_closed() and Time.get_ticks_msec() - start < 3000:
+		await get_tree().process_frame
+		samples.append([(Time.get_ticks_msec() - start) / 1000.0, door.angle])
+	var shut_time: float = samples.back()[0]
+	check(door.is_closed() and shut_time < 1.1, "and swings shut in %.2f s" % shut_time)
+	check(_rate(samples, 0.15, 0.35) > _rate(samples, 0.65, 0.85), "gathering speed as it closes")
+	await get_tree().create_timer(0.3).timeout
+
+## Average angular speed over a stretch of the swing, as fractions of the way through it (opening or closing).
+func _rate(samples: Array, from: float, to: float) -> float:
+	var closing: bool = samples[0][1] > samples.back()[1]
+	var t0 := -1.0
+	var t1 := -1.0
+	for s in samples:
+		var progress: float = s[1] / Door.OPEN_ANGLE
+		if closing:
+			progress = 1.0 - progress
+		if progress >= from and progress <= to:
+			if t0 < 0.0:
+				t0 = s[0]
+			t1 = s[0]
+	if t0 < 0.0 or t1 <= t0:
+		return 0.0
+	return (to - from) * Door.OPEN_ANGLE / (t1 - t0)
 
 func _test_routes() -> void:
 	var probe := CharacterBody3D.new()

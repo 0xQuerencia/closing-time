@@ -37,6 +37,9 @@ var _glitch_left := 0.0
 var _watching := -1
 var _next_glitch := 6.0
 var _tween: Tween
+var _switch_left := 0.0
+var _switch_click: AudioStreamPlayer3D
+const SWITCH_SECONDS := 0.16
 var _proxy: Node3D
 var _frame_hold_left := 0.0
 var _stamp_jam_left := 0.0
@@ -141,6 +144,8 @@ func _build_terminal() -> void:
 	shape.shape = box
 	terminal.add_child(shape)
 	add_child(terminal)
+	_switch_click = Tone.player(Tone.stream(2100.0, 22, 0.5, 0.18), Vector3(0, 0.1, 0), 2.0)
+	terminal.add_child(_switch_click)
 
 func _build_view_camera() -> void:
 	_view_camera = Camera3D.new()
@@ -215,6 +220,7 @@ func revive_feed(index: int) -> void:
 
 func _process(delta: float) -> void:
 	_boot_left = maxf(0.0, _boot_left - delta)
+	_switch_left = maxf(0.0, _switch_left - delta)
 	_frame_hold_left = maxf(0.0, _frame_hold_left - delta)
 	_stamp_jam_left = maxf(0.0, _stamp_jam_left - delta)
 	_next_glitch -= delta
@@ -247,6 +253,8 @@ func _process(delta: float) -> void:
 		noise = 0.0
 	elif dead:
 		noise = 0.5
+	if _switch_left > 0.0:  # the DVR rolls a few lines of snow as it changes input
+		noise = maxf(noise, _switch_left / SWITCH_SECONDS * 0.85)
 	screen_material.set_shader_parameter("static_amount", noise)
 	screen_material.set_shader_parameter("playback", 1.0 if playback else 0.0)
 	screen_material.set_shader_parameter("glitch", 1.0 if _glitch_left > 0.0 else 0.0)
@@ -365,6 +373,11 @@ func select(index: int) -> void:
 		_set_live_hint()
 	_show_selected_feed()
 	(feeds[index].viewport as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+	if viewing:
+		_switch_left = SWITCH_SECONDS
+		_glitch_left = maxf(_glitch_left, 0.1)
+		if _switch_click != null:
+			_switch_click.play()
 	feed_selected.emit(index)
 
 func _show_selected_feed() -> void:

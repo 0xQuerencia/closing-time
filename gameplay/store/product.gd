@@ -230,7 +230,8 @@ func attach_to(parent: Node3D, local_pos: Vector3) -> void:
 	rotation = Vector3.ZERO
 
 func place_at(world_pos: Vector3, yaw: float) -> void:
-	if holder != null and home_root != null and home_root.is_inside_tree():  # put down by a hand, not stocked at load
+	var by_hand := holder != null and home_root != null and home_root.is_inside_tree()  # not stocked at load
+	if by_hand:
 		Foley.play_at(home_root, Foley.handling_kind(product_id), world_pos, -11.0, 0.92)
 	holder = null
 	_shape.disabled = false
@@ -240,7 +241,19 @@ func place_at(world_pos: Vector3, yaw: float) -> void:
 		home_root.add_child(self)
 	global_position = world_pos
 	rotation = Vector3(0, yaw, 0)
+	if by_hand:
+		_set_down()
 	placed.emit(self)
+
+## The look of being put down, not teleported: the visible item drops the last few centimetres and lands.
+## Only the meshes move, so the collider and every rule that reads the position see the final spot at once.
+func _set_down() -> void:
+	for child in get_children():
+		if child is MeshInstance3D:
+			var mesh := child as MeshInstance3D
+			var rest := mesh.position.y
+			mesh.position.y = rest + 0.035
+			create_tween().tween_property(mesh, "position:y", rest, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 # --- detailed models ------------------------------------------------------------------------------
 

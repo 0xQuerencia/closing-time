@@ -6,6 +6,9 @@ signal contact_broken
 signal contact_made
 signal lock_changed(locked: bool)
 const SWING_SECONDS := 0.8
+const SWING_SPEED := 3.0   # rad/s at full swing
+const SWING_ACCEL := 12.0
+const SWING_BRAKE := 5.0   # how softly it eases into the open stop
 const OPEN_ANGLE := deg_to_rad(98.0)
 const CLOSED_EPSILON := 0.02
 var door_name := "door"
@@ -21,6 +24,7 @@ var leaves: Array[Dictionary] = []  # {pivot, body, dir}
 var _held_open := false  # the player opened it: customers' auto-close leaves it alone
 var _close_timer := 0.0
 var _contact_open := false
+var _swing_speed := 0.0
 var _sound_open: AudioStreamPlayer3D
 var _sound_shut: AudioStreamPlayer3D
 var _sound_lock: AudioStreamPlayer3D
@@ -179,11 +183,27 @@ func _process(delta: float) -> void:
 	var goal := OPEN_ANGLE if is_open else 0.0
 	if not is_equal_approx(angle, goal):
 		var before := angle
-		angle = move_toward(angle, goal, delta * OPEN_ANGLE / SWING_SECONDS)
+		# A door has weight: it eases into the open stop, but picks up speed as it swings shut.
+		var remaining := absf(goal - angle)
+		var wanted := SWING_SPEED if not is_open else minf(SWING_SPEED, sqrt(2.0 * SWING_BRAKE * remaining))
+		_swing_speed = move_toward(_swing_speed, maxf(wanted, 0.35), SWING_ACCEL * delta)
+		angle = move_toward(angle, goal, _swing_speed * delta)
 		_apply_angle()
 		if before > 0.0 and angle <= 0.0 and not is_open:
 			_play(_sound_shut)
+			_swing_speed = 0.0
+			_settle_in_frame()
+		elif is_equal_approx(angle, goal):
+			_swing_speed = 0.0
 	_update_contact()
+
+## The leaf knocks the stop and gives a little, within the reed switch's tolerance.
+func _settle_in_frame() -> void:
+	for leaf in leaves:
+		var pivot := leaf.pivot as Node3D
+		var tween := create_tween()
+		tween.tween_property(pivot, "rotation:y", CLOSED_EPSILON * 0.6 * float(leaf.dir), 0.06)
+		tween.tween_property(pivot, "rotation:y", 0.0, 0.12).set_trans(Tween.TRANS_SINE)
 
 func _apply_angle() -> void:
 	for leaf in leaves:
