@@ -7,7 +7,8 @@ signal continue_requested
 signal retry_requested
 signal restart_requested
 signal quit_requested
-const FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
+const FONT := preload("res://assets/fonts/jetbrains_mono/JetBrainsMono-Medium.ttf")
+const LOGO_FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
 const INK := Color(0.9, 0.89, 0.84)
 const DIM := Color(0.9, 0.89, 0.84, 0.6)
 const WARM := Color(0.98, 0.84, 0.3)
@@ -26,6 +27,7 @@ var game: Gameplay
 var mode := "none"
 var _root: Control
 var _shade: ColorRect
+var _title_fade: TextureRect
 var _column: VBoxContainer
 var _title: Label
 var _body: Label
@@ -52,6 +54,23 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	_shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_shade)
+	_title_fade = TextureRect.new()
+	var fade := Gradient.new()
+	fade.colors = PackedColorArray([Color(0, 0, 0, 0.88), Color(0, 0, 0, 0.0)])
+	var strip := GradientTexture2D.new()
+	strip.gradient = fade
+	strip.width = 256
+	strip.height = 4
+	strip.fill_from = Vector2(0, 0)
+	strip.fill_to = Vector2(1, 0)
+	_title_fade.texture = strip
+	_title_fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_title_fade.stretch_mode = TextureRect.STRETCH_SCALE
+	_title_fade.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	_title_fade.anchor_right = 0.62
+	_title_fade.offset_right = 0
+	_title_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_title_fade)
 	_column = VBoxContainer.new()
 	_column.set_anchors_preset(Control.PRESET_CENTER)
 	_column.custom_minimum_size = Vector2(680, 0)
@@ -59,14 +78,14 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	_root.add_child(_column)
 	_title = _label(64, INK)
 	_column.add_child(_title)
-	_body = _label(22, DIM)
+	_body = _label(18, DIM)
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_body)
 	_buttons = VBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 6)
 	_buttons.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_column.add_child(_buttons)
-	_footer = _label(16, DIM)
+	_footer = _label(14, DIM)
 	_footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_footer)
 	apply_settings()
@@ -172,7 +191,7 @@ func _button(id: String, text: String, action: Callable) -> Button:
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_font_override("font", FONT)
-	b.add_theme_font_size_override("font_size", 26)
+	b.add_theme_font_size_override("font_size", 22)
 	b.add_theme_color_override("font_color", DIM)
 	b.add_theme_color_override("font_hover_color", WARM)
 	b.add_theme_color_override("font_focus_color", WARM)
@@ -204,21 +223,23 @@ func _present(next_mode: String, title: String, body: String, footer: String) ->
 	mode = next_mode
 	_title.text = title
 	var on_title := next_mode == "title"
-	_title.add_theme_font_size_override("font_size", 76 if on_title else 44)
+	_title.add_theme_font_override("font", LOGO_FONT if on_title else FONT)
+	_title.add_theme_font_size_override("font_size", 84 if on_title else 38)
 	_title.add_theme_color_override("font_color", TITLE_RED if on_title else INK)
 	_body.text = body.replace("\\n", "\n")
 	_body.visible = body != ""
-	_body.add_theme_font_size_override("font_size", 20 if next_mode == "guide" else (20 if on_title else 22))
+	_body.add_theme_font_size_override("font_size", 17 if next_mode == "guide" else (18 if on_title else 18))
 	_body.add_theme_color_override("font_color", INK if on_title else DIM)
-	_shade.color.a = 0.55 if on_title else 0.86
+	_shade.color.a = 0.12 if on_title else 0.86
+	_title_fade.visible = on_title
 	_column.anchor_left = 0.1
 	_column.anchor_right = 0.1
 	_column.anchor_top = 0.5
 	_column.anchor_bottom = 0.5
 	_column.offset_left = 0
 	_column.offset_right = 680
-	_column.offset_top = -190
-	_column.offset_bottom = -190
+	_column.offset_top = -330 if on_title else -190  # the logo sits in the night sky above the storefront
+	_column.offset_bottom = _column.offset_top
 	_footer.text = footer
 	_root.visible = true
 	if is_inside_tree():
@@ -240,7 +261,7 @@ func hide_all() -> void:
 func show_title() -> void:
 	_clear_buttons()
 	_present("title", "CLOSING TIME", "A MARLOW'S MARKET STORY", "WASD move   E use   F look   Q put down   Tab phone   C list   G guide   Esc pause")
-	var first := _button("start", "Start shift", func(): _begin(false))
+	var first := _button("start", "New Game", func(): _begin(false))
 	if SaveGame.exists():
 		_button("continue", "Continue", func(): _begin(true))
 	_button("guide", "How to play", func(): show_guide("title"))

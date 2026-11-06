@@ -8,6 +8,9 @@ var capture_mode := false
 var samples: Array[float] = []
 var gameplay: Gameplay
 var ambient_dread: AmbientDread
+## Where the title screen looks from: the far corner of the lot, storefront on the right, sky behind the logo.
+const TITLE_EYE := Vector3(8.0, 0.0, 12.0)
+const TITLE_AIM := Vector3(-6.0, 2.2, 6.0)
 
 func _ready() -> void:
 	capture_mode = "--capture" in OS.get_cmdline_user_args()
@@ -123,6 +126,13 @@ func _ready() -> void:
 		var m4_capture := SecurityCapture.new()
 		add_child(m4_capture)
 		m4_capture.run(self)
+	elif "--capture-ui" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		add_gameplay(false)
+		var ui_capture: Node = (load("res://tests/ui_capture.gd") as Script).new()
+		add_child(ui_capture)
+		ui_capture.run(self)
 	elif "--capture-atmosphere" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -153,7 +163,17 @@ func _ready() -> void:
 		gameplay.persist_saves = true
 		gameplay.flow.enable_persistence()
 		player.enabled = false
-		gameplay.flow.start_requested.connect(func(): player.enabled = true)
+		var spawn := Transform3D(player.global_transform)
+		var spawn_look: Vector3 = player.camera.rotation
+		gameplay.flow.start_requested.connect(func():
+			player.global_transform = spawn
+			player.camera.rotation = spawn_look
+			player.enabled = true)
+		# The title sits over the lit storefront from the car park, like the reference board.
+		player.global_position = TITLE_EYE
+		var gaze := TITLE_AIM - (player.global_position + Vector3(0, 1.62, 0))
+		player.rotation = Vector3(0, atan2(-gaze.x, -gaze.z), 0)
+		player.camera.rotation = Vector3(atan2(gaze.y, Vector2(gaze.x, gaze.z).length()), 0, 0)
 		gameplay.flow.show_title()
 
 func add_gameplay(auto_customers: bool) -> void:
