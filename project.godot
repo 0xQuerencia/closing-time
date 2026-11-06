@@ -2,7 +2,10 @@
 config_version=5
 [application]
 config/name="Closing Time"
-run/main_scene="res://scenes/startup/opening.tscn"
+run/main_scene="res://scenes/world/market_root.tscn"
+boot_splash/image="res://assets/art/market_loading.png"
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/fullsize=true
 config/features=PackedStringArray("4.6", "Forward Plus")
 run/max_fps=60
 [display]
