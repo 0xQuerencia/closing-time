@@ -70,6 +70,7 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	add_child(director)
 	director.setup(self)
 	_stock_shelves()
+	SetDressing.new().build(self)
 	flow = FlowUI.new().setup(self)
 	add_child(flow)
 	director.threat.ending.connect(flow.show_ending)

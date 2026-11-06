@@ -185,7 +185,7 @@ func add_gameplay(auto_customers: bool) -> void:
 func build_imported_props() -> void:
 	# Office models replace the blockout computer set inside the existing office footprint.
 	_add_visual("res://assets/models/office_props/desk_office.glb", Vector3(7.6, 0, -5.25))
-	_add_visual("res://assets/models/office_props/chair_office.glb", Vector3(7.6, 0, -4.22), PI)
+	_add_visual("res://assets/models/office_props/chair_office.glb", Vector3(7.38, 0, -3.92), PI + 0.62)  # left pushed back and turned, as if someone got up in a hurry
 	_add_visual("res://assets/models/office_props/crt_monitor__static.glb", Vector3(7.9, .77, -5.43))
 	_add_visual("res://assets/models/props/desktop_pc.glb", Vector3(7.35, .77, -5.38))
 	_add_visual("res://assets/models/office_props/keyboard.glb", Vector3(7.9, .77, -4.96))
