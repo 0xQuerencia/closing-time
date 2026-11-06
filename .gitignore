@@ -46,3 +46,6 @@ __pycache__/
 # Local activity tracking and editor preferences
 /.wakatime-project
 /.vscode/
+
+# Blender model tooling stays local
+/tools/blender/

@@ -40,11 +40,10 @@ godot --path . -- --capture
 godot --path . -- --capture-assets
 # Capture the in-game NEXT card and full Shift Guide:
 godot --path . -- --capture-reference --guide
-# Regenerate original textures, audio and Blender models:
+# Regenerate original textures and audio:
 python tools/textures/generate.py  # Pillow required
 python tools/audio/generate.py
-blender --factory-startup -b --python tools/blender/build_market.py
-# Reimport after changing generated models:
+# Reimport after changing generated assets:
 godot --headless --editor --path . --import --quit
 ```
 
@@ -86,9 +85,6 @@ godot --path . scenes/tests/vinrax_character_test.tscn --fixed-fps 30 -- --captu
 # Import and skeleton/duration checks:
 godot --headless --editor --path . --import --quit
 godot --headless --path . --script tests/vinrax_rig_tests.gd
-# Rebuild from the original Vinrax source archive and existing Cordatix GLB:
-blender -b --factory-startup --python-exit-code 1 --python tools/blender/retarget_vinrax.py
-blender -b --factory-startup --python-exit-code 1 --python tools/blender/validate_vinrax.py
 ```
 
 Store comparison footage is written to ignored `local/m32/comparison.mp4`, with
