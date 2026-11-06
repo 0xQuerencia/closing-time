@@ -66,22 +66,70 @@ func _bar(parent: Node3D, size: Vector3, pos: Vector3, material: Material) -> vo
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 
+func _texture_material(path: String, alpha := false) -> StandardMaterial3D:
+	var m := _material(Color.WHITE, 0.7)
+	m.albedo_texture = load(path)
+	if alpha:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return m
+
+## A painted quad on both faces of a door leaf (`y` is relative to the leaf centre).
+func _door_face(body: Node3D, width: float, height: float, y: float, thickness: float, material: Material, x := 0.0, back_material: Material = null) -> void:
+	for face in [1.0, -1.0]:
+		var quad := QuadMesh.new()
+		quad.size = Vector2(width, height)
+		var mi := MeshInstance3D.new()
+		mi.mesh = quad
+		mi.material_override = material if face > 0.0 or back_material == null else back_material
+		mi.position = Vector3(x, y, face * (thickness / 2.0 + 0.0012))
+		if face < 0.0:
+			mi.rotation.y = PI
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		body.add_child(mi)
+
+## A chunky hardware box through the leaf so it reads from both sides.
+func _hardware(body: Node3D, size: Vector3, pos: Vector3, material: Material) -> void:
+	_bar(body, size, pos, material)
+
+## Three hinge knuckles on the hinge edge of a leaf.
+func _hinges(body: Node3D, leaf_w: float, hinge_x: float, thickness: float, material: Material) -> void:
+	for y in [-0.8, 0.0, 0.8]:
+		_bar(body, Vector3(0.035, 0.12, thickness + 0.03), Vector3(hinge_x, y, 0), material)
+
+## Non-colliding casing around a door opening, in the door's own frame.
+func _casing(door: Door, span: float, height: float, depth: float, material: Material) -> void:
+	for x in [-span / 2.0 - 0.035, span / 2.0 + 0.035]:
+		_bar(door, Vector3(0.07, height, depth), Vector3(x, height / 2.0, 0), material)
+	_bar(door, Vector3(span + 0.14, 0.07, depth), Vector3(0, height + 0.035, 0), material)
+
 func _build_front_door() -> void:
 	var glass := _material(Color(0.4, 0.5, 0.46, 0.12), 0.25, 0.0, true)
 	front_door = Door.new().setup(world, "front door", FRONT_CENTRE, 0.0, Vector3(0.82, 2.16, 0.045), true, glass, true)
 	front_door.customers_open_it = true
 	front_door.lock_gate = func():
 		return "" if game.director != null and game.director.step >= StoryDirector.Step.ANOMALY else "We're open until midnight."
-	var frame := _material(Color(0.1, 0.11, 0.12), 0.45, 0.6)
+	var frame := _material(Color(0.13, 0.14, 0.15), 0.4, 0.7)
+	var alu := _texture_material("res://assets/materials/door_alu.png")
+	var decal := _texture_material("res://assets/materials/door_decal.png", true)
+	var push_decal := _texture_material("res://assets/materials/door_decal_push.png", true)
+	var brass := _material(Color(0.7, 0.58, 0.26), 0.3, 0.85)
 	var leaf_w := 0.82
 	for leaf in front_door.leaves:
 		var body: StaticBody3D = leaf.body
-		for y in [-1.04, 1.04]:
-			_bar(body, Vector3(leaf_w, 0.07, 0.06), Vector3(0, y, 0), frame)
-		for x in [-leaf_w * 0.5 + 0.03, leaf_w * 0.5 - 0.03]:
-			_bar(body, Vector3(0.06, 2.16, 0.06), Vector3(x, 0, 0), frame)
 		var toward: float = leaf.dir
-		_bar(body, Vector3(0.03, 0.4, 0.03), Vector3(toward * leaf_w * 0.5 * -0.8, 0.0, 0.05), frame)
+		_bar(body, Vector3(leaf_w, 0.14, 0.07), Vector3(0, 1.0, 0), frame)
+		_bar(body, Vector3(leaf_w, 0.08, 0.06), Vector3(0, 0.05, 0), frame)
+		for x in [-leaf_w * 0.5 + 0.045, leaf_w * 0.5 - 0.045]:
+			_bar(body, Vector3(0.09, 2.16, 0.07), Vector3(x, 0, 0), frame)
+		_door_face(body, leaf_w - 0.12, 0.34, -0.9, 0.07, alu)
+		_bar(body, Vector3(leaf_w, 0.05, 0.075), Vector3(0, -0.72, 0), frame)
+		_door_face(body, leaf_w - 0.14, 0.12, 0.3, 0.045, push_decal, 0.0, decal)
+		# vertical pull bar on the free edge, standing off both faces on brass posts
+		var bar_x: float = toward * (leaf_w * 0.5 - 0.1)
+		_bar(body, Vector3(0.035, 0.75, 0.035), Vector3(bar_x, 0.0, 0.085), brass)
+		_bar(body, Vector3(0.035, 0.75, 0.035), Vector3(bar_x, 0.0, -0.085), brass)
+		for y in [-0.3, 0.3]:
+			_bar(body, Vector3(0.03, 0.03, 0.17), Vector3(bar_x, y, 0), brass)
 	var right_body: StaticBody3D = front_door.leaves[1].body
 	var bolt := Door.DoorBolt.new()
 	bolt.door = front_door
@@ -92,12 +140,16 @@ func _build_front_door() -> void:
 	grab.shape = box
 	bolt.add_child(grab)
 	right_body.add_child(bolt)
-	_bar(right_body, Vector3(0.05, 0.12, 0.04), Vector3(-0.29, -0.075, 0.035), _material(Color(0.62, 0.5, 0.2), 0.35, 0.8))
+	_bar(right_body, Vector3(0.06, 0.12, 0.045), Vector3(-0.29, -0.075, 0.04), _material(Color(0.7, 0.58, 0.26), 0.3, 0.85))
+	_casing(front_door, 1.64, 2.2, 0.16, frame)
 
 func _build_office_door() -> void:
 	var wood := _material(Color(0.36, 0.25, 0.16), 0.8)
 	office_door = Door.new().setup(world, "office door", Vector3(5.0, 0.0, -4.3), -PI / 2.0, Vector3(1.1, 2.16, 0.045), false, wood)
 	var body: StaticBody3D = office_door.leaves[0].body
+	var brass := _material(Color(0.7, 0.58, 0.26), 0.3, 0.85)
+	var dark := _material(Color(0.12, 0.1, 0.09), 0.5, 0.5)
+	_door_face(body, 1.1, 2.16, 0.0, 0.045, _texture_material("res://assets/materials/door_wood.png"))
 	var bolt := Door.DoorBolt.new()
 	bolt.door = office_door
 	bolt.position = Vector3(-0.38, -0.075, -0.06)
@@ -107,14 +159,47 @@ func _build_office_door() -> void:
 	grab.shape = box
 	bolt.add_child(grab)
 	body.add_child(bolt)
-	_bar(body, Vector3(0.05, 0.12, 0.03), Vector3(-0.38, -0.075, -0.045), _material(Color(0.62, 0.5, 0.2), 0.35, 0.8))
-	_bar(body, Vector3(0.16, 0.03, 0.05), Vector3(0.4, -0.05, -0.03), _material(Color(0.62, 0.5, 0.2), 0.35, 0.8))
+	_bar(body, Vector3(0.06, 0.12, 0.03), Vector3(-0.38, -0.075, -0.045), brass)
+	# lever handle and backplate on the latch edge, through the leaf
+	_hardware(body, Vector3(0.05, 0.2, 0.06), Vector3(0.44, -0.05, 0), brass)
+	_hardware(body, Vector3(0.17, 0.035, 0.085), Vector3(0.37, -0.05, 0), brass)
+	_hinges(body, 1.1, -0.545, 0.045, dark)
+	var nameplate := _material(Color(0.82, 0.78, 0.6), 0.5)
+	_bar(body, Vector3(0.22, 0.07, 0.006), Vector3(0.0, 0.62, 0.0255), nameplate)
+	var plate_text := Label3D.new()
+	plate_text.text = "OFFICE"
+	plate_text.font_size = 20
+	plate_text.pixel_size = 0.0022
+	plate_text.modulate = Color(0.16, 0.12, 0.08)
+	plate_text.position = Vector3(0, 0.62, 0.0295)
+	plate_text.double_sided = false
+	body.add_child(plate_text)
+	_casing(office_door, 1.1, 2.18, 0.17, _material(Color(0.28, 0.19, 0.12), 0.8))
 
 func _build_rear_door() -> void:
 	var steel := _material(Color(0.2, 0.26, 0.29), 0.55, 0.3)
 	rear_door = Door.new().setup(world, "rear door", REAR_CENTRE, 0.0, Vector3(1.0, 2.16, 0.07), false, steel)
 	var body: StaticBody3D = rear_door.leaves[0].body
-	_bar(body, Vector3(0.72, 0.045, 0.05), Vector3(0.0, -0.075, 0.06), _material(Color(0.14, 0.15, 0.16), 0.4, 0.7))
+	var hardware := _material(Color(0.14, 0.15, 0.16), 0.4, 0.7)
+	_door_face(body, 1.0, 2.16, 0.0, 0.07, _texture_material("res://assets/materials/door_steel.png"))
+	_bar(body, Vector3(0.72, 0.05, 0.05), Vector3(0.0, -0.075, 0.075), hardware)
+	for x in [-0.34, 0.34]:
+		_bar(body, Vector3(0.05, 0.05, 0.06), Vector3(x, -0.075, 0.05), hardware)
+	_hinges(body, 1.0, -0.495, 0.07, hardware)
+	var exit_sign := _material(Color(0.75, 0.08, 0.06), 0.4)
+	exit_sign.emission_enabled = true
+	exit_sign.emission = Color(0.9, 0.1, 0.07)
+	exit_sign.emission_energy_multiplier = 0.9
+	_bar(rear_door, Vector3(0.42, 0.16, 0.06), Vector3(0, 2.46, 0.1), exit_sign)
+	var exit_text := Label3D.new()
+	exit_text.text = "EXIT"
+	exit_text.font_size = 36
+	exit_text.pixel_size = 0.0032
+	exit_text.modulate = Color(1, 0.9, 0.85)
+	exit_text.shaded = false
+	exit_text.position = Vector3(0, 2.46, 0.133)
+	exit_text.double_sided = false
+	rear_door.add_child(exit_text)
 	var sign_label := Label3D.new()
 	sign_label.text = "KEEP REAR DOOR CLOSED"
 	sign_label.font_size = 23

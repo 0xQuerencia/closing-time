@@ -19,6 +19,7 @@ func run(market: Node3D) -> void:
 		await get_tree().process_frame
 	await _powered_and_desk()
 	await _doors()
+	await _door_detail()
 	await _breaker()
 	await _blackout()
 	await _leon_on_camera()
@@ -92,6 +93,17 @@ func _doors() -> void:
 	sec.front_door.snap(false)
 	await _stand(Vector3(1.9, 0.0, 4.6), Vector3(1.69, 0.95, 6.0))
 	await _shot("m4_08_front_doors_inside")
+
+func _door_detail() -> void:
+	sec.rear_door.snap(false)
+	sec.office_door.snap(false)
+	sec.front_door.snap(false)
+	await _stand(Vector3(4.25, 0.0, -3.0), Vector3(4.25, 1.2, -6.0))
+	await _shot("m4_door_rear_steel")
+	await _stand(Vector3(3.75, 0.0, -4.3), Vector3(5.0, 1.1, -4.3))
+	await _shot("m4_door_office_wood")
+	await _stand(Vector3(1.7, 0.0, 7.4), Vector3(1.7, 1.1, 6.0))
+	await _shot("m4_door_front_outside")
 
 func _breaker() -> void:
 	await _stand(Vector3(4.15, 0.0, 2.4), Vector3(4.8, 1.5, 2.8))
