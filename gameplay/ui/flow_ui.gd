@@ -90,7 +90,7 @@ func apply_settings() -> void:
 	for node in game.world.get_children():
 		var script: Script = node.get_script()
 		if script != null and script.resource_path.ends_with("retro_effects.gd"):
-			node.palette_enabled = settings.retro
+			node.palette_enabled = false
 			node.analog_enabled = settings.retro
 			node._sync_toggles()
 	if not persist_settings:

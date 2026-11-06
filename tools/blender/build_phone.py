@@ -126,7 +126,9 @@ import random
 rng=random.Random(73)
 for i in range(5):
     hand.data.materials.append(material('skin tone %d'%i,(.255+i*.012,.12+i*.007,.076+i*.005),.95))
-for face_poly in hand.data.polygons: face_poly.material_index=rng.randrange(1,6)
+for face_poly in hand.data.polygons:
+    face_poly.material_index = 0
+    face_poly.use_smooth = True
 tube('Sleeve',[(.012,.025,-.073),(.013,.027,-.095),(.020,.045,-.20)],[(.017,.014),(.020,.017),(.027,.023)],sleeve,10)
 
 for ob in bpy.data.objects:

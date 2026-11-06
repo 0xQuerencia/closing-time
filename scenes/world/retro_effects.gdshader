@@ -1,18 +1,18 @@
 shader_type canvas_item;
 
-uniform sampler2D screen_texture : hint_screen_texture, filter_nearest;
+uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
 uniform bool pixelation_enabled = false;
-uniform bool palette_enabled = true;
+uniform bool palette_enabled = false;
 uniform bool analog_enabled = true;
 uniform float pixel_size : hint_range(1.0, 3.0, 0.25) = 1.5;
 uniform float palette_steps : hint_range(16.0, 48.0, 1.0) = 32.0;
 uniform float dither_strength : hint_range(0.0, 0.4, 0.01) = 0.12;
-uniform float grain_strength : hint_range(0.0, 0.025, 0.001) = 0.012;
-uniform float scanline_strength : hint_range(0.0, 0.025, 0.001) = 0.006;
-uniform float vignette_strength : hint_range(0.0, 1.0, 0.01) = 0.42;
-uniform float saturation : hint_range(0.0, 1.0, 0.01) = 0.84;
-uniform float chroma_strength : hint_range(0.0, 1.0, 0.01) = 0.35;
-uniform float tape_wobble : hint_range(0.0, 0.001, 0.00005) = 0.0002;
+uniform float grain_strength : hint_range(0.0, 0.025, 0.001) = 0.005;
+uniform float scanline_strength : hint_range(0.0, 0.025, 0.001) = 0.002;
+uniform float vignette_strength : hint_range(0.0, 1.0, 0.01) = 0.2;
+uniform float saturation : hint_range(0.0, 1.0, 0.01) = 0.94;
+uniform float chroma_strength : hint_range(0.0, 1.0, 0.01) = 0.12;
+uniform float tape_wobble : hint_range(0.0, 0.001, 0.00005) = 0.0;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
