@@ -11,7 +11,6 @@ func _dress() -> void:
 		if light.is_in_group("store_lights") and light.position.x < 3.0:
 			light.light_color = Color(1.0, 0.83, 0.61)
 			light.light_specular = 0.55
-			light.light_energy *= 1.3
 	for node in world.find_children("*", "MeshInstance3D", true, false):
 		var mesh := node as MeshInstance3D
 		if str(mesh.name).begins_with("Fluorescent_diffuser") or str(mesh.name).begins_with("Fluorescent diffuser"):

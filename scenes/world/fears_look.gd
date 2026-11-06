@@ -1,6 +1,6 @@
 class_name FearsLook
 extends Node
-## Warm practical lighting, restrained wear and one failing tube.
+## Dim, dirty, uneasy: cold fog, lower fill light, grime on every surface and one failing tube.
 const GRIME_STRENGTH := 0.5
 var _flicker_light: Light3D
 var _flicker_base := 1.0
@@ -23,16 +23,15 @@ func _grade_environment(world: Node) -> void:
 		var env := (node as WorldEnvironment).environment
 		if env == null:
 			continue
-		env.ambient_light_energy = 0.30
-		env.ambient_light_color = Color(0.64, 0.60, 0.49)
+		env.ambient_light_energy = 0.224
+		env.tonemap_exposure = 1.0
 		env.fog_enabled = true
 		env.fog_light_color = Color(0.05, 0.065, 0.08)
-		env.fog_density = 0.003
+		env.fog_density = 0.009
 		env.fog_sky_affect = 0.0
 		env.adjustment_enabled = true
-		env.adjustment_contrast = 1.0
+		env.adjustment_contrast = 1.05
 		env.adjustment_saturation = 0.92
-		env.tonemap_exposure = 1.08
 
 func _dim_lights(world: Node) -> void:
 	var tubes: Array[Light3D] = []
@@ -40,7 +39,7 @@ func _dim_lights(world: Node) -> void:
 		var light := node as Light3D
 		if light.position.y > 2.0 and light.position.y < 3.0:
 			light.light_energy *= 0.84
-			light.light_color = light.light_color.lerp(Color(1.0, 0.89, 0.72), 0.25)
+			light.light_color = light.light_color.lerp(Color(0.86, 0.95, 0.9), 0.35)
 			tubes.append(light)
 	if not tubes.is_empty():
 		_flicker_light = tubes[tubes.size() / 2]
@@ -76,7 +75,7 @@ func _add_grime(world: Node) -> void:
 	texture.height = 512
 	texture.seamless = true
 	var ramp := Gradient.new()
-	ramp.colors = PackedColorArray([Color(0.91, 0.89, 0.85), Color(1, 1, 1)])
+	ramp.colors = PackedColorArray([Color(0.74, 0.72, 0.68), Color(1, 1, 1)])
 	texture.color_ramp = ramp
 	var cache := {}
 	for node in world.find_children("*", "MeshInstance3D", true, false):
@@ -96,7 +95,7 @@ func _add_grime(world: Node) -> void:
 					dirty.detail_enabled = true
 					dirty.detail_albedo = texture
 					dirty.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
-					dirty.albedo_color = dirty.albedo_color.lerp(Color(dirty.albedo_color.get_luminance(), dirty.albedo_color.get_luminance(), dirty.albedo_color.get_luminance()), 0.08)
-					dirty.roughness = minf(1.0, dirty.roughness + 0.04)
+					dirty.albedo_color = dirty.albedo_color.lerp(Color(dirty.albedo_color.get_luminance(), dirty.albedo_color.get_luminance(), dirty.albedo_color.get_luminance()), 0.18)
+					dirty.roughness = minf(1.0, dirty.roughness + 0.12)
 				cache[key] = dirty
 			mi.set_surface_override_material(surface, cache[key])
