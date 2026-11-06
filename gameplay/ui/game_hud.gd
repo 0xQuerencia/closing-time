@@ -1,14 +1,19 @@
 class_name GameHud
 extends CanvasLayer
-## Minimal HUD in the spirit of an early-2000s horror game: outlined pixel text, no panels.
-## A paper to-do slip stands in for the checklist.
+## Restrained HUD: plain pixel text, no panels. Only the clock is always on. The objective, the shift list and the
+## control hints appear when something changes, then fade. Yellow marks things you can act on.
 const FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
-const INK := Color(0.9, 0.89, 0.84)
-const DIM := Color(0.9, 0.89, 0.84, 0.55)
-const PAPER := Color(0.76, 0.72, 0.6)
-const PAPER_INK := Color(0.13, 0.11, 0.09)
-const PAPER_DONE := Color(0.13, 0.11, 0.09, 0.45)
-const SPEAKER_COLORS := {"Jamie": "9fc7c2", "Customer": "d8c9a0"}
+const INK := Color(0.92, 0.91, 0.87)
+const DIM := Color(0.92, 0.91, 0.87, 0.55)
+const WARM := Color(0.98, 0.84, 0.3)
+const OBJECTIVE_SECONDS := 6.5
+const LIST_SECONDS := 7.0
+const STUCK_SECONDS := 80.0
+const HINT_PICKUPS := 3
+const HELD_CONFUSED_SECONDS := 25.0
+const FADE_SPEED := 2.5
+## Pickups with the Q / F hint, counted for the whole run so a retry does not repeat the lesson.
+static var hint_pickups := 0
 var interactor: Interactor
 var tasks: TaskManager
 var _dot: ColorRect
@@ -18,15 +23,20 @@ var _held: Label
 var _held_hint: Label
 var _speech: RichTextLabel
 var _choices: VBoxContainer
-var _slip: PanelContainer
-var _slip_list: VBoxContainer
-var _guide: PanelContainer
-var _guide_task: Label
-var _guide_step: Label
-var _guide_hint: Label
 var _clock: Label
+var _objective_box: VBoxContainer
+var _objective: Label
+var _hint: Label
+var _list_box: VBoxContainer
 var _message_left := 0.0
 var _line_left := 0.0
+var _objective_left := 0.0
+var _list_left := 0.0
+var _idle := 0.0
+var _held_time := 0.0
+var _show_held_hint := false
+var _guide_title := ""
+var _guide_key := ""
 var _type_tween: Tween
 
 func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManager) -> void:
@@ -34,36 +44,30 @@ func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManage
 	tasks = task_manager
 	layer = 10
 	_build_crosshair()
-	_prompt = _label(24, INK)
+	_prompt = _label(20, INK)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_place(_prompt, 0.5, 0.5, -400, 30, 800)
-	_message = _label(20, DIM)
+	_place(_prompt, 0.5, 0.5, -320, 24, 640)
+	_message = _label(18, DIM)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_place(_message, 0.5, 0.5, -400, 66, 800)
-	_held = _label(22, INK)
-	_place(_held, 0.0, 1.0, 28, -62, 500)
-	_held_hint = _label(18, DIM)
+	_place(_message, 0.5, 0.5, -320, 54, 640)
+	_held = _label(20, INK)
+	_place(_held, 0.0, 1.0, 28, -60, 500)
+	_held_hint = _label(16, DIM)
 	_place(_held_hint, 0.0, 1.0, 28, -34, 500)
 	_build_speech()
-	_build_slip()
-	_build_guide()
-	_clock = _label(22, INK)
-	_place(_clock, 0.0, 0.0, 28, 22, 200)
+	_build_corner()
+	_build_list()
 	dialogue.line_shown.connect(_on_line)
 	dialogue.choices_shown.connect(_on_choices)
 	dialogue.finished.connect(func(_id): _clear_choices())
 	interactor.message.connect(func(text): _message.text = text; _message_left = 3.5)
 	interactor.held_changed.connect(_on_held)
-	tasks.task_added.connect(func(_id): _refresh_tasks())
-	tasks.objective_completed.connect(func(_t, _o): _refresh_tasks())
-	tasks.task_completed.connect(func(_id): _refresh_tasks())
-	tasks.cleared.connect(_refresh_tasks)
-	tasks.task_added.connect(func(_id): _refresh_guide())
-	tasks.objective_completed.connect(func(_t, _o): _refresh_guide())
-	tasks.task_completed.connect(func(_id): _refresh_guide())
-	tasks.cleared.connect(_refresh_guide)
+	tasks.task_added.connect(func(_id): _on_tasks_changed())
+	tasks.objective_completed.connect(func(_t, _o): _on_tasks_changed())
+	tasks.task_completed.connect(func(_id): _on_tasks_changed())
+	tasks.cleared.connect(_on_tasks_changed)
 	_on_held(null)
-	_refresh_tasks()
+	_refresh_list()
 	_refresh_guide()
 
 ## The centre dot and prompt only make sense while the player is walking around.
@@ -78,9 +82,19 @@ func set_clock(text: String) -> void:
 	if _clock:
 		_clock.text = text
 
+func _unhandled_input(event: InputEvent) -> void:
+	if visible and event.is_action_pressed(GameInput.CHECKLIST):
+		show_checklist()
+
+## The shift list can also be called up on demand.
+func show_checklist() -> void:
+	_refresh_list()
+	_list_left = LIST_SECONDS
+	_objective_left = OBJECTIVE_SECONDS
+
 # --- construction -----------------------------------------------------------------------------
 
-## Plain pixel text with a hard black outline, nearest-filtered so it stays crisp.
+## Plain pixel text with a thin black outline, nearest-filtered so it stays crisp.
 func _label(size: int, color: Color) -> Label:
 	var l := Label.new()
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -110,16 +124,16 @@ func _build_crosshair() -> void:
 	_dot = ColorRect.new()
 	# Captured mouse motion lands at viewport center, beneath this decoration.
 	_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_dot.color = Color(0.9, 0.89, 0.84, 0.7)
-	_dot.size = Vector2(4, 4)
+	_dot.color = Color(0.92, 0.91, 0.87, 0.75)
+	_dot.size = Vector2(3, 3)
 	add_child(_dot)
 	_dot.set_anchors_preset(Control.PRESET_CENTER)
-	_dot.position = Vector2(-2, -2)
+	_dot.position = Vector2(-1.5, -1.5)
 
 func _build_speech() -> void:
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
-	_place(column, 0.5, 1.0, -400, -96, 800)
+	column.add_theme_constant_override("separation", 8)
+	_place(column, 0.5, 1.0, -400, -90, 800)
 	_speech = RichTextLabel.new()
 	_speech.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_speech.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -128,7 +142,7 @@ func _build_speech() -> void:
 	_speech.scroll_active = false
 	_speech.custom_minimum_size = Vector2(800, 0)
 	_speech.add_theme_font_override("normal_font", FONT)
-	_speech.add_theme_font_size_override("normal_font_size", 28)
+	_speech.add_theme_font_size_override("normal_font_size", 26)
 	_speech.add_theme_color_override("default_color", INK)
 	_speech.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_speech.add_theme_constant_override("outline_size", 5)
@@ -138,78 +152,36 @@ func _build_speech() -> void:
 	_choices.add_theme_constant_override("separation", 2)
 	column.add_child(_choices)
 
-func _build_slip() -> void:
-	_slip = PanelContainer.new()
-	var paper := StyleBoxFlat.new()
-	paper.bg_color = PAPER
-	paper.shadow_color = Color(0, 0, 0, 0.55)
-	paper.shadow_size = 7
-	paper.shadow_offset = Vector2(4, 5)
-	paper.content_margin_left = 20
-	paper.content_margin_right = 20
-	paper.content_margin_top = 16
-	paper.content_margin_bottom = 18
-	_slip.add_theme_stylebox_override("panel", paper)
-	var col := VBoxContainer.new()
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.custom_minimum_size = Vector2(300, 0)
-	col.add_theme_constant_override("separation", 2)
-	var title := _paper_label("Closing - to do", 24, PAPER_INK)
-	col.add_child(title)
-	_slip_list = VBoxContainer.new()
-	_slip_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_slip_list.add_theme_constant_override("separation", 0)
-	col.add_child(_slip_list)
-	_slip.add_child(col)
-	_place(_slip, 1.0, 0.0, -28 - 344, 26, 344)
-	_slip.pivot_offset = Vector2(344, 0)
-	_slip.rotation = deg_to_rad(1.6)
-	_slip.visible = false
-
-func _build_guide() -> void:
-	_guide = PanelContainer.new()
-	var panel := StyleBoxFlat.new()
-	panel.bg_color = Color(0.035, 0.05, 0.055, 0.88)
-	panel.border_color = Color(0.62, 0.68, 0.63, 0.34)
-	panel.set_border_width_all(1)
-	panel.shadow_color = Color(0, 0, 0, 0.45)
-	panel.shadow_size = 5
-	panel.shadow_offset = Vector2(3, 4)
-	panel.content_margin_left = 14
-	panel.content_margin_right = 14
-	panel.content_margin_top = 10
-	panel.content_margin_bottom = 11
-	_guide.add_theme_stylebox_override("panel", panel)
+## Top-left: the clock, and under it the current objective, which appears when it changes or you stall.
+func _build_corner() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.custom_minimum_size = Vector2(390, 0)
-	column.add_theme_constant_override("separation", 1)
-	var heading := _label(15, DIM)
-	heading.text = "NEXT   ·   G  full guide"
-	column.add_child(heading)
-	_guide_task = _label(21, INK)
-	_guide_task.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_guide_task)
-	_guide_step = _label(18, PAPER)
-	_guide_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_guide_step)
-	_guide_hint = _label(16, DIM)
-	_guide_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_guide_hint)
-	_guide.add_child(column)
-	_place(_guide, 0.0, 0.0, 28, 57, 430)
-	_guide.visible = false
+	column.add_theme_constant_override("separation", 4)
+	_clock = _label(22, INK)
+	column.add_child(_clock)
+	_objective_box = VBoxContainer.new()
+	_objective_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_objective_box.add_theme_constant_override("separation", 0)
+	_objective_box.modulate.a = 0.0
+	_objective = _label(22, WARM)
+	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_objective.custom_minimum_size = Vector2(460, 0)
+	_objective_box.add_child(_objective)
+	_hint = _label(17, DIM)
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint.custom_minimum_size = Vector2(460, 0)
+	_hint.visible = false
+	_objective_box.add_child(_hint)
+	column.add_child(_objective_box)
+	_place(column, 0.0, 0.0, 28, 18, 480)
 
-## Ink on the paper slip: no outline, slightly uneven baseline comes from the tilt of the slip.
-func _paper_label(text: String, size: int, color: Color) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	l.add_theme_font_override("font", FONT)
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", color)
-	return l
+## Top-right: the shift list, plain right-aligned text that is only on screen briefly.
+func _build_list() -> void:
+	_list_box = VBoxContainer.new()
+	_list_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_list_box.add_theme_constant_override("separation", 0)
+	_list_box.modulate.a = 0.0
+	_place(_list_box, 1.0, 0.0, -28 - 440, 84, 440)
 
 # --- live updates -----------------------------------------------------------------------------
 
@@ -217,15 +189,15 @@ func _process(delta: float) -> void:
 	var info := interactor.current_prompt()
 	if info.text == "":
 		_prompt.text = ""
-		_dot.color = Color(0.9, 0.89, 0.84, 0.7)
+		_dot.color = Color(0.92, 0.91, 0.87, 0.75)
 	elif info.available:
-		_prompt.text = "E   " + info.text
+		_prompt.text = "[E] " + info.text
 		_prompt.modulate = Color.WHITE
 		_dot.color = Color(1, 1, 1, 1)
 	else:
 		_prompt.text = info.text
 		_prompt.modulate = Color(1, 1, 1, 0.55)
-		_dot.color = Color(0.9, 0.89, 0.84, 0.7)
+		_dot.color = Color(0.92, 0.91, 0.87, 0.75)
 	if _message_left > 0.0:
 		_message_left -= delta
 		if _message_left <= 0.0:
@@ -234,11 +206,36 @@ func _process(delta: float) -> void:
 		_line_left -= delta
 		if _line_left <= 0.0 and not choices_visible():
 			_speech.text = ""
+	_tick_objective(delta)
+	_tick_held(delta)
+	_objective_left = maxf(0.0, _objective_left - delta)
+	_list_left = maxf(0.0, _list_left - delta)
+	_objective_box.modulate.a = move_toward(_objective_box.modulate.a, 1.0 if _objective_left > 0.0 else 0.0, delta * FADE_SPEED)
+	_list_box.modulate.a = move_toward(_list_box.modulate.a, 1.0 if _list_left > 0.0 else 0.0, delta * FADE_SPEED)
+
+## A player who has made no progress for a while gets the objective and its hint again.
+func _tick_objective(delta: float) -> void:
+	if _guide_key == "":
+		return
+	_idle += delta
+	if _idle >= STUCK_SECONDS:
+		_idle = 0.0
+		_hint.visible = _hint.text != ""
+		_objective_left = OBJECTIVE_SECONDS + 3.0
+
+## The Q / F hint is a lesson for the first few pickups, or a reminder when the item has been carried a long time.
+func _tick_held(delta: float) -> void:
+	if _held.text == "":
+		_held_time = 0.0
+		return
+	_held_time += delta
+	var wanted := _show_held_hint or _held_time > HELD_CONFUSED_SECONDS
+	_held_hint.modulate.a = move_toward(_held_hint.modulate.a, 1.0 if wanted else 0.0, delta * FADE_SPEED)
 
 func _on_line(speaker: String, text: String) -> void:
 	_clear_choices()  # a spoken line means a reply was chosen or the scene moved on
-	var tint: String = SPEAKER_COLORS.get(speaker, "d8c9a0")
-	_speech.text = ("[center][color=#%s]%s[/color]   %s[/center]" % [tint, speaker.to_upper(), text]) if speaker != "" else "[center]%s[/center]" % text
+	var named := speaker != "" and not speaker in ["Jamie", "Customer"]
+	_speech.text = "[center]%s%s[/center]" % [("%s: " % speaker) if named else "", text]
 	_speech.visible_ratio = 0.0
 	if _type_tween:
 		_type_tween.kill()
@@ -246,11 +243,12 @@ func _on_line(speaker: String, text: String) -> void:
 	_type_tween.tween_property(_speech, "visible_ratio", 1.0, minf(1.0, 0.02 * text.length()))
 	_line_left = 1.5 + 0.05 * text.length()
 
+## Replies are yellow so they read as something you can press, apart from the white spoken line above them.
 func _on_choices(options: Array) -> void:
 	_clear_choices()
 	for i in options.size():
-		var row := _label(26, INK)
-		row.text = "%d   %s" % [i + 1, options[i].text]
+		var row := _label(22, WARM)
+		row.text = "%d   %s" % [i + 1, String(options[i].text).to_upper()]
 		row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_choices.add_child(row)
 
@@ -262,31 +260,61 @@ func _clear_choices() -> void:
 func _on_held(item: Product) -> void:
 	_held.text = "" if item == null else item.display_name
 	_held_hint.text = "" if item == null else "Q  put down      F  look"
+	_held_time = 0.0
+	_show_held_hint = false
+	if item != null:
+		hint_pickups += 1
+		_show_held_hint = hint_pickups <= HINT_PICKUPS
+	_held_hint.modulate.a = 1.0 if _show_held_hint else 0.0
 
+func _on_tasks_changed() -> void:
+	_refresh_list()
+	_list_left = LIST_SECONDS
+	_refresh_guide()
+
+## One plain line: the task name when a task starts, then the step as it moves on.
 func _refresh_guide() -> void:
-	if _guide == null or tasks == null:
+	if tasks == null:
 		return
 	var next := tasks.current_guide()
-	_guide.visible = not next.is_empty()
 	if next.is_empty():
+		_guide_key = ""
+		_guide_title = ""
+		_objective.text = ""
+		_hint.text = ""
+		_hint.visible = false
 		return
-	_guide_task.text = str(next.title)
-	_guide_step.text = str(next.objective)
-	_guide_hint.text = str(next.hint) if str(next.hint) != "" else "Use the paper checklist in the top-right if you need the full shift."
+	var key := "%s|%s" % [next.title, next.objective]
+	var hint := str(next.hint) if str(next.hint) != "" else "C  shift list"
+	if key == _guide_key:
+		return
+	_objective.text = str(next.objective) if str(next.title) == _guide_title else str(next.title)
+	_guide_title = str(next.title)
+	_guide_key = key
+	_hint.text = hint
+	_hint.visible = false
+	_idle = 0.0
+	_objective_left = OBJECTIVE_SECONDS
 
-func _refresh_tasks() -> void:
-	for child in _slip_list.get_children():
-		_slip_list.remove_child(child)
+## Open tasks, with the steps of only the current one.
+func _refresh_list() -> void:
+	for child in _list_box.get_children():
+		_list_box.remove_child(child)
 		child.queue_free()
 	var any_active := not tasks.active_ids().is_empty()
-	var shown := false
+	var current := tasks.current_guide()
 	for id in tasks.tasks:
 		var t: Dictionary = tasks.tasks[id]
 		if t.done and any_active:
 			continue
-		shown = true
-		_slip_list.add_child(_paper_label(("x  " if t.done else "o  ") + t.title, 22, PAPER_DONE if t.done else PAPER_INK))
-		if not t.done:
-			for o in t.objectives:
-				_slip_list.add_child(_paper_label(("      x  " if o.done else "      -  ") + o.text, 18, PAPER_DONE if o.done else PAPER_INK))
-	_slip.visible = shown
+		var heading := _label(20, DIM if t.done else INK)
+		heading.text = ("x  " if t.done else "") + str(t.title)
+		heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_list_box.add_child(heading)
+		if t.done or str(current.get("task_id", "")) != id:
+			continue
+		for o in t.objectives:
+			var step := _label(17, DIM if o.done else WARM)
+			step.text = ("x  " if o.done else "-  ") + str(o.text)
+			step.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			_list_box.add_child(step)

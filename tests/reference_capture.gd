@@ -104,7 +104,7 @@ func _hud_shots(market: Node3D, game: Gameplay, player: CharacterBody3D) -> void
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("res://local/screenshots/hud_2_line.png")
 	var h := game.hud
-	print("RECTS viewport=", get_viewport().get_visible_rect().size, " speech=", h._speech.get_global_rect(), " text=", h._speech.text.left(40), " ratio=", h._speech.visible_ratio, " choices=", h._choices.get_global_rect(), " n=", h._choices.get_child_count(), " slip=", h._slip.get_global_rect())
+	print("RECTS viewport=", get_viewport().get_visible_rect().size, " speech=", h._speech.get_global_rect(), " text=", h._speech.text.left(40), " ratio=", h._speech.visible_ratio, " choices=", h._choices.get_global_rect(), " n=", h._choices.get_child_count(), " list=", h._list_box.get_global_rect())
 	print("REFERENCE hud done")
 
 func shopper_stub(market: Node3D) -> Node3D:
