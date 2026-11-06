@@ -25,6 +25,9 @@ func price() -> int:
 
 func _build() -> void:
 	var size: Vector3 = def.size
+	if product_id == "trash_bag":
+		_build_trash_bag(size)
+		return
 	if product_id != "trash_bag" and _build_detailed(size):
 		return
 	var body := MeshInstance3D.new()
@@ -78,6 +81,54 @@ func _build() -> void:
 	add_child(body)
 	add_child(band)
 	add_child(_shape)
+
+func _build_trash_bag(size: Vector3) -> void:
+	# A tied, angular bin liner with visible folded sides; keep the silhouette readable
+	# both in the player's hand and when left on the floor.
+	var body_mesh := SphereMesh.new()
+	body_mesh.radius = size.x * 0.49
+	body_mesh.height = size.y * 0.82
+	body_mesh.radial_segments = 10
+	body_mesh.rings = 5
+	var body := MeshInstance3D.new()
+	body.name = "Gathered plastic sack"
+	body.mesh = body_mesh
+	body.scale = Vector3(1.0, 1.12, size.z / size.x)
+	body.position.y = size.y * 0.39
+	body.material_override = _material(Color(0.19, 0.20, 0.19), 0.88)
+	add_child(body)
+	var neck := MeshInstance3D.new()
+	var neck_mesh := CylinderMesh.new()
+	neck_mesh.top_radius = 0.035
+	neck_mesh.bottom_radius = 0.067
+	neck_mesh.height = 0.11
+	neck_mesh.radial_segments = 8
+	neck.mesh = neck_mesh
+	neck.position = Vector3(0, size.y * 0.81, 0)
+	neck.material_override = _material(Color(0.13, 0.145, 0.14), 0.9)
+	add_child(neck)
+	var tie := MeshInstance3D.new()
+	var knot := SphereMesh.new()
+	knot.radius = 0.044
+	knot.height = 0.07
+	knot.radial_segments = 8
+	knot.rings = 4
+	tie.mesh = knot
+	tie.scale = Vector3(1, 1, 0.8)
+	tie.position = Vector3(0, size.y * 0.96, 0)
+	tie.material_override = _material(Color(0.28, 0.29, 0.27), 0.86)
+	add_child(tie)
+	for side in [-1.0, 1.0]:
+		var fold := MeshInstance3D.new()
+		var fold_mesh := BoxMesh.new()
+		fold_mesh.size = Vector3(0.035, 0.14, 0.025)
+		fold.mesh = fold_mesh
+		fold.position = Vector3(side * 0.09, size.y * 0.87, 0.015)
+		fold.rotation.z = side * -0.28
+		fold.material_override = _material(Color(0.24, 0.25, 0.23), 0.9)
+		add_child(fold)
+	_collider(size + Vector3(0.02, 0.02, 0.02))
+	_shape.position.y = size.y / 2.0
 
 func _material(color: Color, rough: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()

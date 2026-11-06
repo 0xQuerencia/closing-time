@@ -130,10 +130,10 @@ func _add_chores() -> void:
 		{"id": "s3", "text": "Fill a shelf gap (3/3)", "guide": "Take the last item from the open stockroom carton and press E at the final orange gap on the middle aisle shelves."}], 10)
 	tasks.add_task("trash", "Bag the trash", [
 		{"id": "bag", "text": "Tie off the trash bag", "guide": "At the left end of the checkout counter, press E on the full trash bin to tie the bag."},
-		{"id": "rear", "text": "Leave it by the rear door", "guide": "Carry the tied bag through the staff hall to the rear loading door, then press E beside the door."}], 10)
+		{"id": "rear", "text": "Leave it by the rear door", "guide": "Carry the tied bag through the staff hall to the rear loading door. Look for the TRASH PICKUP mark on the floor and press E there."}], 20)
 	tasks.add_task("latch", "Check the rear-door latch", [
-		{"id": "lift", "text": "Lift the latch", "guide": "At the rear loading door at the end of the staff hall, press E on the metal latch above the handle."},
-		{"id": "lock", "text": "Turn the key", "guide": "Press E on the small key cylinder directly below the raised rear-door latch."}], 10)
+		{"id": "lift", "text": "Lift the latch", "guide": "At the rear loading door, find the wide metal lever marked LIFT THEN TURN and press E."},
+		{"id": "lock", "text": "Turn the key", "guide": "Press E on the round metal key cylinder directly below the raised lever."}], 25)
 	game.shift.restocked.connect(func(n): tasks.complete_objective("restock", "s%d" % n))
 	game.shift.trash_bagged.connect(func(): tasks.complete_objective("trash", "bag"))
 	game.shift.trash_placed.connect(func(): tasks.complete_objective("trash", "rear"))

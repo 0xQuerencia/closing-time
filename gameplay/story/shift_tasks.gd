@@ -12,7 +12,7 @@ const SLOT_POINTS := [Vector3(-6.33, 1.14, 1.98), Vector3(-3.33, 1.14, 1.98), Ve
 const CARTON_POINT := Vector3(5.75, 0.36, 1.35)
 const BIN_POINT := Vector3(-8.55, 0.0, 5.3)
 const BAG_SPOT := Vector3(4.25, 0.0, -5.2)
-const LATCH_POINT := Vector3(4.25, 1.02, -5.93)
+const LATCH_POINT := Vector3(4.25, 1.02, -5.86)
 var game: Gameplay
 var slots: Array[RestockSlot] = []
 var filled := 0
@@ -98,6 +98,25 @@ func _build_bag_spot() -> void:
 	_box_collider(spot, Vector3(0.6, 0.12, 0.5))
 	spot.get_child(0).position.y = 0.06
 	add_child(spot)
+	var marker := MeshInstance3D.new()
+	var plate := BoxMesh.new()
+	plate.size = Vector3(0.72, 0.012, 0.58)
+	marker.mesh = plate
+	marker.position = BAG_SPOT + Vector3(0, 0.009, 0)
+	var paint := StandardMaterial3D.new()
+	paint.albedo_color = Color(0.52, 0.38, 0.17)
+	paint.roughness = 0.9
+	marker.material_override = paint
+	add_child(marker)
+	var label := Label3D.new()
+	label.text = "TRASH PICKUP"
+	label.font_size = 32
+	label.pixel_size = 0.0018
+	label.modulate = Color(0.92, 0.78, 0.48)
+	label.shaded = false
+	label.rotation.x = -PI / 2.0
+	label.position = BAG_SPOT + Vector3(0, 0.018, 0)
+	add_child(label)
 
 func place_bag(product: Product) -> bool:
 	if bag_placed or product.product_id != "trash_bag":
@@ -107,6 +126,8 @@ func place_bag(product: Product) -> bool:
 	product.enabled = false
 	_placed.append(product)
 	trash_placed.emit()
+	if game.interactor != null:
+		game.interactor.message.emit("Bag left at the TRASH PICKUP mark. Checklist updated.")
 	return true
 
 func _build_latch() -> void:
@@ -121,9 +142,17 @@ func _build_latch() -> void:
 	bar.size = Vector3(0.3, 0.035, 0.05)
 	_lever.mesh = bar
 	var steel := StandardMaterial3D.new()
-	steel.albedo_color = Color(0.18, 0.19, 0.2)
+	steel.albedo_color = Color(0.48, 0.46, 0.4)
 	steel.metallic = 0.8
-	steel.roughness = 0.4
+	steel.roughness = 0.58
+	var backplate := MeshInstance3D.new()
+	var plate_mesh := BoxMesh.new()
+	plate_mesh.size = Vector3(0.44, 0.37, 0.025)
+	backplate.mesh = plate_mesh
+	backplate.position = LATCH_POINT + Vector3(0, -0.035, 0.006)
+	backplate.material_override = _metal_material(Color(0.22, 0.22, 0.2), 0.65)
+	add_child(backplate)
+	latch_parts.append(backplate)
 	_lever.material_override = steel
 	_lever.position = LATCH_POINT + Vector3(0, 0, 0.015)
 	add_child(_lever)
@@ -145,6 +174,22 @@ func _build_latch() -> void:
 	plate.position = key_lock.position + Vector3(0, 0, 0.012)
 	add_child(plate)
 	latch_parts.append(plate)
+	var label := Label3D.new()
+	label.text = "LIFT  THEN  TURN"
+	label.font_size = 24
+	label.pixel_size = 0.0017
+	label.modulate = Color(0.82, 0.77, 0.62)
+	label.shaded = false
+	label.position = LATCH_POINT + Vector3(0, -0.25, 0.016)
+	add_child(label)
+	latch_parts.append(label)
+
+func _metal_material(color: Color, roughness: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.metallic = 0.58
+	material.roughness = roughness
+	return material
 
 ## Chores undone: stocked items removed, bag back in the bin, latch down and unlocked.
 func reset() -> void:
@@ -193,6 +238,8 @@ func lift_latch() -> bool:
 	latch_is_lifted = true
 	create_tween().tween_property(_lever, "rotation:z", 0.7, 0.25)
 	latch_lifted.emit()
+	if game.interactor != null:
+		game.interactor.message.emit("Latch raised. Turn the brass lock directly below it.")
 	return true
 
 func turn_key() -> bool:
@@ -201,6 +248,8 @@ func turn_key() -> bool:
 	locked = true
 	create_tween().tween_property(_lever, "rotation:z", 0.0, 0.25)
 	latch_locked.emit()
+	if game.interactor != null:
+		game.interactor.message.emit("Rear door locked. Latch and key are set.")
 	return true
 
 ## Turn the key back: the door can open again, and one more turn locks it.
@@ -211,6 +260,8 @@ func unlock_key() -> bool:
 	latch_is_lifted = true
 	create_tween().tween_property(_lever, "rotation:z", 0.7, 0.25)
 	latch_unlocked.emit()
+	if game.interactor != null:
+		game.interactor.message.emit("Rear door unlocked. Turn the key again to relock it.")
 	return true
 
 # --- interactables for the chores ---------------------------------------------------------------
@@ -274,7 +325,7 @@ class RestockSlot extends Interactable:
 
 class TrashBin extends Interactable:
 	var tasks: ShiftTasks
-	var _stub: MeshInstance3D
+	var _stub: Node3D
 	func _init() -> void:
 		super()
 		display_name = "the trash bag"
@@ -286,23 +337,78 @@ class TrashBin extends Interactable:
 		cyl.top_radius = 0.2
 		cyl.bottom_radius = 0.17
 		cyl.height = 0.62
+		cyl.radial_segments = 16
 		body.mesh = cyl
 		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.1, 0.13, 0.11)
-		m.roughness = 0.7
+		m.albedo_color = Color(0.19, 0.22, 0.19)
+		m.roughness = 0.88
 		body.material_override = m
 		body.position.y = 0.31
 		add_child(body)
-		_stub = MeshInstance3D.new()
+		var rim := MeshInstance3D.new()
+		var rim_mesh := CylinderMesh.new()
+		rim_mesh.top_radius = 0.215
+		rim_mesh.bottom_radius = 0.215
+		rim_mesh.height = 0.045
+		rim_mesh.radial_segments = 16
+		rim.mesh = rim_mesh
+		rim.position.y = 0.61
+		rim.material_override = _bin_material(Color(0.29, 0.31, 0.27))
+		add_child(rim)
+		var liner := MeshInstance3D.new()
+		var liner_mesh := CylinderMesh.new()
+		liner_mesh.top_radius = 0.185
+		liner_mesh.bottom_radius = 0.15
+		liner_mesh.height = 0.49
+		liner_mesh.radial_segments = 12
+		liner.mesh = liner_mesh
+		liner.position.y = 0.39
+		liner.material_override = _bin_material(Color(0.34, 0.35, 0.31))
+		add_child(liner)
+		for i in range(10):
+			var rib := MeshInstance3D.new()
+			var rib_mesh := BoxMesh.new()
+			rib_mesh.size = Vector3(0.012, 0.43, 0.025)
+			rib.mesh = rib_mesh
+			rib.position = Vector3(0, 0.31, 0.174)
+			rib.rotation.y = TAU * float(i) / 10.0
+			rib.material_override = _bin_material(Color(0.25, 0.28, 0.24))
+			add_child(rib)
+		_stub = Node3D.new()
+		_stub.name = "Tied bag in bin"
 		var puff := SphereMesh.new()
-		puff.radius = 0.19
-		puff.height = 0.3
-		_stub.mesh = puff
+		puff.radius = 0.16
+		puff.height = 0.34
+		puff.radial_segments = 10
+		puff.rings = 5
 		var bag := StandardMaterial3D.new()
-		bag.albedo_color = Color(0.03, 0.035, 0.04)
-		bag.roughness = 0.4
-		_stub.material_override = bag
-		_stub.position.y = 0.66
+		bag.albedo_color = Color(0.2, 0.21, 0.2)
+		bag.roughness = 0.9
+		var sack := MeshInstance3D.new()
+		sack.mesh = puff
+		sack.material_override = bag
+		sack.scale = Vector3(1.05, 0.85, 0.85)
+		_stub.add_child(sack)
+		var neck := MeshInstance3D.new()
+		var neck_mesh := CylinderMesh.new()
+		neck_mesh.top_radius = 0.025
+		neck_mesh.bottom_radius = 0.065
+		neck_mesh.height = 0.12
+		neck_mesh.radial_segments = 8
+		neck.mesh = neck_mesh
+		neck.position.y = 0.17
+		neck.material_override = bag
+		_stub.add_child(neck)
+		var knot := MeshInstance3D.new()
+		var knot_mesh := SphereMesh.new()
+		knot_mesh.radius = 0.035
+		knot_mesh.height = 0.06
+		knot_mesh.radial_segments = 8
+		knot.mesh = knot_mesh
+		knot.position.y = 0.24
+		knot.material_override = _bin_material(Color(0.31, 0.32, 0.29))
+		_stub.add_child(knot)
+		_stub.position.y = 0.65
 		add_child(_stub)
 		var shape := CollisionShape3D.new()
 		var box := BoxShape3D.new()
@@ -318,6 +424,11 @@ class TrashBin extends Interactable:
 		wall_shape.position.y = 0.4
 		wall.add_child(wall_shape)
 		add_child(wall)
+	func _bin_material(color: Color) -> StandardMaterial3D:
+		var material := StandardMaterial3D.new()
+		material.albedo_color = color
+		material.roughness = 0.9
+		return material
 	func show_bag() -> void:
 		_stub.visible = true
 	func can_interact(actor: Node) -> bool:
@@ -340,6 +451,8 @@ class BagSpot extends Interactable:
 		description = "Where the trash waits for the morning pickup."
 	func can_interact(actor: Node) -> bool:
 		return not tasks.bag_placed and actor.held != null and actor.held.product_id == "trash_bag"
+	func prompt_text(actor: Node) -> String:
+		return "Place bag on the TRASH PICKUP mark" if can_interact(actor) else ""
 	func blocked_reason(_actor: Node) -> String:
 		return "" if tasks.bag_placed else "Trash goes here once it's bagged."
 	func interact(actor: Node) -> void:
@@ -352,7 +465,7 @@ class LatchLever extends Interactable:
 	func _init() -> void:
 		super()
 		display_name = "the rear door latch"
-		verb = "Lift"
+		verb = "Lift the latch"
 		description = "The latch sticks. Lift it before you turn the key."
 	func can_interact(_actor: Node) -> bool:
 		return not tasks.latch_is_lifted and not tasks.locked and not tasks.is_door_open()
@@ -380,7 +493,7 @@ class LatchKey extends Interactable:
 	func prompt_text(actor: Node) -> String:
 		if not can_interact(actor):
 			return ""
-		return "Unlock the rear door" if tasks.locked else "Turn the key in the rear door lock"
+		return "Unlock the rear door" if tasks.locked else "Turn the brass key"
 	func interact(actor: Node) -> void:
 		if tasks.locked:
 			tasks.unlock_key()
