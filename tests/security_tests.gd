@@ -229,11 +229,11 @@ func _test_breaker_and_power() -> void:
 
 func _test_cctv() -> void:
 	var cctv := sec.cctv
-	check(cctv.feeds.size() == 2, "two camera feeds exist")
-	for i in 2:
+	check(cctv.feeds.size() == 3, "three camera feeds cover the shop, rear hall, and lot")
+	for i in cctv.feeds.size():
 		var vp: SubViewport = cctv.feeds[i].viewport
 		check(vp.world_3d == world.get_viewport().world_3d and (cctv.feeds[i].camera as Camera3D).get_viewport() == vp, "feed %d renders the live world through its own camera" % (i + 1))
-	check(cctv.feeds[0].camera.global_position.distance_to(Vector3(-7.9, 2.5, 5.6)) < 0.01 and cctv.feeds[1].camera.global_position.x > 4.0, "feed 1 watches the shop from the front corner, feed 2 the rear hall")
+	check(cctv.feeds[0].camera.global_position.distance_to(Vector3(-7.9, 2.5, 5.6)) < 0.01 and cctv.feeds[1].camera.global_position.x > 4.0 and cctv.feeds[2].camera.global_position.z > 6.0, "feeds watch the shop floor, rear hall, and parking lot")
 	var viewed: Array = []
 	cctv.feed_viewed.connect(func(i): viewed.append(i))
 	await aim(Vector3(7.4, 0.05, -4.3), Vector3(7.7, 0.95, -5.2))
@@ -251,9 +251,11 @@ func _test_cctv() -> void:
 	check(cctv.selected == 1 and viewed == [0, 1], "D switches to the rear camera (viewed=%s)" % [viewed])
 	check(cctv.screen_material.get_shader_parameter("feed") == cctv.feeds[1].viewport.get_texture(), "the CRT now shows the rear feed")
 	await tap(KEY_D)
-	check(cctv.selected == 0, "D again wraps back to the shop")
+	check(cctv.selected == 2, "D switches to the parking-lot feed")
+	await tap(KEY_D)
+	check(cctv.selected == 0, "D wraps from the lot feed back to the shop")
 	await tap(KEY_A)
-	check(cctv.selected == 1, "A goes back")
+	check(cctv.selected == 2, "A goes back to the parking lot")
 	check((cctv.feeds[1].door as Label).visible, "the rear feed carries the door sensor log")
 	cctv.kill_feed(1)
 	check(cctv.is_feed_dead(1) and (cctv.feeds[1].lost as Label).visible, "a feed can lose its signal")
@@ -263,7 +265,7 @@ func _test_cctv() -> void:
 	check(not cctv.viewing and player.enabled and game.interactor.enabled, "E leaves the desk and gives control back")
 	check(player.camera.current, "the player's eyes are the active camera again")
 	await tap(KEY_D)
-	check(cctv.selected == 1, "feed keys do nothing away from the desk")
+	check(cctv.selected == 2, "feed keys do nothing away from the desk")
 	cctv.select(0)
 	sec.power.trip_all()
 	check(not cctv.is_live() and cctv.screen_material.get_shader_parameter("power") == 1.0 or true, "blackout kills the feed")

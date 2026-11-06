@@ -5,12 +5,15 @@ const GRIME_STRENGTH := 0.5
 var _flicker_light: Light3D
 var _flicker_base := 1.0
 var _flicker_left := 0.0
+var _elapsed := 0.0
+var _power: PowerGrid
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	name = "FearsLook"
 	_rng.seed = 77
 	var world := get_parent()
+	_power = get_tree().get_first_node_in_group("power_grid") as PowerGrid
 	_grade_environment(world)
 	_dim_lights(world)
 	_add_grime(world)
@@ -44,11 +47,19 @@ func _dim_lights(world: Node) -> void:
 func _process(delta: float) -> void:
 	if _flicker_light == null:
 		return
+	if _power == null:
+		_power = get_tree().get_first_node_in_group("power_grid") as PowerGrid
+	_elapsed += delta
+	if _power != null and not _power.powered("lights"):
+		_flicker_light.light_energy = 0.0
+		return
+	var slow_fade := smoothstep(150.0, 390.0, _elapsed)
+	var current_base := lerpf(_flicker_base, _flicker_base * 0.12, slow_fade)
 	_flicker_left -= delta
 	if _flicker_left > 0.0:
-		_flicker_light.light_energy = _flicker_base * (0.15 if _rng.randf() < 0.55 else 0.85)
+		_flicker_light.light_energy = current_base * (0.15 if _rng.randf() < 0.55 else 0.85)
 	else:
-		_flicker_light.light_energy = _flicker_base
+		_flicker_light.light_energy = current_base
 		if _rng.randf() < delta / 14.0:  # roughly one stutter every 14 s
 			_flicker_left = _rng.randf_range(0.12, 0.45)
 

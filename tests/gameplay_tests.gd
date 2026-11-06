@@ -257,7 +257,7 @@ func _test_customer_cycles() -> void:
 			check(game.dialogue.flags.has("mara_just_covering"), "reply sets a story flag")
 		else:
 			await get_tree().create_timer(4.5).timeout
-			check(line_log.any(func(l): return l.ends_with("No rush.")), "customer waits patiently and speaks up when delayed")
+			check(line_log.any(func(l): return l.ends_with("Never noticed it before.")), "customer waits patiently and comments on the cooler when delayed")
 			check(checkout.state == Checkout.State.OPEN and not game.tasks.is_complete("serve_" + id), "no timer completes the sale")
 		var attempts := await scan_all_and_pay()
 		check(checkout.items.all(func(p): return p.scanned) or checkout.history.size() == sales_before + 1, "both items scanned")

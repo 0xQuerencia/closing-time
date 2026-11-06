@@ -18,9 +18,11 @@ var _emergency: Array[Light3D] = []
 var _hum: Array[Node] = []
 var _clunk: AudioStreamPlayer
 var _buzz: AudioStreamPlayer
+var _main_was_cut := false
 
 func build(world: Node3D) -> PowerGrid:
 	name = "PowerGrid"
+	add_to_group("power_grid")
 	for node in world.get_children():
 		if node is Light3D and node.is_in_group("store_lights"):
 			store_lights.append(node)
@@ -129,5 +131,11 @@ func _apply() -> void:
 	for source in _hum:
 		if is_instance_valid(source):
 			(source as AudioStreamPlayer3D).stream_paused = not main_on
+			if main_on and _main_was_cut:
+				(source as AudioStreamPlayer3D).pitch_scale = 0.985
+	if not main_on:
+		_main_was_cut = true
+	elif _main_was_cut:
+		_main_was_cut = false
 	if lit and _buzz:
 		_buzz.play()

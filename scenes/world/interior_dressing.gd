@@ -104,7 +104,8 @@ func _build_closed_sign() -> void:
 	_box(Vector3(0.012, 0.4, 0.012), pos + Vector3(-0.09, 0.3, 0), _mat(Color(0.35, 0.28, 0.2)))
 	_box(Vector3(0.012, 0.4, 0.012), pos + Vector3(0.09, 0.3, 0), _mat(Color(0.35, 0.28, 0.2)))
 	_box(Vector3(0.34, 0.2, 0.016), pos, _mat(Color(0.74, 0.66, 0.5), 0.85))
-	_text("CLOSED", pos + Vector3(0, 0, -0.01), 54, 0.0017, Color(0.2, 0.15, 0.1), PI)
+	# The paper faces the lot, leaving the readable side turned away from the clerk.
+	_text("CLOSED", pos + Vector3(0, 0, -0.01), 54, 0.0017, Color(0.2, 0.15, 0.1), 0.0)
 
 ## A curling paper sheet on the laminate counter top.
 func _build_counter_laminate() -> void:

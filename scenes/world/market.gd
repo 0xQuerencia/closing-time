@@ -7,6 +7,7 @@ var player: CharacterBody3D
 var capture_mode := false
 var samples: Array[float] = []
 var gameplay: Gameplay
+var ambient_dread: AmbientDread
 
 func _ready() -> void:
 	capture_mode = "--capture" in OS.get_cmdline_user_args()
@@ -27,7 +28,8 @@ func _ready() -> void:
 	add_child(InteriorDressing.new())
 	add_child(ExteriorDressing.new())
 	add_child(FearsLook.new())
-	add_child(AmbientDread.new())
+	ambient_dread = AmbientDread.new()
+	add_child(ambient_dread)
 	player = CharacterBody3D.new()
 	player.set_script(Player)
 	add_child(player)
@@ -121,6 +123,13 @@ func _ready() -> void:
 		var m4_capture := SecurityCapture.new()
 		add_child(m4_capture)
 		m4_capture.run(self)
+	elif "--capture-atmosphere" in OS.get_cmdline_user_args():
+		player.enabled = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		add_gameplay(false)
+		var atmosphere_capture: Node = (load("res://tests/atmosphere_capture.gd") as Script).new()
+		add_child(atmosphere_capture)
+		atmosphere_capture.run(self)
 	elif "--capture-customers" in OS.get_cmdline_user_args():
 		player.enabled = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -151,6 +160,7 @@ func add_gameplay(auto_customers: bool) -> void:
 	gameplay = Gameplay.new()
 	add_child(gameplay)
 	gameplay.setup(self, player, auto_customers)
+	ambient_dread.bind_gameplay(gameplay)
 
 func build_imported_props() -> void:
 	# Office models replace the blockout computer set inside the existing office footprint.
@@ -165,6 +175,7 @@ func build_imported_props() -> void:
 	_add_visual("res://assets/models/props/fire_extinguisher.glb", Vector3(4.74, 0, -1.0), PI / 2.0)
 	_add_visual("res://assets/models/props/cctv_a.glb", Vector3(-8.0, 2.56, 5.78))
 	_add_visual("res://assets/models/props/cctv_b.glb", Vector3(8.0, 2.56, -5.77), PI)
+	_add_visual("res://assets/models/props/cctv_a.glb", Vector3(3.25, 2.72, 6.12), PI)
 
 func _add_visual(path: String, point: Vector3, yaw: float = 0.0) -> Node3D:
 	var scene := load(path) as PackedScene
@@ -227,7 +238,25 @@ func build_glass() -> void:
 		body.add_child(shape)
 		add_child(body)
 	for i in range(6):
-		glass_panel(Vector3(-7.1+i*1.57,1.2,-4.7),Vector3(1.37,2.06,.012),Color(.32,.43,.4,.05))
+		var x := -7.1 + i * 1.57
+		glass_panel(Vector3(x,1.2,-4.7),Vector3(1.37,2.06,.012),Color(.32,.43,.4,.05))
+		if i == 3:
+			_add_cooler_condensation(x)
+
+func _add_cooler_condensation(x: float) -> void:
+	var overlay := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(1.32, 1.98)
+	overlay.mesh = quad
+	overlay.position = Vector3(x, 1.2, -4.688)
+	var film := ShaderMaterial.new()
+	film.shader = load("res://scenes/world/fridge_condensation.gdshader")
+	overlay.material_override = film
+	overlay.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(overlay)
+	var animator := FridgeFog.new()
+	animator.material = film
+	add_child(animator)
 
 func lamp(pos: Vector3, color: Color, energy: float, distance: float, shadows: bool = false) -> void:
 	var light: Light3D
@@ -531,10 +560,12 @@ func build_room_tone() -> void:
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
 	stream.loop_end = stream.data.size() / 2
-	for x in [-6.4,-1.7]:
+	for i in range(2):
+		var x: float = [-6.4, -1.7][i]
 		var source := AudioStreamPlayer3D.new()
 		source.stream = stream
 		source.position = Vector3(x,1.2,-5.0)
+		source.pitch_scale = 1.0 + i * 0.025
 		source.unit_size = 2
 		source.max_distance = 15
 		source.volume_db = -12
@@ -546,12 +577,31 @@ func finish_run(code: int) -> void:
 	for child in get_children():
 		if child is ReflectionProbe:
 			child.queue_free()
-	for child in get_children():
-		if child is AudioStreamPlayer3D:
-			child.stop()
-			child.stream = null
-	await get_tree().create_timer(.15).timeout
+	for witness in get_tree().get_nodes_in_group("opening_witness"):
+		if is_instance_valid(witness):
+			witness.queue_free()
+	if is_instance_valid(ambient_dread):
+		ambient_dread.queue_free()
+	_stop_audio_tree(self)
+	# Let AudioServer retire stopped playbacks even when a test changed Engine.time_scale.
+	await get_tree().create_timer(0.35, true, false, true).timeout
 	get_tree().quit(code)
+
+func _stop_audio_tree(node: Node) -> void:
+	if node is AudioStreamPlayer:
+		var player := node as AudioStreamPlayer
+		player.stop()
+		player.stream = null
+	elif node is AudioStreamPlayer2D:
+		var player := node as AudioStreamPlayer2D
+		player.stop()
+		player.stream = null
+	elif node is AudioStreamPlayer3D:
+		var player := node as AudioStreamPlayer3D
+		player.stop()
+		player.stream = null
+	for child in node.get_children():
+		_stop_audio_tree(child)
 
 func _exit_tree() -> void:
 	for child in get_children():

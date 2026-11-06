@@ -33,6 +33,8 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	collision_layer = 4
 	collision_mask = 1
 	add_to_group("customers")
+	if String(profile.get("id", "")).begins_with("leon"):
+		add_to_group("leon_presence")
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.24
@@ -205,7 +207,12 @@ func run() -> void:
 	_set_phase(Phase.BROWSE)
 	await _walk(route.browse)
 	await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
-	await _wait(1.4)
+	await _wait(float(profile.get("browse_pause", 1.4)))
+	if profile.get("second_look", false):
+		# A normal shopper taking a second look at the aisle behind him.
+		await _face(global_position + Vector3(0, 0, 1.0))
+		await _wait(0.85)
+		await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
 	var basket: Array[Product] = []
 	for item_id in profile.items:
 		basket.append(game.spawn_product(item_id, null))

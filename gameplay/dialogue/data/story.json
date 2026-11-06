@@ -76,7 +76,7 @@
   "nodes": {
    "a": {
     "speaker": "Ben",
-    "text": "Evening."
+    "text": "Evening. Is that cooler always this loud?"
    }
   }
  },
@@ -130,7 +130,7 @@
   "nodes": {
    "a": {
     "speaker": "Ben",
-    "text": "No rush."
+    "text": "Is that cooler always this loud? Never noticed it before."
    }
   }
  },

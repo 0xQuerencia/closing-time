@@ -24,6 +24,8 @@ var _tabs: HBoxContainer
 var _log: VBoxContainer
 var _toast_left := 0.0
 var _buzz: AudioStreamPlayer
+var _arrival_timer: Timer
+var _arrival_queue: Array[Dictionary] = []
 
 func setup(phone: PhoneModel, story_clock: StoryClock) -> void:
 	model = phone
@@ -36,6 +38,10 @@ func setup(phone: PhoneModel, story_clock: StoryClock) -> void:
 	_buzz.stream = Tone.stream(880.0, 160, 0.2, 0.22)
 	_buzz.volume_db = -14.0
 	add_child(_buzz)
+	_arrival_timer = Timer.new()
+	_arrival_timer.one_shot = true
+	_arrival_timer.timeout.connect(_show_queued_message)
+	add_child(_arrival_timer)
 	model.message_received.connect(_on_message)
 	model.read_changed.connect(_refresh_badge)
 	_refresh_badge()
@@ -139,6 +145,8 @@ func toggle() -> void:
 	_panel.visible = open
 	if open:
 		_toast.visible = false
+		_arrival_queue.clear()
+		_arrival_timer.stop()
 		model.mark_read(current_thread)
 		_render()
 	_refresh_badge()
@@ -158,12 +166,30 @@ func _on_message(thread: String, entry: Dictionary) -> void:
 		model.mark_read(thread)
 		_render()
 	else:
-		_toast_name.text = "NEW MESSAGE   %s   %s" % [thread.to_upper(), entry.time]
-		_toast_text.text = entry.text
-		_toast.visible = true
-		_toast_left = TOAST_SECONDS
-		_buzz.play()
+		_arrival_queue.append({"thread": thread, "entry": entry.duplicate(true)})
+		if _arrival_timer.time_left <= 0.0:
+			_arm_message_arrival()
 	_refresh_badge()
+
+func _arm_message_arrival() -> void:
+	if _arrival_queue.is_empty() or open:
+		return
+	var entry: Dictionary = _arrival_queue[0].entry
+	# A couple of weak-signal texts reach the pocket phone a moment late.
+	var delay := 1.35 if entry.get("id", "") in ["kay_2", "dina_5", "dina_7"] else 0.0
+	_arrival_timer.start(delay)
+
+func _show_queued_message() -> void:
+	if _arrival_queue.is_empty() or open:
+		return
+	var arrival: Dictionary = _arrival_queue.pop_front()
+	var entry: Dictionary = arrival.entry
+	_toast_name.text = "NEW MESSAGE   %s   %s" % [String(arrival.thread).to_upper(), entry.time]
+	_toast_text.text = entry.text
+	_toast.visible = true
+	_toast_left = TOAST_SECONDS
+	_buzz.play()
+	_arm_message_arrival()
 
 func _refresh_badge() -> void:
 	var unread := model.unread_count()

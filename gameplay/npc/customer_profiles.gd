@@ -24,7 +24,7 @@ static func build(markers: Dictionary) -> Array[Dictionary]:
 	var cooler_car := to_car
 	return [
 		{"id": "mara", "name": "Mara", "items": ["cup_coffee", "paper"], "model": "office_worker", "start": entrance, "route": coffee, "browse_face": Vector3(-1, 0, 0)},
-		{"id": "ben", "name": "Ben", "items": ["cola", "noodles"], "model": "young_man", "start": entrance, "route": aisle, "card_fails": 1, "browse_face": Vector3(1, 0, 0)},
+		{"id": "ben", "name": "Ben", "items": ["cola", "noodles"], "model": "young_man", "start": entrance, "route": aisle, "card_fails": 1, "browse_face": Vector3(1, 0, 0), "browse_pause": 4.4, "second_look": true},
 		{"id": "leon1", "name": "Leon", "items": ["water"], "model": "vinrax", "outfit": "leon_jacket", "start": entrance, "route": cooler_car, "mannerism": "LookAround", "browse_face": Vector3(0, 0, -1)},
 		{"id": "leon2", "name": "Leon", "items": ["water"], "model": "vinrax", "outfit": "leon_overshirt", "cap": true, "start": entrance, "route": cooler_car, "mannerism": "LookAround", "browse_face": Vector3(0, 0, -1)},
 	]

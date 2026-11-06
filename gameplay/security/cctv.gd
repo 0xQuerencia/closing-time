@@ -1,7 +1,7 @@
 class_name Cctv
 extends Node3D
-## Two real Godot cameras render into small SubViewports; the office CRT shows the selected one.
-## Sitting at the computer moves the player's view in front of the screen. Feeds only render while someone can see them.
+## Three real Godot cameras render into small SubViewports; the office CRT shows the selected one.
+## A short low-rate DVR buffer preserves recent frames for review at the desk.
 signal entered
 signal exited
 signal feed_selected(index: int)
@@ -16,7 +16,8 @@ const SEE_MONITOR_RANGE := 6.5
 const BOOT_SECONDS := 3.5
 const CAMS := [
 	{"title": "CAM 1  SHOP FLOOR", "pos": Vector3(-7.9, 2.5, 5.6), "look": Vector3(0.5, 0.9, -0.8), "fov": 82.0},
-	{"title": "CAM 2  REAR HALL", "pos": Vector3(4.82, 2.6, 2.3), "look": Vector3(4.25, 0.9, -5.8), "fov": 66.0}]
+	{"title": "CAM 2  REAR HALL", "pos": Vector3(4.82, 2.6, 2.3), "look": Vector3(4.25, 0.9, -5.8), "fov": 66.0},
+	{"title": "CAM 3  PARKING LOT", "pos": Vector3(3.25, 2.82, 6.4), "look": Vector3(-2.5, 1.0, 12.3), "fov": 42.0}]
 var game
 var grid: PowerGrid
 var sensor: RearSensor
@@ -37,14 +38,32 @@ var _watching := -1
 var _next_glitch := 6.0
 var _tween: Tween
 var _proxy: Node3D
+var _frame_hold_left := 0.0
+var _stamp_jam_left := 0.0
+var _threat_was_present: Array[bool] = []
+var _rng := RandomNumberGenerator.new()
+var _record_clock := 0.0
+var _history: Array = []
+var _opening_tape: Array = []
+var _playback_frames: Array = []
+var playback := false
+var _playback_cursor := -1
+const RECORD_INTERVAL := 1.0
+const HISTORY_SECONDS := 300
+const OPENING_CLIP_MAX_FRAMES := 18
+const OPENING_CLIP_SPAN_MSEC := 18000
 
 func build(owner_game, power: PowerGrid) -> Cctv:
 	game = owner_game
 	grid = power
+	_rng.seed = 4097
 	name = "Cctv"
 	game.world.add_child(self)
 	for index in CAMS.size():
 		feeds.append(_build_feed(index))
+		_threat_was_present.append(false)
+		_history.append([])
+		_opening_tape.append([])
 	_build_screen()
 	_build_terminal()
 	_build_view_camera()
@@ -134,7 +153,7 @@ func _build_ui() -> void:
 	_ui.visible = false
 	add_child(_ui)
 	_hint = Label.new()
-	_hint.text = "A / D  switch camera        E  leave the desk"
+	_hint.text = "A / D  camera     R  review tape     wheel  scrub     E  leave"
 	_hint.add_theme_font_override("font", load("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf"))
 	_hint.add_theme_font_size_override("font_size", 22)
 	_hint.add_theme_color_override("font_color", Color(0.9, 0.89, 0.84, 0.8))
@@ -194,6 +213,8 @@ func revive_feed(index: int) -> void:
 
 func _process(delta: float) -> void:
 	_boot_left = maxf(0.0, _boot_left - delta)
+	_frame_hold_left = maxf(0.0, _frame_hold_left - delta)
+	_stamp_jam_left = maxf(0.0, _stamp_jam_left - delta)
 	_next_glitch -= delta
 	if _next_glitch <= 0.0:
 		_glitch_left = 0.35
@@ -201,14 +222,31 @@ func _process(delta: float) -> void:
 	_glitch_left = maxf(0.0, _glitch_left - delta)
 	var live := grid.powered("security")
 	var dead: bool = feeds[selected].dead
+	_record_clock -= delta
+	if live and _record_clock <= 0.0:
+		_record_clock = RECORD_INTERVAL
+		for index in feeds.size():
+			if not feeds[index].dead:
+				_record_frame(index)
+	var leon_seen := _leon_in_feed(selected)
+	if leon_seen and not _threat_was_present[selected] and _rng.randf() < 0.55:
+		# A cheap DVR briefly repeats a frame as a person crosses the camera's view.
+		_frame_hold_left = _rng.randf_range(0.16, 0.32)
+		_stamp_jam_left = _rng.randf_range(0.45, 0.9)
+		_glitch_left = maxf(_glitch_left, 0.55)
+	_threat_was_present[selected] = leon_seen
 	screen_material.set_shader_parameter("power", 1.0 if live else 0.0)
 	var noise := 0.0
 	if _boot_left > 0.0:
 		noise = clampf(_boot_left / BOOT_SECONDS, 0.25, 1.0)
+	elif playback:
+		noise = 0.0
 	elif dead:
-		noise = 0.8
+		noise = 0.5
 	screen_material.set_shader_parameter("static_amount", noise)
+	screen_material.set_shader_parameter("playback", 1.0 if playback else 0.0)
 	screen_material.set_shader_parameter("glitch", 1.0 if _glitch_left > 0.0 else 0.0)
+	screen_material.set_shader_parameter("tracking_amount", 1.0 if leon_seen else 0.0)
 	_update_overlay()
 	_watch_screen()
 	if _proxy != null:
@@ -221,8 +259,64 @@ func _process(delta: float) -> void:
 		return
 	if not _someone_can_see():
 		return
+	if _frame_hold_left > 0.0:
+		return
 	_frame_clock = FRAME_SECONDS
 	(feeds[selected].viewport as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+
+func _leon_in_feed(index: int) -> bool:
+	var camera := feeds[index].camera as Camera3D
+	for actor in get_tree().get_nodes_in_group("leon_presence"):
+		if not is_instance_valid(actor) or not actor is Node3D:
+			continue
+		var target := (actor as Node3D).global_position + Vector3(0, 1.0, 0)
+		if _point_is_in_feed(camera, target):
+			return true
+	if game != null and game.security != null and is_instance_valid(game.security.intruder):
+		var intruder := game.security.intruder as Node3D
+		if _point_is_in_feed(camera, intruder.global_position + Vector3(0, 1.0, 0)):
+			return true
+	return false
+
+func _point_is_in_feed(camera: Camera3D, world_point: Vector3) -> bool:
+	if camera.is_position_behind(world_point):
+		return false
+	var viewport_size := camera.get_viewport().get_visible_rect().size
+	var point := camera.unproject_position(world_point)
+	return Rect2(Vector2.ZERO, viewport_size).has_point(point)
+
+func _record_frame(index: int) -> void:
+	var viewport := feeds[index].viewport as SubViewport
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_capture_frame_after_render(index)
+
+func _capture_frame_after_render(index: int) -> void:
+	await RenderingServer.frame_post_draw
+	if not is_inside_tree() or not grid.powered("security") or feeds[index].dead:
+		return
+	var image := (feeds[index].viewport as SubViewport).get_texture().get_image()
+	if image == null or image.is_empty():
+		return
+	var jpeg := image.save_jpg_to_buffer(0.58)
+	var frame := {"jpeg": jpeg, "time": game.clock.text(), "at_msec": Time.get_ticks_msec()}
+	if _opening_witness_in_feed(index):
+		var opening: Array = _opening_tape[index]
+		if opening.size() < OPENING_CLIP_MAX_FRAMES and (opening.is_empty() or int(frame.at_msec) - int(opening[0].at_msec) <= OPENING_CLIP_SPAN_MSEC):
+			opening.append(frame.duplicate())
+			_opening_tape[index] = opening
+	var frames: Array = _history[index]
+	frames.append(frame)
+	while frames.size() > HISTORY_SECONDS:
+		frames.pop_front()
+	_history[index] = frames
+
+func _opening_witness_in_feed(index: int) -> bool:
+	var camera := feeds[index].camera as Camera3D
+	for witness in get_tree().get_nodes_in_group("opening_witness"):
+		if is_instance_valid(witness) and witness is OpeningWitness and (witness as OpeningWitness).walking_away:
+			if _point_is_in_feed(camera, (witness as Node3D).global_position + Vector3(0, 1.0, 0)):
+				return true
+	return false
 
 func _someone_can_see() -> bool:
 	if viewing:
@@ -236,7 +330,7 @@ func _update_overlay() -> void:
 	var text := "11/05  %02d:%02d:%02d" % [hours, minutes % 60, int(Time.get_ticks_msec() / 1000.0) % 60]
 	var blink := int(Time.get_ticks_msec() / 600.0) % 2 == 0
 	for feed in feeds:
-		(feed.stamp as Label).text = text
+		(feed.stamp as Label).text = text.substr(0, text.length() - 2) + "??" if _stamp_jam_left > 0.0 else text
 		(feed.rec as Label).visible = blink and not feed.dead
 	if sensor != null:
 		(feeds[1].door as Label).text = sensor.last_lines(2)
@@ -248,14 +342,96 @@ func select(index: int) -> void:
 	if index == selected and viewed.has(index):
 		return
 	selected = index
-	screen_material.set_shader_parameter("feed", (feeds[index].viewport as SubViewport).get_texture())
+	if playback:
+		_playback_frames = _tape_frames(index)
+		_playback_cursor = _first_sighting_index(index)
+		if _playback_cursor < 0:
+			_playback_cursor = _playback_frames.size() - 1
+	else:
+		_playback_cursor = -1
+		_set_live_hint()
+	_show_selected_feed()
 	(feeds[index].viewport as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
 	feed_selected.emit(index)
+
+func _show_selected_feed() -> void:
+	if playback and not _playback_frames.is_empty():
+		_playback_cursor = clampi(_playback_cursor, 0, _playback_frames.size() - 1)
+		var frame: Dictionary = _playback_frames[_playback_cursor]
+		if not frame.has("texture"):
+			var image := Image.new()
+			if image.load_jpg_from_buffer(frame.jpeg) == OK:
+				frame.texture = ImageTexture.create_from_image(image)
+				_playback_frames[_playback_cursor] = frame
+		if frame.has("texture"):
+			screen_material.set_shader_parameter("feed", frame.texture)
+		screen_material.set_shader_parameter("static_amount", 0.0)
+		screen_material.set_shader_parameter("playback", 1.0)
+	else:
+		screen_material.set_shader_parameter("feed", (feeds[selected].viewport as SubViewport).get_texture())
+		screen_material.set_shader_parameter("playback", 0.0)
+
+func _tape_frames(index: int) -> Array:
+	var combined: Array = _opening_tape[index].duplicate()
+	combined.append_array(_history[index])
+	combined.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.at_msec) < int(b.at_msec))
+	var unique: Array = []
+	var previous_msec := -1
+	for frame: Dictionary in combined:
+		var stamp := int(frame.at_msec)
+		if stamp == previous_msec:
+			continue
+		unique.append(frame)
+		previous_msec = stamp
+	return unique
+
+func _first_sighting_index(index: int) -> int:
+	var opening: Array = _opening_tape[index]
+	if opening.is_empty():
+		return -1
+	# Skip the first stale frame after the recorder catches the subject walking away.
+	var start_frame := mini(1, opening.size() - 1)
+	var first_msec := int(opening[start_frame].at_msec)
+	for frame_index in _playback_frames.size():
+		if int(_playback_frames[frame_index].at_msec) >= first_msec:
+			return frame_index
+	return -1
+
+func _set_live_hint() -> void:
+	_hint.text = "A / D  camera     R  review tape     wheel  scrub     E  leave"
+	if not _opening_tape[selected].is_empty():
+		_hint.text = "A / D  camera     R  review earlier lot footage     E  leave"
+
+func _toggle_playback() -> void:
+	if not playback:
+		_playback_frames = _tape_frames(selected)
+		if _playback_frames.is_empty():
+			_hint.text = "No frames saved yet. Check again in a moment."
+			return
+		playback = true
+		_playback_cursor = _first_sighting_index(selected)
+		if _playback_cursor >= 0:
+			_hint.text = "EARLIER LOT FOOTAGE  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
+		else:
+			_playback_cursor = _playback_frames.size() - 1
+			_hint.text = "RECENT TAPE  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
+	else:
+		playback = false
+		_playback_frames.clear()
+		_set_live_hint()
+	_show_selected_feed()
+
+func _scrub_tape(step: int) -> void:
+	if not playback or _playback_frames.is_empty():
+		return
+	_playback_cursor = clampi(_playback_cursor + step, 0, _playback_frames.size() - 1)
+	_hint.text = "RECORDED  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
+	_show_selected_feed()
 
 func cycle(step: int) -> void:
 	select(posmod(selected + step, feeds.size()))
 
-## A feed counts as viewed each time a live picture is on the screen in front of the seated player.
+## A feed counts as viewed when its powered picture is visible at the seated desk.
 func _watch_screen() -> void:
 	var watching := -1
 	if viewing and is_live() and not feeds[selected].dead:
@@ -269,6 +445,9 @@ func enter() -> bool:
 	if viewing:
 		return false
 	viewing = true
+	playback = false
+	_playback_frames.clear()
+	_set_live_hint()
 	game.interactor.enabled = false
 	game.interactor.refresh_focus()
 	game.player.enabled = false
@@ -285,6 +464,8 @@ func leave() -> bool:
 	if not viewing:
 		return false
 	viewing = false
+	playback = false
+	_playback_frames.clear()
 	_ui.visible = false
 	_glide(0.0)
 	return true
@@ -326,6 +507,14 @@ func settle() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not viewing:
 		return
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		if (event as InputEventMouseButton).button_index == MOUSE_BUTTON_WHEEL_UP:
+			_scrub_tape(1)
+			get_viewport().set_input_as_handled()
+		elif (event as InputEventMouseButton).button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_scrub_tape(-1)
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key := (event as InputEventKey).physical_keycode
 		if key in [KEY_D, KEY_RIGHT]:
@@ -334,6 +523,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			cycle(-1)
 		elif key in [KEY_E, KEY_ESCAPE, KEY_Q, KEY_S]:
 			leave()
+		elif key == KEY_R:
+			_toggle_playback()
 		else:
 			return
 		get_viewport().set_input_as_handled()
@@ -345,7 +536,7 @@ class SecurityTerminal extends Interactable:
 		name = "SecurityTerminal"
 		display_name = "security computer"
 		verb = "Check the cameras on the"
-		description = "The office computer that records the two store cameras."
+		description = "The office computer that records the shop, rear hall, and parking lot cameras."
 	func can_interact(_actor: Node) -> bool:
 		return enabled and not cctv.viewing and cctv.grid.powered("security")
 	func blocked_reason(_actor: Node) -> String:

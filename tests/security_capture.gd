@@ -77,6 +77,13 @@ func _powered_and_desk() -> void:
 	await _shot("m4_02_cctv_shop_floor")
 	sec.cctv.select(1)
 	await _shot("m4_03_cctv_rear_hall")
+	for i in 75:
+		await get_tree().process_frame
+	sec.cctv._toggle_playback()
+	await _shot("m4_cctv_recent_tape")
+	sec.cctv._scrub_tape(-1)
+	await _shot("m4_cctv_tape_scrubbed")
+	sec.cctv._toggle_playback()
 	sec.cctv.leave()
 	sec.cctv.settle()
 
