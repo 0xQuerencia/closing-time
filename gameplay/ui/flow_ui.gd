@@ -32,6 +32,7 @@ var settings := {"retro": true, "sensitivity": 1.0, "bob": false}
 var _return_to := "title"
 var _guide_return := "game"
 const SETTINGS_PATH := "user://settings.cfg"
+var persist_settings := false
 const SENSITIVITIES := [0.6, 1.0, 1.6]
 
 func setup(owner_game: Gameplay) -> FlowUI:
@@ -69,11 +70,13 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	_footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_footer)
-	_load_settings()
+	apply_settings()
 	hide_all()
 	return self
 
-func _load_settings() -> void:
+## Shipped game only: read and write the player's saved preferences. Tests keep defaults and never touch the file.
+func enable_persistence() -> void:
+	persist_settings = true
 	var file := ConfigFile.new()
 	if file.load(SETTINGS_PATH) == OK:
 		settings.retro = bool(file.get_value("view", "retro", true))
@@ -91,6 +94,8 @@ func apply_settings() -> void:
 			node.palette_enabled = settings.retro
 			node.analog_enabled = settings.retro
 			node._sync_toggles()
+	if not persist_settings:
+		return
 	var file := ConfigFile.new()
 	file.set_value("view", "retro", settings.retro)
 	file.set_value("view", "sensitivity", settings.sensitivity)

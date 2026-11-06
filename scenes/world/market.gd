@@ -142,6 +142,7 @@ func _ready() -> void:
 	else:
 		add_gameplay(false)
 		gameplay.persist_saves = true
+		gameplay.flow.enable_persistence()
 		player.enabled = false
 		gameplay.flow.start_requested.connect(func(): player.enabled = true)
 		gameplay.flow.show_title()
