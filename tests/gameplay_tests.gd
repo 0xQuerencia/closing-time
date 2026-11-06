@@ -22,6 +22,7 @@ func run(market: Node3D) -> void:
 	_test_tasks()
 	await _test_manual_sale()
 	await _test_routes()
+	await _test_head_look()
 	game.dialogue.time_scale_for_tests = 1.0
 	Engine.time_scale = TIME_SCALE
 	await _test_customer_cycles()
@@ -184,6 +185,47 @@ func _test_manual_sale() -> void:
 	checkout.close_sale()
 	check(checkout.state == Checkout.State.IDLE and checkout.items.is_empty(), "register resets after the customer leaves")
 	stand_in.queue_free()
+
+## Each rig turns its head toward a point beside it, nods down at the counter, and ignores what is behind it.
+func _test_head_look() -> void:
+	for model in Customer.MODELS:
+		var person := Customer.new().setup(game, {"id": "look_" + model, "name": "Look", "model": model})
+		world.add_child(person)
+		person.global_position = Vector3(-1.5, 0.05, 2.6)
+		person.rotation.y = 0.0
+		person.set_process(false)  # drive the head directly; no gaze rules
+		var look := person._look
+		check(look != null, "%s has a neck and head to turn" % model)
+		if look == null:
+			person.queue_free()
+			continue
+		person._animation_player.pause()
+		var skeleton := look.get_skeleton()
+		var head := skeleton.find_bone(look.head_bone)
+		check(skeleton.get_bone_parent(head) == skeleton.find_bone(look.neck_bone), "%s head hangs off the neck" % model)
+		await _settle(4)
+		var head_world := skeleton.global_transform * skeleton.get_bone_global_pose(head).origin
+		var cases := [[Vector3(-0.9, 0, -0.75), 50.0, "left"], [Vector3(0.55, -0.6, -1.0), -29.0, "down to the right"], [Vector3(0, 0, 1.0), 0.0, "behind"]]
+		for c in cases:
+			look.target = head_world + (c[0] as Vector3)
+			look.has_target = true
+			await get_tree().create_timer(1.6).timeout
+			var turned := look.applied
+			var forward := skeleton.global_transform.basis * look.facing
+			var yaw := rad_to_deg(atan2(-forward.x, -forward.z))
+			var want: float = c[1]
+			var label: String = c[2]
+			if label == "behind":
+				check(turned.angle_to(Quaternion.IDENTITY) < 0.05, "%s keeps its head still for something behind it" % model)
+			elif label == "left":
+				check(absf(yaw - want) < 8.0, "%s turns its head left toward the point (%.0f deg)" % [model, yaw])
+			else:
+				var pitch := rad_to_deg(asin(clampf(forward.y, -1.0, 1.0)))
+				check(yaw < -15.0 and pitch < -12.0, "%s looks down and right at the counter (yaw %.0f, pitch %.0f)" % [model, yaw, pitch])
+			look.has_target = false
+			await get_tree().create_timer(1.0).timeout
+		person.queue_free()
+	await _settle()
 
 func _test_routes() -> void:
 	var probe := CharacterBody3D.new()

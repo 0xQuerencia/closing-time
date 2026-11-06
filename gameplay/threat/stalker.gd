@@ -333,6 +333,17 @@ func _check_stuck(delta: float) -> void:
 		_path = PackedVector3Array()
 		_repath = 0.0
 
+## His head leads the hunt: locked on Jamie once seen, on the noise he is walking to, on the handle he is trying.
+func _gaze_point(delta: float) -> Variant:
+	match state:
+		State.CHASE, State.CAUGHT:
+			return _player_eye()
+		State.INVESTIGATE:
+			return last_seen + Vector3(0, 1.1, 0)
+		State.AT_DOOR:
+			return Vector3(5.0, 1.45, -4.3)
+	return super(delta)
+
 func _animate_stalk() -> void:
 	if _animation_player == null:
 		return

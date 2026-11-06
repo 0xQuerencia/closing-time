@@ -25,6 +25,19 @@ var _current_animation: StringName
 var _idle_time := 0.0
 var _talk_used := false
 var _excused := false
+var _look: HeadLook
+var _rng := RandomNumberGenerator.new()
+var _gaze_clock := 0.0
+var _glancing := false
+var _glance_point := Vector3.ZERO
+var _passing_cooldown := 0.0
+var _passing_left := 0.0
+var _gesture: StringName
+var _gesture_left := 0.0
+const GLANCE_SPOTS := [Vector3(-5.6, 1.0, 4.3), Vector3(-4.2, 1.0, 4.4), Vector3(-6.5, 1.4, 1.2), Vector3(1.7, 1.4, 5.0)]
+const BACK_OF_STORE := Vector3(4.2, 1.5, -3.0)
+const IDLE_CLIPS := [&"Idle", &"IdleShift", &"IdleWait", &"CounterIdle"]
+const GAZE_BLOCKING_CLIPS := [&"LookAround", &"LookBehind", &"TurnLeft", &"TurnRight", &"Startle", &"ShakeHead", &"Nod"]
 
 func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	game = owner_game
@@ -55,6 +68,9 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	talk.talk_requested.connect(_on_talk)
 	add_child(talk)
 	add_collision_exception_with(game.player)
+	_rng.seed = hash(profile.get("id", name))
+	_gaze_clock = _rng.randf_range(2.0, 4.0)
+	game.dialogue.line_shown.connect(_on_line_shown)
 	return self
 
 const HAND_RIGS := [
@@ -103,6 +119,21 @@ func _build_body() -> void:
 	_hand.position = Vector3(0.3, 1.05, -0.12)
 	add_child(_hand)
 	_rig_hand(model)
+	_rig_head(model)
+
+## Neck and head follow whatever this person is paying attention to.
+func _rig_head(model: Node) -> void:
+	var skeletons := model.find_children("*", "Skeleton3D", true, false)
+	if skeletons.is_empty():
+		return
+	var skeleton := skeletons[0] as Skeleton3D
+	var bones := HeadLook.bones_for(skeleton)
+	if bones.is_empty():
+		return
+	_look = HeadLook.new()
+	_look.neck_bone = bones[0]
+	_look.head_bone = bones[1]
+	skeleton.add_child(_look)
 
 ## Hold items in the right hand: ride the hand bone so the arm swing carries them, and bend the elbow.
 func _rig_hand(model: Node) -> void:
@@ -183,21 +214,8 @@ func _set_phase(next: Phase) -> void:
 	phase = next
 	_idle_time = 0.0
 	phase_changed.emit(next)
-	if not is_zero_approx(velocity.x) or not is_zero_approx(velocity.z):
-		return
-	match phase:
-		Phase.BROWSE:
-			_play_animation("IdleShift")
-		Phase.QUEUE:
-			_play_animation("IdleWait")
-		Phase.TRANSACTION:
-			var mannerism: String = profile.get("mannerism", "")
-			if mannerism != "" and int(_idle_time / 6.0) % 3 == 1:
-				_play_animation(mannerism)  # a glance toward the back of the store, every visit
-			else:
-				_play_animation("CounterIdle" if int(_idle_time / 7.0) % 2 == 0 else "IdleWait")
-		_:
-			_play_animation("Idle")
+	if is_zero_approx(velocity.x) and is_zero_approx(velocity.z):
+		_animate()
 
 ## Full visit. Completion of the sale is awaited, never timed out.
 func run() -> void:
@@ -296,6 +314,10 @@ func _walk(points: Array) -> void:
 	_animate()
 
 func _walk_to(target: Vector3, final_point: bool = true) -> void:
+	var start := Vector3(target.x - global_position.x, 0, target.z - global_position.z)
+	if start.length() > 0.3 and Vector2(velocity.x, velocity.z).length() < 0.25 \
+			and absf(angle_difference(rotation.y, atan2(-start.x, -start.z))) > 1.1:
+		await _face(target)  # standing still: turn on the spot first instead of sliding round
 	var best := INF
 	var stalled := 0.0
 	var blocked := 0.0
@@ -363,6 +385,57 @@ func _face(point: Vector3) -> void:
 func _process(delta: float) -> void:
 	if _carry != null:
 		_carry.amount = move_toward(_carry.amount, 1.0 if held_product != null else 0.0, delta * 3.0)
+	_gesture_left = maxf(0.0, _gesture_left - delta)
+	if _look != null:
+		var point: Variant = null if _current_animation in GAZE_BLOCKING_CLIPS else _gaze_point(delta)
+		_look.has_target = point != null
+		if point != null:
+			_look.target = point
+
+func _player_eye() -> Vector3:
+	return (game.player.camera as Node3D).global_position
+
+## Where this person is looking right now, or null to leave the head to the animation.
+func _gaze_point(delta: float) -> Variant:
+	var eye := _player_eye()
+	var near := Vector2(eye.x - global_position.x, eye.z - global_position.z).length()
+	var moving := Vector2(velocity.x, velocity.z).length() > 0.2
+	if phase in [Phase.TRANSACTION, Phase.QUEUE] and not moving:
+		_gaze_clock -= delta
+		if _gaze_clock <= 0.0:
+			_glancing = not _glancing
+			if _glancing:
+				var leon: bool = profile.get("mannerism", "") != ""
+				_glance_point = BACK_OF_STORE if leon and _rng.randf() < 0.5 else GLANCE_SPOTS[_rng.randi() % GLANCE_SPOTS.size()]
+				_gaze_clock = _rng.randf_range(0.7, 1.5)
+			else:
+				_gaze_clock = _rng.randf_range(2.5, 5.5)
+		if _glancing:
+			return _glance_point
+		return eye if near < 6.0 else null
+	if phase == Phase.BROWSE and not moving:
+		return global_position + Vector3(0, 1.05, 0) + (profile.get("browse_face", Vector3(-1, 0, 0)) as Vector3) * 0.8
+	# Walking: a short look at the clerk when passing close by, then eyes back on the way ahead.
+	_passing_cooldown = maxf(0.0, _passing_cooldown - delta)
+	if _passing_left > 0.0:
+		_passing_left -= delta
+		return eye
+	if moving and near < 3.5 and _passing_cooldown <= 0.0:
+		_passing_left = _rng.randf_range(1.0, 1.8)
+		_passing_cooldown = 9.0
+		return eye
+	return null
+
+## Talks with a little movement while their own line is up, and listens to Jamie with a nod.
+func _on_line_shown(speaker: String, _text: String) -> void:
+	if phase != Phase.TRANSACTION or Vector2(velocity.x, velocity.z).length() > 0.1:
+		return
+	if speaker == profile.get("name", ""):
+		_gesture = &"Talk"
+		_gesture_left = 1.8
+	elif speaker == "Jamie" and _rng.randf() < 0.5:
+		_gesture = &"Nod"
+		_gesture_left = 1.0
 
 func _animate() -> void:
 	if Vector2(velocity.x, velocity.z).length() > 0.1:
@@ -372,15 +445,25 @@ func _animate() -> void:
 		if _animation_player != null:
 			_animation_player.speed_scale = clampf(speed / WALK_CLIP_SPEED, 0.3, 1.05)
 		return
+	if _gesture_left > 0.0 and _animation_player != null and _animation_player.has_animation(_gesture):
+		_play_animation(_gesture)
+		return
 	match phase:
 		Phase.BROWSE:
 			_play_animation("IdleShift")
 		Phase.QUEUE:
 			_play_animation("IdleWait")
 		Phase.TRANSACTION:
-			_play_animation("CounterIdle" if int(_idle_time / 7.0) % 2 == 0 else "IdleWait")
+			_play_animation(_counter_clip())
 		_:
 			_play_animation("Idle")
+
+## Standing at the counter: settle, shift weight, and for Leon a look toward the back of the store now and then.
+func _counter_clip() -> StringName:
+	var mannerism: String = profile.get("mannerism", "")
+	if mannerism != "" and int(_idle_time / 6.0) % 3 == 1:
+		return StringName(mannerism)
+	return &"CounterIdle" if int(_idle_time / 7.0) % 2 == 0 else &"IdleWait"
 
 func _play_animation(clip_name: StringName) -> void:
 	if _animation_player == null or not _animation_player.has_animation(clip_name):
@@ -390,3 +473,6 @@ func _play_animation(clip_name: StringName) -> void:
 	_current_animation = clip_name
 	_animation_player.speed_scale = 1.0
 	_animation_player.play(clip_name, 0.24)
+	if clip_name in IDLE_CLIPS:
+		# Two people never breathe and shift in step.
+		_animation_player.seek(_rng.randf() * _animation_player.current_animation_length)

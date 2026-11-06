@@ -12,6 +12,7 @@ var rear_door: Door
 var spooked := false
 var inside := false
 var leaving := false
+var _stare: Variant = null
 
 func prepare(rear: Door) -> Intruder:
 	rear_door = rear
@@ -53,8 +54,14 @@ func _player_flat_distance() -> float:
 func walk_to_camera(camera_point: Vector3) -> void:
 	await _walk(CORRIDOR_WALK)
 	await _face(camera_point)
-	_play_animation("LookAround")
+	_play_animation("Idle")
+	_stare = camera_point + Vector3(0, 1.6, 0)  # stands still and looks straight up into the lens
 	await _wait(2.6)
+	_stare = null
+
+## He is not here to talk to anyone: his head only goes where the scene sends it.
+func _gaze_point(_delta: float) -> Variant:
+	return _stare
 
 func leave_building() -> void:
 	leaving = true
