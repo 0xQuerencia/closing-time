@@ -22,3 +22,5 @@ All market geometry, fixture meshes, fictional product packaging, signage, surfa
 Fears to Fathom is a visual study reference only. This is an independent project; no affiliation is claimed and no assets from that series are redistributed.
 - **JetBrains Mono** (Regular, Medium, Bold) by JetBrains, SIL Open Font License 1.1: `assets/fonts/jetbrains_mono/`, used for the HUD. License text included beside the fonts.
 - **Pixelify Sans** by The Pixelify Sans Project Authors, SIL Open Font License 1.1: `assets/fonts/pixelify_sans/`, used for the HUD and phone. License text included beside the font.
+
+- Loading-screen image: `assets/art/market_loading.png`, captured from the running Godot store using `tools/capture_opening.gd`. The user-supplied rainy-night concept is a visual reference only and is not bundled in the game.

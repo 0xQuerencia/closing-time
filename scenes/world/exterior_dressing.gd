@@ -98,11 +98,8 @@ func _build_puddles() -> void:
 	glow.fill_to = Vector2(0.5, 1.0)
 	glow.gradient = Gradient.new()
 	glow.gradient.colors = PackedColorArray([Color(1.0, 0.88, 0.6, 0.11), Color(1.0, 0.88, 0.6, 0.0)])
-	var glow_mat := StandardMaterial3D.new()
-	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	glow_mat.albedo_texture = glow
-	glow_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	var glow_mat := ShaderMaterial.new()
+	glow_mat.shader = preload("res://scenes/world/wet_reflection.gdshader")
 	for x in [-7.7, -5.3, -2.9, -0.4, 3.0]:
 		var streak := MeshInstance3D.new()
 		var mesh := QuadMesh.new()
@@ -137,27 +134,6 @@ func _build_bin() -> void:
 	_box(Vector3(0.58, 0.08, 0.58), pos + Vector3(0, 0.47, 0), _mat(Color(0.15, 0.14, 0.1), 0.8))
 
 func _build_sky() -> void:
-	var halo := GradientTexture2D.new()
-	halo.fill = GradientTexture2D.FILL_RADIAL
-	halo.fill_from = Vector2(0.5, 0.5)
-	halo.fill_to = Vector2(1.0, 0.5)
-	halo.gradient = Gradient.new()
-	halo.gradient.offsets = PackedFloat32Array([0.0, 0.2, 0.24, 0.55, 1.0])
-	halo.gradient.colors = PackedColorArray([Color(0.78, 0.82, 0.9, 1), Color(0.7, 0.75, 0.86, 1), Color(0.5, 0.58, 0.72, 0.5), Color(0.2, 0.26, 0.38, 0.14), Color(0.1, 0.14, 0.22, 0)])
-	var moon_mat := StandardMaterial3D.new()
-	moon_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	moon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	moon_mat.albedo_texture = halo
-	moon_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	moon_mat.disable_fog = true
-	var moon := MeshInstance3D.new()
-	var quad := QuadMesh.new()
-	quad.size = Vector2(26, 26)
-	moon.mesh = quad
-	moon.material_override = moon_mat
-	moon.position = Vector3(-26.0, 40.0, -80.0)
-	moon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(moon)
 	# A faint horizon glow so the treeline reads as a silhouette.
 	var sky := GradientTexture2D.new()
 	sky.fill = GradientTexture2D.FILL_LINEAR
