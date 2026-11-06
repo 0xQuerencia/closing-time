@@ -49,3 +49,9 @@ __pycache__/
 
 # Blender model tooling stays local
 /tools/blender/
+
+# Reproducible handset source is part of the shipped asset.
+!/tools/blender/
+/tools/blender/*
+!/tools/blender/build_phone.py
+!/tools/blender/phone_art.py
