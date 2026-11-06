@@ -22,18 +22,14 @@ func _dress() -> void:
 					warm.emission = Color(1.0, 0.73, 0.4)
 					warm.emission_energy_multiplier = 1.5
 					mesh.set_surface_override_material(surface, warm)
-		# The exterior is batched into one mesh. Match material surfaces, not
-		# pre-export object names such as "Parking asphalt".
-		if str(mesh.name).begins_with("exterior"):
+		if "Parking_asphalt" in str(mesh.name) or "Parking asphalt" in str(mesh.name) or mesh.name == "Road":
 			for surface in mesh.mesh.get_surface_count():
 				var original := mesh.get_active_material(surface) as StandardMaterial3D
-				if original and "asphalt" in original.resource_name.to_lower():
+				if original:
 					var wet := original.duplicate() as StandardMaterial3D
-					wet.roughness = 0.24
-					wet.metallic_specular = 0.85
+					wet.roughness = 0.18
+					wet.metallic_specular = 0.8
 					mesh.set_surface_override_material(surface, wet)
-					print("STOREFRONT: wet asphalt surface applied")
-	_tune_forecourt(world)
 	# A single cached cubemap supplies real store/sky reflections on wet surfaces.
 	# It renders once at startup, without shadow rendering or per-frame recapture.
 	var probe := ReflectionProbe.new()
@@ -47,32 +43,6 @@ func _dress() -> void:
 	probe.intensity = 0.8
 	add_child(probe)
 	_build_rain()
-
-func _tune_forecourt(world: Node) -> void:
-	for node in world.find_children("*", "Light3D", false, false):
-		var light := node as Light3D
-		if absf(light.position.z - 7.0) < 0.1 and absf(light.position.y - 2.65) < 0.1:
-			light.light_energy = 2.1 if light.position.x > 0.0 else 1.65
-			light.light_color = Color(1.0, 0.82, 0.57)
-			light.light_specular = 0.8
-			if light is SpotLight3D:
-				light.spot_range = 7.0
-		if light.position.is_equal_approx(Vector3(-9, 5.1, 15)):
-			light.light_energy = 3.4
-			light.light_specular = 0.8
-	# Painted metal drip edge adds a readable band to the existing canopy.
-	var trim := MeshInstance3D.new()
-	trim.name = "CanopyDripEdge"
-	var strip := BoxMesh.new()
-	strip.size = Vector3(18.7, 0.16, 0.065)
-	trim.mesh = strip
-	trim.position = Vector3(0, 3.3, 7.28)
-	var paint := StandardMaterial3D.new()
-	paint.albedo_color = Color(0.32, 0.055, 0.035)
-	paint.roughness = 0.6
-	trim.material_override = paint
-	trim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(trim)
 
 func _build_rain() -> void:
 	var rain := GPUParticles3D.new()
