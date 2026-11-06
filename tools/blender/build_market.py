@@ -408,29 +408,20 @@ for x in [-4,3]:
  cyl('Sign lamp stem',(x,4.03,7.18),.018,.34,'steel')
  box('Sign lamp arm',(x,4.18,7.43),(.035,.035,.5),'steel',.01)
  box('Sign lamp hood',(x,4.12,7.68),(.28,.12,.18),'green',.025)
-# Car: tapered body mesh, glass cabin, wheel arches suggested by fenders.
-def hull(name,levels,m):
- vs=[]
- for y,w,z0,z1 in levels:vs.extend([xyz((-4.9-w/2,y,z0)),xyz((-4.9+w/2,y,z0)),xyz((-4.9+w/2,y,z1)),xyz((-4.9-w/2,y,z1))])
- fs=[(3,2,1,0)]
- for k in range(len(levels)-1):
-  for j in range(4):fs.append((k*4+j,k*4+(j+1)%4,(k+1)*4+(j+1)%4,(k+1)*4+j))
- fs.append(tuple(range((len(levels)-1)*4,len(levels)*4)))
- me=bpy.data.meshes.new(name);me.from_pydata(vs,[],fs);o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o);register(o,name,m)
- mod=o.modifiers.new('Body seams softened','BEVEL');mod.width=.055;mod.segments=3;bpy.context.view_layer.objects.active=o;o.select_set(True);bpy.ops.object.modifier_apply(modifier=mod.name);o.select_set(False)
-hull('Compact body',[(.22,1.54,11,15.1),(.72,1.7,10.95,15.12),(.84,1.59,11.15,14.95)],'car')
-hull('Cabin glass',[(.79,1.48,11.9,14.3),(1.38,1.25,12.4,13.92)],'car_glass')
-box('Car roof',(-4.9,1.4,13.15),(1.31,.07,1.56),'car',.045)
-for x in [-5.68,-4.12]:
- box('B pillar',(x,1.1,13.24),(.06,.59,.1),'car')
- for z in [11.74,14.29]:
-  cyl('Tire',(x,.29,z),.31,.18,'rubber',24,'x');cyl('Hubcap',(x+(-.1 if x<-4.9 else .1),.29,z),.19,.018,'steel',16,'x')
- for z in [12.7,13.7]:box('Car door handle',(x,.77,z),(.04,.04,.19),'steel',.012)
-box('Car front bumper',(-4.9,.38,15.13),(1.55,.18,.12),'dark',.035)
-for x in [-5.46,-4.34]:box('Headlamp',(x,.65,15.14),(.38,.15,.02),'cream',.03)
-box('Car rear bumper',(-4.9,.38,10.97),(1.55,.18,.12),'dark',.035)
-for x in [-5.48,-4.32]:box('Tail light',(x,.65,10.955),(.3,.14,.02),'taillight',.02)
-box('License plate',(-4.9,.52,15.205),(.32,.13,.012),'paper')
+# CC0 PSX station wagon from GGBotNet; scale it to the existing parking space.
+# The source blend is Y-up for vehicle length, which maps through xyz() to the
+# game's forward/back axis while keeping its height on Blender Z.
+car_source=ROOT/'tools/blender/source/ggbot_car01'
+with bpy.data.libraries.load(str(car_source/'Car.blend'),link=False) as (data_from,data_to):
+ data_to.objects=['Car']
+car_obj=data_to.objects[0];bpy.context.collection.objects.link(car_obj)
+car_obj.name='GGBot PSX station wagon';car_obj.scale=(.7,.7,.7);car_obj.location=xyz((-4.9,0,13))
+car_image=bpy.data.images.load(str(car_source/'car_gray.png'),check_existing=True);car_image.pack()
+for material in car_obj.data.materials:
+ for node in material.node_tree.nodes:
+  if node.type=='TEX_IMAGE':node.image=car_image;node.interpolation='Closest'
+  if node.type=='BSDF_PRINCIPLED':node.inputs['Roughness'].default_value=.86
+ batches[group].append(car_obj)
 colliders.append({'name':'Parked compact','p':[-4.9,.6,13],'s':[1.8,1.4,4.3]})
 for x,z in [(-10,15),(11,23)]:
  cyl('Light pole',(x,2.7,z),.065,5.6,'steel');box('Pole base',(x,.18,z),(.38,.5,.38),'plaster',.03,True)

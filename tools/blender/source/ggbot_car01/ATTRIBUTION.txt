@@ -1,0 +1,7 @@
+PSX Style Cars
+Author: GGBotNet
+Source: https://ggbot.itch.io/psx-style-cars
+License: CC0 1.0 Universal (confirmed on the author's itch.io asset page)
+
+This directory contains only the original Car 01 Blender file and the two
+color atlases needed to reproduce the adapted gray 5-door station wagon.
