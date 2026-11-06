@@ -9,13 +9,12 @@ const LCD_BG := Color(0.07, 0.1, 0.07, 0.96)
 const PLASTIC := Color(0.33, 0.33, 0.3)
 const INK := LCD_INK
 const AMBER := LCD_INK
-const TOAST_SECONDS := 5.0
+const TOAST_SECONDS := 4.5
 var model: PhoneModel
 var clock: StoryClock
 var open := false
 var current_thread := "Dina"
-var _toast: PanelContainer
-var _toast_name: Label
+var _toast: HBoxContainer
 var _toast_text: Label
 var _badge: Label
 var _panel: PanelContainer
@@ -23,6 +22,7 @@ var _header: Label
 var _tabs: HBoxContainer
 var _log: VBoxContainer
 var _toast_left := 0.0
+var _toast_tween: Tween
 var _buzz: AudioStreamPlayer
 var _arrival_timer: Timer
 var _arrival_queue: Array[Dictionary] = []
@@ -89,19 +89,31 @@ func _pin(box: Control, ax: float, ay: float, left: float, top: float, width: fl
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN if ay >= 1.0 else Control.GROW_DIRECTION_END
 	box.grow_horizontal = Control.GROW_DIRECTION_BEGIN if ax >= 1.0 else Control.GROW_DIRECTION_END
 
+## A new text is one plain line near the top-right with a small bubble, then it fades.
+class Bubble extends Control:
+	func _init() -> void:
+		custom_minimum_size = Vector2(24, 20)
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		var ink := Color(0.92, 0.91, 0.87)
+		draw_rect(Rect2(1, 1, 22, 14), ink)
+		draw_colored_polygon(PackedVector2Array([Vector2(5, 15), Vector2(5, 20), Vector2(11, 15)]), ink)
+
 func _build_toast() -> void:
-	_toast = PanelContainer.new()
-	_toast.add_theme_stylebox_override("panel", _panel_style())
-	var col := VBoxContainer.new()
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast_name = _text("", 16, LCD_DIM)
-	_toast_text = _text("", 22, LCD_INK)
+	_toast = HBoxContainer.new()
+	_toast.add_theme_constant_override("separation", 10)
+	_toast.add_child(Bubble.new())
+	_toast_text = _text("", 20, Color(0.92, 0.91, 0.87))
+	_toast_text.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_toast_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	_toast_text.add_theme_constant_override("outline_size", 4)
 	_toast_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast_text.custom_minimum_size = Vector2(420, 0)
-	col.add_child(_toast_name)
-	col.add_child(_toast_text)
-	_toast.add_child(col)
-	_pin(_toast, 0.5, 0.0, -230, 24, 460)
+	_toast_text.max_lines_visible = 2
+	_toast_text.custom_minimum_size = Vector2(500, 0)
+	_toast_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_toast.add_child(_toast_text)
+	_pin(_toast, 1.0, 0.0, -28 - 540, 20, 540)
 	_toast.visible = false
 
 func _build_badge() -> void:
@@ -144,6 +156,8 @@ func toggle() -> void:
 	open = not open
 	_panel.visible = open
 	if open:
+		if _toast_tween:
+			_toast_tween.kill()
 		_toast.visible = false
 		_arrival_queue.clear()
 		_arrival_timer.stop()
@@ -187,17 +201,21 @@ func _show_queued_message() -> void:
 		return
 	var arrival: Dictionary = _arrival_queue.pop_front()
 	var entry: Dictionary = arrival.entry
-	_toast_name.text = "NEW MESSAGE   %s   %s" % [String(arrival.thread).to_upper(), entry.time]
-	_toast_text.text = entry.text
+	_toast_text.text = "%s: %s" % [arrival.thread, entry.text]
+	if _toast_tween:
+		_toast_tween.kill()
 	_toast.visible = true
+	_toast.modulate.a = 0.0
+	_toast_tween = _toast.create_tween()
+	_toast_tween.tween_property(_toast, "modulate:a", 1.0, 0.25)
 	_toast_left = TOAST_SECONDS
 	_buzz.play()
 	_arm_message_arrival()
 
 func _refresh_badge() -> void:
 	var unread := model.unread_count()
-	_badge.text = "Tab  phone%s" % ("   (%d new)" % unread if unread > 0 else "")
-	_badge.visible = true
+	_badge.text = "Tab  phone   (%d new)" % unread
+	_badge.visible = unread > 0 and not open
 	if open:
 		_render()
 
@@ -229,4 +247,8 @@ func _process(delta: float) -> void:
 	if _toast_left > 0.0:
 		_toast_left -= delta
 		if _toast_left <= 0.0:
-			_toast.visible = false
+			if _toast_tween:
+				_toast_tween.kill()
+			_toast_tween = _toast.create_tween()
+			_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.35)
+			_toast_tween.tween_callback(func(): _toast.visible = false)
