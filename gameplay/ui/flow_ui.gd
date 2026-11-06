@@ -1,7 +1,7 @@
 class_name FlowUI
 extends CanvasLayer
-## Title screen, pause menu and the ending cards. Plain pixel text on black, like the HUD. Everything here runs
-## while the tree is paused, so the shop holds still behind it.
+## Title screen, pause menu and the ending cards. Plain left-aligned pixel text over a darkened shop, with a yellow
+## square on the selected item. Everything here runs while the tree is paused, so the shop holds still behind it.
 signal start_requested
 signal continue_requested
 signal retry_requested
@@ -9,7 +9,9 @@ signal restart_requested
 signal quit_requested
 const FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
 const INK := Color(0.9, 0.89, 0.84)
-const DIM := Color(0.9, 0.89, 0.84, 0.55)
+const DIM := Color(0.9, 0.89, 0.84, 0.6)
+const WARM := Color(0.98, 0.84, 0.3)
+const TITLE_RED := Color(0.82, 0.13, 0.1)
 const ENDINGS := {
 	"escape": {
 		"title": "OUT",
@@ -23,6 +25,7 @@ const ENDINGS := {
 var game: Gameplay
 var mode := "none"
 var _root: Control
+var _shade: ColorRect
 var _column: VBoxContainer
 var _title: Label
 var _body: Label
@@ -44,30 +47,26 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_root)
-	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.82)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(shade)
+	_shade = ColorRect.new()
+	_shade.color = Color(0, 0, 0, 0.85)
+	_shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_shade)
 	_column = VBoxContainer.new()
 	_column.set_anchors_preset(Control.PRESET_CENTER)
-	_column.custom_minimum_size = Vector2(760, 0)
-	_column.position = Vector2(-380, -190)
+	_column.custom_minimum_size = Vector2(680, 0)
 	_column.add_theme_constant_override("separation", 14)
 	_root.add_child(_column)
 	_title = _label(64, INK)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_column.add_child(_title)
 	_body = _label(22, DIM)
-	_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_body)
 	_buttons = VBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 6)
-	_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	_buttons.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_column.add_child(_buttons)
-	_footer = _label(17, DIM)
-	_footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_footer = _label(16, DIM)
 	_footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_footer)
 	apply_settings()
@@ -139,13 +138,13 @@ func _center_guide() -> void:
 
 func _guide_body() -> String:
 	var current := game.tasks.current_guide()
-	var now := "No open task. Take a breath and check the paper when the next message arrives."
+	var now := "No open task. Take a breath and check your phone when the next message arrives."
 	if not current.is_empty():
 		now = "NOW\n%s\n%s" % [current.title, current.objective]
 		if str(current.hint) != "":
 			now += "\n" + str(current.hint)
-	return ("Follow NEXT in the upper-left for your immediate objective. The paper in the top-right tracks every open chore. Each step tells you the room, landmark, and button to use.\n\n" +
-		"%s\n\nCONTROLS\nWASD  move     Mouse  look     Shift  run\nE  use / scan / talk     F  inspect     Q  put down\nTab  phone     T  phone light     1 / 2 / 3  reply\nEsc  pause     G  open this guide") % now
+	return ("Your current objective appears under the clock when it changes, and again if you stall. Press C for the shift list. Each step tells you the room, landmark, and button to use.\n\n" +
+		"%s\n\nCONTROLS\nWASD  move     Mouse  look     Shift  run\nE  use / scan / talk     F  inspect     Q  put down\nTab  phone     T  phone light     C  shift list     1 / 2 / 3  reply\nEsc  pause     G  open this guide") % now
 
 func _close_guide() -> void:
 	if _guide_return == "title":
@@ -170,13 +169,28 @@ func _button(id: String, text: String, action: Callable) -> Button:
 	b.name = "Btn_" + id
 	b.text = text
 	b.flat = true
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_font_override("font", FONT)
-	b.add_theme_font_size_override("font_size", 28)
+	b.add_theme_font_size_override("font_size", 26)
 	b.add_theme_color_override("font_color", DIM)
-	b.add_theme_color_override("font_hover_color", INK)
-	b.add_theme_color_override("font_focus_color", INK)
-	b.add_theme_color_override("font_pressed_color", INK)
+	b.add_theme_color_override("font_hover_color", WARM)
+	b.add_theme_color_override("font_focus_color", WARM)
+	b.add_theme_color_override("font_pressed_color", WARM)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	var marker := ColorRect.new()
+	marker.color = WARM
+	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	marker.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	marker.offset_left = -24
+	marker.offset_right = -14
+	marker.offset_top = -5
+	marker.offset_bottom = 5
+	marker.visible = false
+	b.add_child(marker)
+	b.focus_entered.connect(func(): marker.visible = true)
+	b.focus_exited.connect(func(): marker.visible = false)
+	b.mouse_entered.connect(b.grab_focus)
 	b.pressed.connect(action)
 	_buttons.add_child(b)
 	return b
@@ -189,14 +203,20 @@ func _clear_buttons() -> void:
 func _present(next_mode: String, title: String, body: String, footer: String) -> void:
 	mode = next_mode
 	_title.text = title
+	var on_title := next_mode == "title"
+	_title.add_theme_font_size_override("font_size", 76 if on_title else 44)
+	_title.add_theme_color_override("font_color", TITLE_RED if on_title else INK)
 	_body.text = body.replace("\\n", "\n")
-	_body.add_theme_font_size_override("font_size", 26 if next_mode == "guide" else 22)
-	_column.anchor_left = 0.5
-	_column.anchor_right = 0.5
+	_body.visible = body != ""
+	_body.add_theme_font_size_override("font_size", 20 if next_mode == "guide" else (20 if on_title else 22))
+	_body.add_theme_color_override("font_color", INK if on_title else DIM)
+	_shade.color.a = 0.55 if on_title else 0.86
+	_column.anchor_left = 0.1
+	_column.anchor_right = 0.1
 	_column.anchor_top = 0.5
 	_column.anchor_bottom = 0.5
-	_column.offset_left = -380
-	_column.offset_right = 380
+	_column.offset_left = 0
+	_column.offset_right = 680
 	_column.offset_top = -190
 	_column.offset_bottom = -190
 	_footer.text = footer
@@ -219,7 +239,7 @@ func hide_all() -> void:
 
 func show_title() -> void:
 	_clear_buttons()
-	_present("title", "CLOSING TIME", "Marlow's Market.  Night shift.  11:24 PM.", "WASD move   Shift run   E use   F look   Q put down   Tab phone   T light   G guide   Esc pause")
+	_present("title", "CLOSING TIME", "A MARLOW'S MARKET STORY", "WASD move   E use   F look   Q put down   Tab phone   C list   G guide   Esc pause")
 	var first := _button("start", "Start shift", func(): _begin(false))
 	if SaveGame.exists():
 		_button("continue", "Continue", func(): _begin(true))

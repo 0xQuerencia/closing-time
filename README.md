@@ -28,7 +28,7 @@ The game saves a checkpoint at the start of the shift and again before the final
 
 ## Staying oriented
 
-The paper in the top-right is the complete shift checklist. During play, the **NEXT** card in the upper-left chooses the most useful unfinished step and tells you where to start and what interaction to use. Customer and security tasks take priority over routine chores, so follow that card when several tasks are open. Press `G` at any time for the full control and current-task guide; it is also available from the title and pause menus.
+The HUD stays quiet: only the clock is always on screen. When a task starts or moves on, the current objective shows under the clock for a few seconds, and the list of open tasks shows in the top-right. Press `C` to bring both back, or wait: if you make no progress for a while the objective and its hint return on their own. Customer and security tasks take priority over routine chores, so follow the objective when several tasks are open. Press `G` at any time for the full control and current-task guide; it is also available from the title and pause menus.
 
 ## Check and reproduce
 
