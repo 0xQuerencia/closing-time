@@ -42,6 +42,7 @@ var _frame_hold_left := 0.0
 var _stamp_jam_left := 0.0
 var _threat_was_present: Array[bool] = []
 var _rng := RandomNumberGenerator.new()
+var _capture_pending: Array[bool] = []
 var _record_clock := 0.0
 var _history: Array = []
 var _opening_tape: Array = []
@@ -62,6 +63,7 @@ func build(owner_game, power: PowerGrid) -> Cctv:
 	for index in CAMS.size():
 		feeds.append(_build_feed(index))
 		_threat_was_present.append(false)
+		_capture_pending.append(false)
 		_history.append([])
 		_opening_tape.append([])
 	_build_screen()
@@ -288,12 +290,16 @@ func _point_is_in_feed(camera: Camera3D, world_point: Vector3) -> bool:
 	return Rect2(Vector2.ZERO, viewport_size).has_point(point)
 
 func _record_frame(index: int) -> void:
+	if _capture_pending[index]:
+		return  # the previous grab for this camera has not finished drawing yet
+	_capture_pending[index] = true
 	var viewport := feeds[index].viewport as SubViewport
 	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_capture_frame_after_render(index)
 
 func _capture_frame_after_render(index: int) -> void:
 	await RenderingServer.frame_post_draw
+	_capture_pending[index] = false
 	if not is_inside_tree() or not grid.powered("security") or feeds[index].dead:
 		return
 	var image := (feeds[index].viewport as SubViewport).get_texture().get_image()

@@ -291,7 +291,7 @@ func _test_cctv() -> void:
 	check(cctv.selected == 2, "feed keys do nothing away from the desk")
 	cctv.select(0)
 	sec.power.trip_all()
-	check(not cctv.is_live() and cctv.screen_material.get_shader_parameter("power") == 1.0 or true, "blackout kills the feed")
+	check(not cctv.is_live(), "blackout kills the feed")
 	await _settle(2)
 	check(cctv.screen_material.get_shader_parameter("power") == 0.0, "the screen goes dark with the security breaker off")
 	sec.power.reset()
