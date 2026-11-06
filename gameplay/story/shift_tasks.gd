@@ -24,7 +24,8 @@ var locked := false
 ## Everything fixed to the rear door's inside face, so it can ride on the leaf when the door swings.
 var latch_parts: Array[Node3D] = []
 var door_ajar := Callable()  # true while the rear door is open: the lock cannot be worked then
-var _lever: MeshInstance3D
+var _lever: Node3D
+var _key: Node3D
 var _placed: Array[Product] = []
 var _bin: TrashBin
 
@@ -137,59 +138,35 @@ func _build_latch() -> void:
 	_box_collider(lever_base, Vector3(0.36, 0.08, 0.1))
 	add_child(lever_base)
 	latch_parts.append(lever_base)
-	_lever = MeshInstance3D.new()
-	var bar := BoxMesh.new()
-	bar.size = Vector3(0.3, 0.035, 0.05)
-	_lever.mesh = bar
-	var steel := StandardMaterial3D.new()
-	steel.albedo_color = Color(0.48, 0.46, 0.4)
-	steel.metallic = 0.8
-	steel.roughness = 0.58
-	var backplate := MeshInstance3D.new()
-	var plate_mesh := BoxMesh.new()
-	plate_mesh.size = Vector3(0.44, 0.37, 0.025)
-	backplate.mesh = plate_mesh
-	backplate.position = LATCH_POINT + Vector3(0, -0.035, 0.006)
-	backplate.material_override = _metal_material(Color(0.22, 0.22, 0.2), 0.65)
-	add_child(backplate)
-	latch_parts.append(backplate)
-	_lever.material_override = steel
-	_lever.position = LATCH_POINT + Vector3(0, 0, 0.015)
+	add_child(_prop("latch_plate", LATCH_POINT))
+	_lever = _prop("latch_lever", LATCH_POINT + Vector3(-0.13, 0, 0.03))  # pivots at its left end
 	add_child(_lever)
-	latch_parts.append(_lever)
 	var key_lock := LatchKey.new()
 	key_lock.tasks = self
 	key_lock.position = LATCH_POINT + Vector3(0, -0.13, 0)
 	_box_collider(key_lock, Vector3(0.12, 0.12, 0.08))
 	add_child(key_lock)
 	latch_parts.append(key_lock)
-	var plate := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.035
-	cyl.bottom_radius = 0.035
-	cyl.height = 0.02
-	plate.mesh = cyl
-	plate.material_override = steel
-	plate.rotation.x = PI / 2.0
-	plate.position = key_lock.position + Vector3(0, 0, 0.012)
-	add_child(plate)
-	latch_parts.append(plate)
-	var label := Label3D.new()
-	label.text = "LIFT  THEN  TURN"
-	label.font_size = 24
-	label.pixel_size = 0.0017
-	label.modulate = Color(0.82, 0.77, 0.62)
-	label.shaded = false
-	label.position = LATCH_POINT + Vector3(0, -0.25, 0.016)
-	add_child(label)
-	latch_parts.append(label)
+	_key = _prop("latch_key", LATCH_POINT + Vector3(0, -0.13, 0.0345))
+	add_child(_key)
 
-func _metal_material(color: Color, roughness: float) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.metallic = 0.58
-	material.roughness = roughness
-	return material
+## One of the latch's low-poly pieces, nearest-filtered like everything else, riding the door with the rest.
+func _prop(file: String, at: Vector3) -> Node3D:
+	var model := (load("res://assets/models/props/%s.glb" % file) as PackedScene).instantiate() as Node3D
+	model.position = at
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		for i in (mi as MeshInstance3D).get_surface_override_material_count():
+			var m := (mi as MeshInstance3D).get_active_material(i) as BaseMaterial3D
+			if m != null:
+				m = m.duplicate() as BaseMaterial3D
+				m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				(mi as MeshInstance3D).set_surface_override_material(i, m)
+	latch_parts.append(model)
+	return model
+
+func _latch_sound(kind: String) -> void:
+	if is_inside_tree() and not latch_parts.is_empty():
+		Foley.play_at(latch_parts[0], kind, (latch_parts[0] as Node3D).global_position, -9.0)
 
 ## Chores undone: stocked items removed, bag back in the bin, latch down and unlocked.
 func reset() -> void:
@@ -210,6 +187,7 @@ func reset() -> void:
 	if was_locked:
 		latch_unlocked.emit()
 	_lever.rotation.z = 0.0
+	_key.rotation.z = 0.0
 	_bin.show_bag()
 
 ## Put the chores back as they were at a checkpoint (shelves stocked, bag out, latch locked).
@@ -227,6 +205,7 @@ func restore(filled_count: int, bag_out: bool, latch_on: bool) -> void:
 		latch_is_lifted = true
 		locked = true
 		_lever.rotation.z = 0.0
+		_key.rotation.z = -PI / 2.0
 		latch_locked.emit()
 
 func is_door_open() -> bool:
@@ -237,6 +216,7 @@ func lift_latch() -> bool:
 		return false
 	latch_is_lifted = true
 	create_tween().tween_property(_lever, "rotation:z", 0.7, 0.25)
+	_latch_sound("latch")
 	latch_lifted.emit()
 	if game.interactor != null:
 		game.interactor.message.emit("Latch raised. Turn the brass lock directly below it.")
@@ -246,7 +226,10 @@ func turn_key() -> bool:
 	if not latch_is_lifted or locked:
 		return false
 	locked = true
-	create_tween().tween_property(_lever, "rotation:z", 0.0, 0.25)
+	var turn := create_tween()
+	turn.tween_property(_key, "rotation:z", -PI / 2.0, 0.22)
+	turn.tween_property(_lever, "rotation:z", 0.0, 0.2)  # the key turns, then the bar drops into the keeper
+	_latch_sound("bolt")
 	latch_locked.emit()
 	if game.interactor != null:
 		game.interactor.message.emit("Rear door locked. Latch and key are set.")
@@ -258,7 +241,10 @@ func unlock_key() -> bool:
 		return false
 	locked = false
 	latch_is_lifted = true
-	create_tween().tween_property(_lever, "rotation:z", 0.7, 0.25)
+	var turn := create_tween()
+	turn.tween_property(_key, "rotation:z", 0.0, 0.22)
+	turn.tween_property(_lever, "rotation:z", 0.7, 0.2)
+	_latch_sound("bolt")
 	latch_unlocked.emit()
 	if game.interactor != null:
 		game.interactor.message.emit("Rear door unlocked. Turn the key again to relock it.")

@@ -24,6 +24,7 @@ var reader_error := false
 var terminal: RegisterTerminal
 var _lcd: Label3D
 var _beep: AudioStreamPlayer3D
+var _scan_window: StandardMaterial3D
 var _chime: AudioStreamPlayer3D
 
 func build(world: Node3D) -> void:
@@ -57,6 +58,7 @@ func build(world: Node3D) -> void:
 func _build_workstation() -> void:
 	var crt := _spawn_prop("res://assets/models/office_props/crt_monitor__static.glb", CRT_POS)
 	_spawn_prop("res://assets/models/office_props/keyboard.glb", Vector3(-5.8, COUNTER_TOP + 0.004, 4.6))
+	_build_scanner()
 	if crt:
 		var glass := crt.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
 		var lcd_material := StandardMaterial3D.new()
@@ -77,6 +79,30 @@ func _build_workstation() -> void:
 	_lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.1895)
 	add_child(_lcd)
+
+## A handheld scanner in its cradle by the keyboard, window toward the customer. It flashes red on each scan.
+func _build_scanner() -> void:
+	var scanner := _spawn_prop("res://assets/models/props/scanner.glb", Vector3(-6.22, COUNTER_TOP, 4.62))
+	if scanner == null:
+		return
+	scanner.rotation.y = 0.35
+	for mi in scanner.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mi as MeshInstance3D
+		for i in mesh.get_surface_override_material_count():
+			var m := mesh.get_active_material(i) as StandardMaterial3D
+			if m == null:
+				continue
+			m = m.duplicate() as StandardMaterial3D
+			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			mesh.set_surface_override_material(i, m)
+			if m.resource_name == "scan_window":
+				_scan_window = m
+
+func _flash_scanner() -> void:
+	if _scan_window == null:
+		return
+	_scan_window.emission_energy_multiplier = 6.0
+	create_tween().tween_property(_scan_window, "emission_energy_multiplier", 0.4, 0.18)
 
 func _spawn_prop(path: String, pos: Vector3) -> Node3D:
 	var scene := load(path) as PackedScene
@@ -140,6 +166,7 @@ func scan(product: Product) -> bool:
 		return false
 	product.scanned = true
 	_beep.play()
+	_flash_scanner()
 	item_scanned.emit(product)
 	_refresh_screen()
 	return true
