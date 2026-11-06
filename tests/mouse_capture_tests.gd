@@ -26,7 +26,9 @@ func run() -> void:
 	Input.parse_input_event(motion)
 	for frame in range(3):
 		await process_frame
-	if absf(player.rotation.y - (yaw - 0.1)) > 0.005 or absf(player.camera.rotation.x - (pitch - 0.05)) > 0.005:
+	# The real launch path loads the player's saved settings, so expect the turn at their mouse sensitivity.
+	var k: float = player.sensitivity
+	if absf(player.rotation.y - (yaw - 0.1 * k)) > 0.005 or absf(player.camera.rotation.x - (pitch - 0.05 * k)) > 0.005:
 		failures += 1
 		push_error("HUD blocked centered mouse look: yaw=%s pitch=%s" % [player.rotation.y - yaw, player.camera.rotation.x - pitch])
 	else:
