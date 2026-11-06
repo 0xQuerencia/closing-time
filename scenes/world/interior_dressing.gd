@@ -106,8 +106,7 @@ func _build_closed_sign() -> void:
 	_box(Vector3(0.34, 0.2, 0.016), pos, _mat(Color(0.74, 0.66, 0.5), 0.85))
 	_text("CLOSED", pos + Vector3(0, 0, -0.01), 54, 0.0017, Color(0.2, 0.15, 0.1), PI)
 
-## Worn pinkish-brown laminate over the cream counter top, with a curling paper sheet.
+## A curling paper sheet on the laminate counter top.
 func _build_counter_laminate() -> void:
-	_box(Vector3(4.25, 0.003, 0.96), Vector3(-6, 0.9575, 4.25), _mat(Color(0.33, 0.26, 0.25), 0.6))
 	var sheet := _box(Vector3(0.28, 0.002, 0.2), Vector3(-7.15, 0.96, 3.98), _mat(Color(0.8, 0.76, 0.66), 0.9))
 	sheet.rotation.y = 0.12

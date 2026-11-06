@@ -250,13 +250,36 @@ func _cyl(top: float, bottom: float, height: float, y: float, material: Material
 	mesh.top_radius = top
 	mesh.bottom_radius = bottom
 	mesh.height = height
-	mesh.radial_segments = 16
+	mesh.radial_segments = 8
+	mesh.rings = 1
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = material
 	mi.position.y = y
 	add_child(mi)
 	return mi
+
+## One 64px cell of the shared pixel-art label atlas, nearest filtered.
+func _label_mat(cell: int) -> StandardMaterial3D:
+	var m := _material(Color.WHITE, 0.7)
+	m.albedo_texture = load("res://assets/materials/packaging.png")
+	m.uv1_scale = Vector3(0.25, 0.25, 1.0)
+	m.uv1_offset = Vector3((cell % 4) * 0.25, (cell / 4) * 0.25, 0.0)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	return m
+
+## Printed label on a flat face of a box-shaped pack, front and back.
+func _print_face(cell: int, size: Vector2, y: float, depth: float) -> void:
+	for side in [1.0, -1.0]:
+		var quad := QuadMesh.new()
+		quad.size = size
+		var mi := MeshInstance3D.new()
+		mi.mesh = quad
+		mi.material_override = _label_mat(cell)
+		mi.position = Vector3(0, y, side * (depth / 2.0 + 0.0015))
+		if side < 0.0:
+			mi.rotation.y = PI
+		add_child(mi)
 
 func _slab(size: Vector3, pos: Vector3, material: Material) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
@@ -295,7 +318,7 @@ func _build_detailed(size: Vector3) -> bool:
 			_slab(Vector3(r * 0.5, 0.004, r * 0.3), Vector3(r * 0.2, h + 0.052 * h, 0.0), _solid(Color(0.05, 0.04, 0.03), 0.4))
 		"cola":
 			_cyl(r, r, h * 0.94, h * 0.5, _solid(Color(0.55, 0.05, 0.05), 0.3, 0.35))
-			_cyl(r * 1.01, r * 1.01, h * 0.34, h * 0.5, _solid(Color(0.9, 0.87, 0.78), 0.55))
+			_cyl(r * 1.02, r * 1.02, h * 0.7, h * 0.5, _label_mat(13))
 			_cyl(r * 0.86, r, h * 0.04, h * 0.985, _solid(Color(0.75, 0.76, 0.78), 0.25, 0.9))
 			_cyl(r, r * 0.86, h * 0.04, h * 0.015, _solid(Color(0.7, 0.72, 0.74), 0.3, 0.9))
 			_slab(Vector3(r * 0.9, 0.002, r * 0.5), Vector3(0, h * 1.004, 0), _solid(Color(0.8, 0.8, 0.82), 0.25, 0.9))
@@ -306,16 +329,16 @@ func _build_detailed(size: Vector3) -> bool:
 			_cyl(r * 0.28, r * 0.86, h * 0.2, h * 0.78, plastic)
 			_cyl(r * 0.3, r * 0.3, h * 0.07, h * 0.94, _solid(Color(0.85, 0.88, 0.9), 0.5))
 			_cyl(r * 0.36, r * 0.36, h * 0.07, h * 0.98, _solid(Color(0.1, 0.34, 0.65), 0.5))
-			_cyl(r * 0.9, r * 1.01, h * 0.26, h * 0.36, _solid(Color(0.12, 0.3, 0.22), 0.7))
+			_cyl(r * 0.92, r * 1.02, h * 0.34, h * 0.36, _label_mat(3))
 		"coffee":
 			_cyl(r * 0.9, r, h * 0.8, h * 0.4, _solid(Color(0.18, 0.1, 0.05), 0.35))
-			_cyl(r * 0.91, r * 1.01, h * 0.34, h * 0.4, _solid(Color(0.78, 0.55, 0.16), 0.6))
+			_cyl(r * 0.92, r * 1.02, h * 0.62, h * 0.4, _label_mat(4))
 			_cyl(r * 0.96, r * 0.96, h * 0.2, h * 0.9, _solid(Color(0.06, 0.05, 0.05), 0.45))
 		"noodles":
 			_cyl(r * 1.1, r * 0.76, h * 0.95, h * 0.47, _solid(Color(0.78, 0.28, 0.1), 0.7))
 			_cyl(r * 1.14, r * 1.12, h * 0.06, h * 0.97, _solid(Color(0.92, 0.88, 0.7), 0.7))
 			_cyl(r * 1.06, r * 1.06, h * 0.03, h * 1.02, _solid(Color(0.85, 0.8, 0.55), 0.8))
-			_cyl(r * 1.05, r * 0.78, h * 0.3, h * 0.4, _solid(Color(0.95, 0.9, 0.6), 0.8))
+			_cyl(r * 1.06, r * 0.86, h * 0.6, h * 0.44, _label_mat(10))
 		"paper":
 			_slab(Vector3(size.x, size.y, size.z), Vector3(0, size.y / 2.0, 0), _solid(Color(0.8, 0.78, 0.72), 0.95))
 			_slab(Vector3(size.x * 0.96, 0.003, size.z * 0.18), Vector3(0, size.y + 0.0015, -size.z * 0.3), _solid(Color(0.08, 0.08, 0.08), 0.9))
@@ -324,7 +347,7 @@ func _build_detailed(size: Vector3) -> bool:
 			_slab(Vector3(size.x * 0.2, 0.002, size.z * 0.2), Vector3(size.x * 0.3, size.y + 0.002, size.z * 0.3), _solid(Color(0.28, 0.28, 0.27), 0.9))
 		"crisps":
 			_slab(Vector3(size.x, h * 0.9, size.z), Vector3(0, h * 0.5, 0), _solid(Color(0.55, 0.1, 0.07), 0.45, 0.2))
-			_slab(Vector3(size.x * 0.84, h * 0.3, size.z + 0.002), Vector3(0, h * 0.5, 0), _solid(Color(0.9, 0.82, 0.55), 0.6))
+			_print_face(14, Vector2(size.x * 0.94, h * 0.84), h * 0.5, size.z)
 			for y in [h * 0.97, h * 0.03]:
 				_slab(Vector3(size.x, h * 0.05, size.z * 0.5), Vector3(0, y, 0), _solid(Color(0.7, 0.68, 0.7), 0.3, 0.7))
 		_:
