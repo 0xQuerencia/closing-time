@@ -2,7 +2,7 @@ class_name GameHud
 extends CanvasLayer
 ## Restrained HUD: plain pixel text, no panels. Only the clock is always on. The objective, the shift list and the
 ## control hints appear when something changes, then fade. Yellow marks things you can act on.
-const FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
+const FONT := preload("res://assets/fonts/jetbrains_mono/JetBrainsMono-Medium.ttf")
 const INK := Color(0.92, 0.91, 0.87)
 const DIM := Color(0.92, 0.91, 0.87, 0.55)
 const WARM := Color(0.98, 0.84, 0.3)
@@ -15,7 +15,13 @@ const FADE_SPEED := 2.5
 ## Pickups with the Q / F hint, counted for the whole run so a retry does not repeat the lesson.
 static var hint_pickups := 0
 var interactor: Interactor
+var dialogue: DialogueRunner
 var tasks: TaskManager
+var _selected := 0
+var _choice_rows: Array[Label] = []
+var _choice_marks: Array[ColorRect] = []
+var _choice_hint: Label
+static var choice_hints := 0
 var _dot: ColorRect
 var _prompt: Label
 var _message: Label
@@ -39,27 +45,28 @@ var _guide_title := ""
 var _guide_key := ""
 var _type_tween: Tween
 
-func setup(inter: Interactor, dialogue: DialogueRunner, task_manager: TaskManager) -> void:
+func setup(inter: Interactor, dialogue_runner: DialogueRunner, task_manager: TaskManager) -> void:
 	interactor = inter
+	dialogue = dialogue_runner
 	tasks = task_manager
 	layer = 10
 	_build_crosshair()
-	_prompt = _label(20, INK)
+	_prompt = _label(18, INK)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_place(_prompt, 0.5, 0.5, -320, 24, 640)
-	_message = _label(18, DIM)
+	_place(_prompt, 0.5, 0.5, -360, 34, 720)
+	_message = _label(16, DIM)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_place(_message, 0.5, 0.5, -320, 54, 640)
-	_held = _label(20, INK)
-	_place(_held, 0.0, 1.0, 28, -60, 500)
-	_held_hint = _label(16, DIM)
-	_place(_held_hint, 0.0, 1.0, 28, -34, 500)
+	_place(_message, 0.5, 0.5, -360, 62, 720)
+	_held = _label(18, INK)
+	_place(_held, 0.0, 1.0, 28, -58, 560)
+	_held_hint = _label(14, DIM)
+	_place(_held_hint, 0.0, 1.0, 28, -34, 560)
 	_build_speech()
 	_build_corner()
 	_build_list()
-	dialogue.line_shown.connect(_on_line)
-	dialogue.choices_shown.connect(_on_choices)
-	dialogue.finished.connect(func(_id): _clear_choices())
+	dialogue_runner.line_shown.connect(_on_line)
+	dialogue_runner.choices_shown.connect(_on_choices)
+	dialogue_runner.finished.connect(func(_id): _clear_choices())
 	interactor.message.connect(func(text): _message.text = text; _message_left = 3.5)
 	interactor.held_changed.connect(_on_held)
 	tasks.task_added.connect(func(_id): _on_tasks_changed())
@@ -83,8 +90,19 @@ func set_clock(text: String) -> void:
 		_clock.text = text
 
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed(GameInput.CHECKLIST):
+	if not visible:
+		return
+	if event.is_action_pressed(GameInput.CHECKLIST):
 		show_checklist()
+	elif choices_visible() and event is InputEventKey and event.pressed and not event.echo:
+		var key := (event as InputEventKey).keycode
+		if key == KEY_UP or key == KEY_DOWN:
+			_selected = posmod(_selected + (1 if key == KEY_DOWN else -1), _choice_rows.size())
+			_mark_selected()
+			get_viewport().set_input_as_handled()
+		elif key == KEY_ENTER or key == KEY_KP_ENTER:
+			dialogue.choose(_selected)
+			get_viewport().set_input_as_handled()
 
 ## The shift list can also be called up on demand.
 func show_checklist() -> void:
@@ -125,55 +143,63 @@ func _build_crosshair() -> void:
 	# Captured mouse motion lands at viewport center, beneath this decoration.
 	_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_dot.color = Color(0.92, 0.91, 0.87, 0.75)
-	_dot.size = Vector2(3, 3)
+	_dot.size = Vector2(4, 4)
+	_dot.pivot_offset = Vector2(2, 2)
+	_dot.rotation = PI / 4.0  # a small diamond
 	add_child(_dot)
 	_dot.set_anchors_preset(Control.PRESET_CENTER)
-	_dot.position = Vector2(-1.5, -1.5)
+	_dot.position = Vector2(-2, -2)
 
 func _build_speech() -> void:
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	_place(column, 0.5, 1.0, -400, -90, 800)
+	column.add_theme_constant_override("separation", 10)
+	_place(column, 0.5, 0.6, -420, 0, 840)
 	_speech = RichTextLabel.new()
 	_speech.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_speech.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_speech.bbcode_enabled = true
 	_speech.fit_content = true
 	_speech.scroll_active = false
-	_speech.custom_minimum_size = Vector2(800, 0)
+	_speech.custom_minimum_size = Vector2(840, 0)
 	_speech.add_theme_font_override("normal_font", FONT)
-	_speech.add_theme_font_size_override("normal_font_size", 26)
+	_speech.add_theme_font_size_override("normal_font_size", 24)
 	_speech.add_theme_color_override("default_color", INK)
 	_speech.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_speech.add_theme_constant_override("outline_size", 5)
 	column.add_child(_speech)
 	_choices = VBoxContainer.new()
 	_choices.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_choices.add_theme_constant_override("separation", 2)
+	_choices.add_theme_constant_override("separation", 4)
 	column.add_child(_choices)
+	_choice_hint = _label(14, DIM)
+	_choice_hint.text = "Up / Down + Enter, or press 1 2 3"
+	_choice_hint.visible = false
+	column.add_child(_choice_hint)
 
 ## Top-left: the clock, and under it the current objective, which appears when it changes or you stall.
 func _build_corner() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_theme_constant_override("separation", 4)
-	_clock = _label(22, INK)
+	_clock = _label(20, INK)
 	column.add_child(_clock)
+	_place(column, 0.0, 0.0, 28, 18, 300)
 	_objective_box = VBoxContainer.new()
 	_objective_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_objective_box.add_theme_constant_override("separation", 0)
+	_objective_box.add_theme_constant_override("separation", 4)
 	_objective_box.modulate.a = 0.0
 	_objective = _label(22, WARM)
 	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_objective.custom_minimum_size = Vector2(460, 0)
+	_objective.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_objective.custom_minimum_size = Vector2(760, 0)
 	_objective_box.add_child(_objective)
-	_hint = _label(17, DIM)
+	_hint = _label(16, DIM)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint.custom_minimum_size = Vector2(460, 0)
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint.custom_minimum_size = Vector2(760, 0)
 	_hint.visible = false
 	_objective_box.add_child(_hint)
-	column.add_child(_objective_box)
-	_place(column, 0.0, 0.0, 28, 18, 480)
+	_place(_objective_box, 0.5, 0.14, -380, 0, 760)
 
 ## Top-right: the shift list, plain right-aligned text that is only on screen briefly.
 func _build_list() -> void:
@@ -235,7 +261,7 @@ func _tick_held(delta: float) -> void:
 func _on_line(speaker: String, text: String) -> void:
 	_clear_choices()  # a spoken line means a reply was chosen or the scene moved on
 	var named := speaker != "" and not speaker in ["Jamie", "Customer"]
-	_speech.text = "[center]%s%s[/center]" % [("%s: " % speaker) if named else "", text]
+	_speech.text = "%s%s" % [("%s: " % speaker) if named else "", text]
 	_speech.visible_ratio = 0.0
 	if _type_tween:
 		_type_tween.kill()
@@ -243,19 +269,47 @@ func _on_line(speaker: String, text: String) -> void:
 	_type_tween.tween_property(_speech, "visible_ratio", 1.0, minf(1.0, 0.02 * text.length()))
 	_line_left = 1.5 + 0.05 * text.length()
 
-## Replies are yellow so they read as something you can press, apart from the white spoken line above them.
+## Replies are yellow and uppercase, indented under the spoken line, with a square on the selected one.
 func _on_choices(options: Array) -> void:
 	_clear_choices()
+	_selected = 0
 	for i in options.size():
-		var row := _label(22, WARM)
-		row.text = "%d   %s" % [i + 1, String(options[i].text).to_upper()]
-		row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 12)
+		var slot := Control.new()
+		slot.custom_minimum_size = Vector2(36, 14)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mark := ColorRect.new()
+		mark.color = WARM
+		mark.size = Vector2(10, 10)
+		mark.position = Vector2(22, 6)
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(mark)
+		row.add_child(slot)
+		var text := _label(20, WARM)
+		text.text = String(options[i].text).to_upper()
+		row.add_child(text)
 		_choices.add_child(row)
+		_choice_marks.append(mark)
+		_choice_rows.append(text)
+	_choice_hint.visible = choice_hints < 3
+	choice_hints += 1
+	_mark_selected()
+
+func _mark_selected() -> void:
+	for i in _choice_marks.size():
+		_choice_marks[i].visible = i == _selected
+		_choice_rows[i].modulate.a = 1.0 if i == _selected else 0.82
 
 func _clear_choices() -> void:
 	for child in _choices.get_children():
 		_choices.remove_child(child)
 		child.queue_free()
+	_choice_marks.clear()
+	_choice_rows.clear()
+	if _choice_hint:
+		_choice_hint.visible = false
 
 func _on_held(item: Product) -> void:
 	_held.text = "" if item == null else item.display_name
