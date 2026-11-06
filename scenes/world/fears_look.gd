@@ -6,6 +6,8 @@ var _flicker_light: Light3D
 var _flicker_base := 1.0
 var _flicker_left := 0.0
 var _elapsed := 0.0
+var _next_sag := 24.0
+const SAG_SECONDS := 6.0
 var _power: PowerGrid
 var _rng := RandomNumberGenerator.new()
 
@@ -41,9 +43,14 @@ func _dim_lights(world: Node) -> void:
 			light.light_energy *= 0.84
 			light.light_color = light.light_color.lerp(Color(0.86, 0.95, 0.9), 0.35)
 			tubes.append(light)
-	if not tubes.is_empty():
-		_flicker_light = tubes[tubes.size() / 2]
-		_flicker_base = _flicker_light.light_energy
+	# One weak middle-aisle ballast leaves an ordinary, imperfect shadow pocket.
+	# Choose by fixture position rather than import/order-dependent array index.
+	for light in tubes:
+		if light.position.distance_to(Vector3(-2.0, 2.85, 0.1)) < 0.1:
+			light.light_energy *= 0.52
+			light.light_color = light.light_color.lerp(Color(0.76, 0.84, 0.72), 0.28)
+			_flicker_light = light
+			_flicker_base = light.light_energy
 
 func _process(delta: float) -> void:
 	if _flicker_light == null:
@@ -56,13 +63,17 @@ func _process(delta: float) -> void:
 		return
 	var slow_fade := smoothstep(150.0, 390.0, _elapsed)
 	var current_base := lerpf(_flicker_base, _flicker_base * 0.12, slow_fade)
-	_flicker_left -= delta
+	# A slow ballast sag replaces rapid random flashes. No new light/shadow pass.
+	_next_sag -= delta
 	if _flicker_left > 0.0:
-		_flicker_light.light_energy = current_base * (0.15 if _rng.randf() < 0.55 else 0.85)
+		_flicker_left = maxf(0.0, _flicker_left - delta)
+		var phase := 1.0 - _flicker_left / SAG_SECONDS
+		_flicker_light.light_energy = current_base * (1.0 - 0.72 * sin(PI * phase))
 	else:
 		_flicker_light.light_energy = current_base
-		if _rng.randf() < delta / 14.0:  # roughly one stutter every 14 s
-			_flicker_left = _rng.randf_range(0.12, 0.45)
+		if _next_sag <= 0.0:
+			_flicker_left = SAG_SECONDS
+			_next_sag = _rng.randf_range(48.0, 86.0)
 
 func _add_grime(world: Node) -> void:
 	var noise := FastNoiseLite.new()

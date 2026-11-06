@@ -35,7 +35,13 @@ func _capture() -> void:
 	for shot in [
 		["01_customer_close",Vector3(-5.3,1.62,5.2),Vector3(-5.5,1.45,3.8)],
 		["02_checkout",Vector3(-7.2,1.62,5.2),Vector3(-2.4,1.3,-2.2)],
-		["03_front_windows",Vector3(-1.5,1.62,-1.6),Vector3(.6,1.4,6.4)]]:
+		["03_front_windows",Vector3(-1.5,1.62,-1.6),Vector3(.6,1.4,6.4)],
+		["04_weak_aisle",Vector3(-4.55,1.62,2.7),Vector3(-2,1.3,-1.0)],
+		["05_ballast_sag",Vector3(-4.55,1.62,2.7),Vector3(-2,1.3,-1.0)]]:
+		if shot[0] == "05_ballast_sag":
+			var look = world.get_node("FearsLook")
+			look._flicker_left = look.SAG_SECONDS * 0.5
+			look._process(0.0)
 		camera.position = shot[1]
 		camera.look_at(shot[2])
 		for i in 12:

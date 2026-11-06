@@ -13,6 +13,10 @@ var _rng := RandomNumberGenerator.new()
 var _next_event := 0.0
 var _next_radio := 0.0
 var _main_was_cut := false
+var _room_tone_base: Dictionary = {}
+var _next_quiet := 38.0
+var _quiet_age := -1.0
+const QUIET_SECONDS := 13.0
 
 func _ready() -> void:
 	name = "AmbientDread"
@@ -26,6 +30,9 @@ func _ready() -> void:
 	add_child(_distant)
 	_heartbeat = _loop(_heartbeat_stream(), -80.0)
 	_breath = _loop(_breath_stream(), -80.0)
+	for source in get_tree().get_nodes_in_group("power_hum"):
+		if source is AudioStreamPlayer3D:
+			_room_tone_base[source] = source.volume_db
 	_next_event = _rng.randf_range(25.0, 50.0)
 	_next_radio = _rng.randf_range(72.0, 124.0)
 
@@ -122,6 +129,7 @@ func _breath_stream() -> AudioStreamWAV:
 	return _wav(out, rate)
 
 func _process(delta: float) -> void:
+	_update_compressor(delta)
 	_update_body_audio()
 	_next_radio -= delta
 	if _next_radio <= 0.0:
@@ -142,6 +150,35 @@ func _process(delta: float) -> void:
 		_distant.volume_db = -18.0
 	_distant.play()
 	_update_body_audio()
+
+## Compressors briefly cycle down: the wind and small distant noises become exposed.
+## Volume envelopes preserve PowerGrid's ownership of stream pause/restart state.
+func _update_compressor(delta: float) -> void:
+	if _power != null and not _power.main_on:
+		return
+	if _quiet_age < 0.0:
+		_next_quiet -= delta
+		if _next_quiet <= 0.0:
+			_start_quiet_cycle()
+		return
+	_quiet_age += delta
+	var attenuation := 0.0
+	if _quiet_age < 2.0:
+		attenuation = lerpf(0.0, -28.0, smoothstep(0.0, 2.0, _quiet_age))
+	elif _quiet_age < 6.0:
+		attenuation = -28.0
+	else:
+		attenuation = lerpf(-28.0, 0.0, smoothstep(6.0, QUIET_SECONDS, _quiet_age))
+	_hum.volume_db = -33.0 + attenuation
+	for source in _room_tone_base:
+		if is_instance_valid(source):
+			source.volume_db = float(_room_tone_base[source]) + attenuation
+	if _quiet_age >= QUIET_SECONDS:
+		_quiet_age = -1.0
+		_next_quiet = _rng.randf_range(68.0, 115.0)
+
+func _start_quiet_cycle() -> void:
+	_quiet_age = 0.0
 
 func _play_radio_fault() -> void:
 	if _radio == null:
