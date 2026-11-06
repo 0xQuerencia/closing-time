@@ -57,6 +57,7 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	phone_ui = PhoneUI.new()
 	add_child(phone_ui)
 	phone_ui.setup(phone, clock)
+	phone_ui.attach_camera(player.camera)
 	shift = ShiftTasks.new().build(self)
 	clues = Clues.new().build(world)
 	security = Security.new()
