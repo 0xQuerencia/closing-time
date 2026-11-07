@@ -7,12 +7,11 @@ signal continue_requested
 signal retry_requested
 signal restart_requested
 signal quit_requested
-const FONT := preload("res://assets/fonts/jetbrains_mono/JetBrainsMono-Medium.ttf")
-const LOGO_FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
+const FONT_FILE := preload("res://assets/fonts/roboto_condensed/RobotoCondensed[wght].ttf")
+const LOGO_FONT := preload("res://assets/fonts/vt323/VT323-Regular.ttf")
 const INK := Color(0.9, 0.89, 0.84)
 const DIM := Color(0.9, 0.89, 0.84, 0.6)
 const WARM := Color(0.98, 0.84, 0.3)
-const TITLE_RED := Color(0.82, 0.13, 0.1)
 const ENDINGS := {
 	"escape": {
 		"title": "OUT",
@@ -36,12 +35,14 @@ var _footer: Label
 var settings := {"retro": true, "sensitivity": 1.0, "bob": false}
 var _return_to := "title"
 var _guide_return := "game"
+var _ui_font: FontVariation
 const SETTINGS_PATH := "user://settings.cfg"
 var persist_settings := false
 const SENSITIVITIES := [0.6, 1.0, 1.6]
 
 func setup(owner_game: Gameplay) -> FlowUI:
 	game = owner_game
+	_ui_font = _make_ui_font(550)
 	name = "FlowUI"
 	layer = 30
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -85,7 +86,7 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	_buttons.add_theme_constant_override("separation", 6)
 	_buttons.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_column.add_child(_buttons)
-	_footer = _label(14, DIM)
+	_footer = _label(18, DIM)
 	_footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_footer)
 	apply_settings()
@@ -175,7 +176,7 @@ func _close_guide() -> void:
 
 func _label(size: int, color: Color) -> Label:
 	var l := Label.new()
-	l.add_theme_font_override("font", FONT)
+	l.add_theme_font_override("font", _ui_font)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -190,8 +191,8 @@ func _button(id: String, text: String, action: Callable) -> Button:
 	b.flat = true
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.focus_mode = Control.FOCUS_ALL
-	b.add_theme_font_override("font", FONT)
-	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_font_override("font", _ui_font)
+	b.add_theme_font_size_override("font_size", 26)
 	b.add_theme_color_override("font_color", DIM)
 	b.add_theme_color_override("font_hover_color", WARM)
 	b.add_theme_color_override("font_focus_color", WARM)
@@ -223,12 +224,12 @@ func _present(next_mode: String, title: String, body: String, footer: String) ->
 	mode = next_mode
 	_title.text = title
 	var on_title := next_mode == "title"
-	_title.add_theme_font_override("font", LOGO_FONT if on_title else FONT)
-	_title.add_theme_font_size_override("font_size", 84 if on_title else 38)
-	_title.add_theme_color_override("font_color", TITLE_RED if on_title else INK)
+	_title.add_theme_font_override("font", LOGO_FONT if on_title else _ui_font)
+	_title.add_theme_font_size_override("font_size", 96 if on_title else 42)
+	_title.add_theme_color_override("font_color", INK)
 	_body.text = body.replace("\\n", "\n")
 	_body.visible = body != ""
-	_body.add_theme_font_size_override("font_size", 17 if next_mode == "guide" else (18 if on_title else 18))
+	_body.add_theme_font_size_override("font_size", 20 if next_mode == "guide" else 21)
 	_body.add_theme_color_override("font_color", INK if on_title else DIM)
 	_shade.color.a = 0.12 if on_title else 0.86
 	_title_fade.visible = on_title
@@ -247,6 +248,13 @@ func _present(next_mode: String, title: String, body: String, footer: String) ->
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	game.hud.visible = false
 	game.phone_ui.visible = false
+
+func _make_ui_font(weight: int) -> FontVariation:
+	var variation := FontVariation.new()
+	variation.base_font = FONT_FILE
+	var text_server := TextServerManager.get_primary_interface()
+	variation.variation_opentype = {text_server.name_to_tag("wght"): weight}
+	return variation
 
 func hide_all() -> void:
 	mode = "none"

@@ -5,7 +5,7 @@ All market geometry, fixture meshes, fictional product packaging, signage, surfa
 - Models: authored in Blender 5.2.3 and exported as glTF 2.0 / GLB. The Blender tooling is kept local and is not part of this repository.
 - Texture and signage artwork: deterministic Python/Pillow, `tools/textures/generate.py`. The pixel-art product label atlas, shelf metal, counter laminate, register face, aisle board and price tag textures come from local tooling that is not part of this repository.
 - Typography rasterized into original artwork: DejaVu Sans (DejaVu Fonts, Bitstream Vera-derived free font license). The font file is supplied by the build machine, not bundled. License: https://dejavu-fonts.github.io/License.html
-- In-engine labels use Godot's built-in default font.
+- The in-game UI uses a deliberate font hierarchy: VT323 for title cards, Roboto Condensed for menus and gameplay text, and Pixelify Sans for the Nokia LCD. CCTV overlays retain JetBrains Mono for a separate low-resolution monitor look. License texts are included beside the bundled fonts.
 - Audio: original synthesized electrical harmonics, `tools/audio/generate.py`; no samples or recorded third-party material.
 
 ## Imported PSX assets
@@ -20,7 +20,9 @@ All market geometry, fixture meshes, fictional product packaging, signage, surfa
 
 
 Fears to Fathom is a visual study reference only. This is an independent project; no affiliation is claimed and no assets from that series are redistributed.
-- **JetBrains Mono** (Regular, Medium, Bold) by JetBrains, SIL Open Font License 1.1: `assets/fonts/jetbrains_mono/`, used for the HUD. License text included beside the fonts.
-- **Pixelify Sans** by The Pixelify Sans Project Authors, SIL Open Font License 1.1: `assets/fonts/pixelify_sans/`, used for the HUD and phone. License text included beside the font.
+- **JetBrains Mono** (Regular, Medium, Bold) by JetBrains, SIL Open Font License 1.1: `assets/fonts/jetbrains_mono/`, used for CCTV overlays. License text included beside the fonts.
+- **Pixelify Sans** by The Pixelify Sans Project Authors, SIL Open Font License 1.1: `assets/fonts/pixelify_sans/`, used for the Nokia LCD and diegetic camera hints. License text included beside the font.
+- **VT323** by the VT323 Project Authors, SIL Open Font License 1.1: `assets/fonts/vt323/`, used for the title display. License text included beside the font.
+- **Roboto Condensed** by the Roboto Project Authors, SIL Open Font License 1.1: `assets/fonts/roboto_condensed/`, used for menus, dialogue, prompts and the in-game HUD. License text included beside the font.
 
 - Loading-screen image: `assets/art/market_loading.png`, captured from the running Godot store using `tools/capture_opening.gd`. The user-supplied rainy-night concept is a visual reference only and is not bundled in the game.

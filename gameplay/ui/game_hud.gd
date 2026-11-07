@@ -2,7 +2,7 @@ class_name GameHud
 extends CanvasLayer
 ## Restrained HUD: plain pixel text, no panels. Only the clock is always on. The objective, the shift list and the
 ## control hints appear when something changes, then fade. Yellow marks things you can act on.
-const FONT := preload("res://assets/fonts/jetbrains_mono/JetBrainsMono-Medium.ttf")
+const FONT_FILE := preload("res://assets/fonts/roboto_condensed/RobotoCondensed[wght].ttf")
 const INK := Color(0.92, 0.91, 0.87)
 const DIM := Color(0.92, 0.91, 0.87, 0.55)
 const WARM := Color(0.98, 0.84, 0.3)
@@ -44,22 +44,26 @@ var _show_held_hint := false
 var _guide_title := ""
 var _guide_key := ""
 var _type_tween: Tween
+var _ui_font: FontVariation
+var _speech_font: FontVariation
 
 func setup(inter: Interactor, dialogue_runner: DialogueRunner, task_manager: TaskManager) -> void:
 	interactor = inter
 	dialogue = dialogue_runner
 	tasks = task_manager
+	_ui_font = _make_ui_font(550)
+	_speech_font = _make_ui_font(650)
 	layer = 10
 	_build_crosshair()
-	_prompt = _label(18, INK)
+	_prompt = _label(22, INK)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_place(_prompt, 0.5, 0.5, -360, 34, 720)
-	_message = _label(16, DIM)
+	_message = _label(19, DIM)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_place(_message, 0.5, 0.5, -360, 62, 720)
-	_held = _label(18, INK)
+	_held = _label(21, INK)
 	_place(_held, 0.0, 1.0, 28, -58, 560)
-	_held_hint = _label(14, DIM)
+	_held_hint = _label(17, DIM)
 	_place(_held_hint, 0.0, 1.0, 28, -34, 560)
 	_build_speech()
 	_build_corner()
@@ -113,11 +117,11 @@ func show_checklist() -> void:
 # --- construction -----------------------------------------------------------------------------
 
 ## Plain pixel text with a thin black outline, nearest-filtered so it stays crisp.
-func _label(size: int, color: Color) -> Label:
+func _label(size: int, color: Color, font: Font = null) -> Label:
 	var l := Label.new()
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	l.add_theme_font_override("font", FONT)
+	l.add_theme_font_override("font", _ui_font if font == null else font)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
@@ -161,8 +165,8 @@ func _build_speech() -> void:
 	_speech.fit_content = true
 	_speech.scroll_active = false
 	_speech.custom_minimum_size = Vector2(840, 0)
-	_speech.add_theme_font_override("normal_font", FONT)
-	_speech.add_theme_font_size_override("normal_font_size", 24)
+	_speech.add_theme_font_override("normal_font", _speech_font)
+	_speech.add_theme_font_size_override("normal_font_size", 28)
 	_speech.add_theme_color_override("default_color", INK)
 	_speech.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_speech.add_theme_constant_override("outline_size", 5)
@@ -171,7 +175,7 @@ func _build_speech() -> void:
 	_choices.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_choices.add_theme_constant_override("separation", 4)
 	column.add_child(_choices)
-	_choice_hint = _label(14, DIM)
+	_choice_hint = _label(17, DIM)
 	_choice_hint.text = "Up / Down + Enter, or press 1 2 3"
 	_choice_hint.visible = false
 	column.add_child(_choice_hint)
@@ -181,19 +185,19 @@ func _build_corner() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_theme_constant_override("separation", 4)
-	_clock = _label(20, INK)
+	_clock = _label(22, INK)
 	column.add_child(_clock)
 	_place(column, 0.0, 0.0, 28, 18, 300)
 	_objective_box = VBoxContainer.new()
 	_objective_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_objective_box.add_theme_constant_override("separation", 4)
 	_objective_box.modulate.a = 0.0
-	_objective = _label(22, WARM)
+	_objective = _label(24, WARM)
 	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_objective.custom_minimum_size = Vector2(760, 0)
 	_objective_box.add_child(_objective)
-	_hint = _label(16, DIM)
+	_hint = _label(18, DIM)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.custom_minimum_size = Vector2(760, 0)
@@ -244,7 +248,7 @@ func _process(delta: float) -> void:
 func _keep_objective_clear() -> void:
 	var top := 0.0
 	if _list_box.modulate.a > 0.0 and _objective_box.modulate.a > 0.0 and _objective.text != "":
-		var width := minf(FONT.get_string_size(_objective.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x, _objective.size.x)
+		var width := minf(_ui_font.get_string_size(_objective.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x, _objective.size.x)
 		var view := get_viewport().get_visible_rect().size
 		var text_rect := Rect2(view.x * 0.5 - width * 0.5, view.y * 0.14, width, _objective_box.size.y)
 		var list_rect := _list_box.get_global_rect().grow(8.0)
@@ -301,7 +305,7 @@ func _on_choices(options: Array) -> void:
 		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(mark)
 		row.add_child(slot)
-		var text := _label(20, WARM)
+		var text := _label(23, WARM, _speech_font)
 		text.text = String(options[i].text).to_upper()
 		row.add_child(text)
 		_choices.add_child(row)
@@ -375,14 +379,21 @@ func _refresh_list() -> void:
 		var t: Dictionary = tasks.tasks[id]
 		if t.done and any_active:
 			continue
-		var heading := _label(20, DIM if t.done else INK)
+		var heading := _label(22, DIM if t.done else INK)
 		heading.text = ("x  " if t.done else "") + str(t.title)
 		heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_list_box.add_child(heading)
 		if t.done or str(current.get("task_id", "")) != id:
 			continue
 		for o in t.objectives:
-			var step := _label(17, DIM if o.done else WARM)
+			var step := _label(19, DIM if o.done else WARM)
 			step.text = ("x  " if o.done else "-  ") + str(o.text)
 			step.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			_list_box.add_child(step)
+
+func _make_ui_font(weight: int) -> FontVariation:
+	var variation := FontVariation.new()
+	variation.base_font = FONT_FILE
+	var text_server := TextServerManager.get_primary_interface()
+	variation.variation_opentype = {text_server.name_to_tag("wght"): weight}
+	return variation

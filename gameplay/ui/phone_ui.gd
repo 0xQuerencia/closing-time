@@ -2,7 +2,7 @@ class_name PhoneUI
 extends CanvasLayer
 ## Pocket phone. A new text shows as one plain line at the top-right. Tab raises a Nokia-style handset into
 ## the player's right hand and the thread is read on its real screen. Never pauses the world.
-const FONT := preload("res://assets/fonts/jetbrains_mono/JetBrainsMono-Medium.ttf")
+const FONT_FILE := preload("res://assets/fonts/roboto_condensed/RobotoCondensed[wght].ttf")
 const LCD_FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
 const PHONE_MODEL := preload("res://assets/models/props/phone.glb")
 const LCD_BG := Color(0.6, 0.73, 0.54)
@@ -40,10 +40,12 @@ var _toast_tween: Tween
 var _buzz: AudioStreamPlayer
 var _arrival_timer: Timer
 var _arrival_queue: Array[Dictionary] = []
+var _ui_font: FontVariation
 
 func setup(phone: PhoneModel, story_clock: StoryClock) -> void:
 	model = phone
 	clock = story_clock
+	_ui_font = _make_ui_font(550)
 	layer = 11
 	_build_toast()
 	_build_badge()
@@ -70,11 +72,11 @@ func _exit_tree() -> void:
 		_buzz.stop()
 		_buzz.stream = null
 
-func _text(text: String, size: int, color: Color, font: Font = FONT) -> Label:
+func _text(text: String, size: int, color: Color, font: Font = null) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.add_theme_font_override("font", font)
+	l.add_theme_font_override("font", _ui_font if font == null else font)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	return l
@@ -110,7 +112,7 @@ func _build_toast() -> void:
 	_toast = HBoxContainer.new()
 	_toast.add_theme_constant_override("separation", 10)
 	_toast.add_child(Bubble.new())
-	_toast_text = _text("", 20, Color(0.92, 0.91, 0.87))
+	_toast_text = _text("", 22, Color(0.92, 0.91, 0.87))
 	_toast_text.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_toast_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_toast_text.add_theme_constant_override("outline_size", 4)
@@ -122,10 +124,10 @@ func _build_toast() -> void:
 	_toast.visible = false
 
 func _build_badge() -> void:
-	_badge = _outlined("", 18, Color(0.92, 0.91, 0.87, 0.8))
+	_badge = _outlined("", 20, Color(0.92, 0.91, 0.87, 0.8))
 	_pin(_badge, 1.0, 1.0, -28 - 300, -24, 300)
 	_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hint = _outlined("<  >  switch        Up / Down  scroll        Tab  put away", 16, Color(0.92, 0.91, 0.87, 0.6))
+	_hint = _outlined("<  >  switch        Up / Down  scroll        Tab  put away", 18, Color(0.92, 0.91, 0.87, 0.6))
 	_pin(_hint, 1.0, 1.0, -28 - 700, -24, 700)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hint.visible = false
@@ -136,6 +138,13 @@ func _outlined(text: String, size: int, color: Color) -> Label:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	l.add_theme_constant_override("outline_size", 4)
 	return l
+
+func _make_ui_font(weight: int) -> FontVariation:
+	var variation := FontVariation.new()
+	variation.base_font = FONT_FILE
+	var text_server := TextServerManager.get_primary_interface()
+	variation.variation_opentype = {text_server.name_to_tag("wght"): weight}
+	return variation
 
 # --- the LCD, drawn into a small viewport that the 3D handset's screen displays ----------------
 
@@ -379,7 +388,7 @@ func _show_queued_message() -> void:
 	var entry: Dictionary = arrival.entry
 	var line := "%s: %s" % [arrival.thread, entry.text]
 	_toast_text.text = line
-	var wide := _toast_text.get_theme_font("font").get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	var wide := _toast_text.get_theme_font("font").get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
 	_toast_text.custom_minimum_size.x = minf(500.0, wide + 6.0)
 	_toast.size = Vector2.ZERO
 	if _toast_tween:
