@@ -32,7 +32,7 @@ var _title: Label
 var _body: Label
 var _buttons: VBoxContainer
 var _footer: Label
-var settings := {"retro": true, "sensitivity": 1.0, "bob": false}
+var settings := {"retro": true, "sensitivity": 1.0, "bob": false, "render_scale": 1.0}
 var _return_to := "title"
 var _guide_return := "game"
 var _ui_font: FontVariation
@@ -101,9 +101,11 @@ func enable_persistence() -> void:
 		settings.retro = bool(file.get_value("view", "retro", true))
 		settings.sensitivity = float(file.get_value("view", "sensitivity", 1.0))
 		settings.bob = bool(file.get_value("view", "bob", false))
+		settings.render_scale = clampf(float(file.get_value("view", "render_scale", 1.0)), 0.7, 1.0)
 	apply_settings()
 
 func apply_settings() -> void:
+	game.get_viewport().scaling_3d_scale = settings.render_scale
 	var player = game.player
 	player.sensitivity = settings.sensitivity
 	player.head_bob = settings.bob
@@ -119,6 +121,7 @@ func apply_settings() -> void:
 	file.set_value("view", "retro", settings.retro)
 	file.set_value("view", "sensitivity", settings.sensitivity)
 	file.set_value("view", "bob", settings.bob)
+	file.set_value("view", "render_scale", settings.render_scale)
 	file.save(SETTINGS_PATH)
 
 func show_settings() -> void:
@@ -132,6 +135,12 @@ func show_settings() -> void:
 	_button("sensitivity", "Mouse look: %s" % {0.6: "slow", 1.0: "normal", 1.6: "fast"}[settings.sensitivity], func():
 		var next := (SENSITIVITIES.find(settings.sensitivity) + 1) % SENSITIVITIES.size()
 		settings.sensitivity = SENSITIVITIES[next]
+		apply_settings()
+		show_settings())
+	_button("render_scale", "3D resolution: %d%%" % roundi(settings.render_scale * 100), func():
+		var scales := [0.7, 0.85, 1.0]
+		var current := 0 if settings.render_scale < 0.8 else (1 if settings.render_scale < 0.95 else 2)
+		settings.render_scale = scales[(current + 1) % scales.size()]
 		apply_settings()
 		show_settings())
 	_button("bob", "Head bob: %s" % ("on" if settings.bob else "off"), func():

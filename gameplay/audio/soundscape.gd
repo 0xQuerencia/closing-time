@@ -7,7 +7,7 @@ const FRONT_OPENING := Vector3(1.7, 1.0, 6.0)
 const REAR_OPENING := Vector3(4.25, 1.0, -6.05)
 const ROOM_BUS := "Room"
 const WEATHER_BUS := "Weather"
-const WALK_STRIDE := 0.72
+const WALK_STRIDE := 0.88
 const RUN_STRIDE := 0.95
 var game: Gameplay
 var player: CharacterBody3D
@@ -32,7 +32,8 @@ func setup(owner_game: Gameplay) -> Soundscape:
 	_rain.autoplay = true
 	add_child(_rain)
 	_steps = AudioStreamPlayer3D.new()
-	_steps.unit_size = 6.0
+	_steps.unit_size = 1.0
+	_steps.max_distance = 8.0
 	_steps.position = Vector3(0, 0.05, 0)
 	player.add_child(_steps)
 	_last_feet = player.global_position
@@ -115,12 +116,12 @@ func _footsteps() -> void:
 	_stride += moved
 	if _stride < (RUN_STRIDE if running else WALK_STRIDE):
 		return
-	_stride = 0.0
+	_stride = fmod(_stride, RUN_STRIDE if running else WALK_STRIDE)
 	steps_taken += 1
 	var inside := is_inside(feet)
 	_steps.stream = Foley.take("step_tile" if inside else "step_wet")
-	_steps.volume_db = (-13.0 if running else -18.0) + (0.0 if inside else 1.5)
-	_steps.pitch_scale = randf_range(0.93, 1.06)
+	_steps.volume_db = (-17.0 if running else -23.0) + (0.0 if inside else -1.0)
+	_steps.pitch_scale = randf_range(0.96, 1.04) * (1.0 if inside else 0.92)
 	_steps.play()
 
 ## Four seconds of rain on asphalt: dense hiss, low roar and scattered drops, crossfaded so the loop has no seam.

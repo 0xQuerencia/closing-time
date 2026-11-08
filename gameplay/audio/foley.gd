@@ -1,12 +1,24 @@
 class_name Foley
-## Synthesised one-shots for bodies and things: shoes on tile and wet asphalt, products in the hand, door hardware.
+## Recorded shoe steps and synthesised object one-shots: products in the hand and door hardware.
 ## Every sound has a few takes so repeats do not machine-gun. Built once and cached.
 const RATE := 22050
 const TAKES := 4
 static var _bank: Dictionary = {}
+static var _last_step := -1
+const STEPS := [
+	preload("res://assets/audio/footsteps/footstep_concrete_000.wav"),
+	preload("res://assets/audio/footsteps/footstep_concrete_001.wav"),
+	preload("res://assets/audio/footsteps/footstep_concrete_002.wav"),
+	preload("res://assets/audio/footsteps/footstep_concrete_003.wav"),
+	preload("res://assets/audio/footsteps/footstep_concrete_004.wav")]
+
 
 ## A random take of `kind`. Kinds: step_tile, step_wet, metal, plastic, paper, bag, card, latch, door_shut, glass_shut, bolt.
 static func take(kind: String) -> AudioStreamWAV:
+	if kind in ["step_tile", "step_wet"]:
+		# Loaded during scene setup, never synthesised on the first walking frame.
+		_last_step = (_last_step + 1 + randi() % (STEPS.size() - 1)) % STEPS.size()
+		return STEPS[_last_step]
 	if not _bank.has(kind):
 		var takes: Array[AudioStreamWAV] = []
 		for i in TAKES:
@@ -48,10 +60,6 @@ static func _build(kind: String, seed_value: int) -> AudioStreamWAV:
 	rng.seed = seed_value
 	var out: PackedFloat32Array
 	match kind:
-		"step_tile":
-			out = _step(rng, false)
-		"step_wet":
-			out = _step(rng, true)
 		"metal":
 			out = _metal(rng)
 		"plastic":
@@ -73,28 +81,6 @@ static func _build(kind: String, seed_value: int) -> AudioStreamWAV:
 	return _wav(out)
 
 # --- generators -----------------------------------------------------------------------------------
-
-## Heel then toe: a dull knock with a short scuff on top. Wet ground adds a splash and loses the click.
-static func _step(rng: RandomNumberGenerator, wet: bool) -> PackedFloat32Array:
-	var out := _silence(0.24)
-	var heel := rng.randf_range(95.0, 125.0)
-	var toe_at := rng.randf_range(0.035, 0.06)
-	_knock(out, 0.0, heel, 0.035, 0.3)
-	_knock(out, toe_at, heel * 1.3, 0.025, 0.16)
-	if not wet:
-		# Hard sole on glazed tile: a bright click and a gritty scuff carry most of what you hear.
-		_noise_burst(out, rng, 0.0, 0.005, 0.9, 0.92)
-		_tick(out, 0.0, rng.randf_range(1300.0, 1900.0), 0.008, 0.35)
-		_noise_burst(out, rng, 0.004, 0.022, 0.22, 0.6)
-		_noise_burst(out, rng, toe_at, 0.004, 0.5, 0.92)
-		_tick(out, toe_at, rng.randf_range(1700.0, 2400.0), 0.006, 0.2)
-	else:
-		# Wet asphalt: no click, a slap and a short splash of water off the sole.
-		_noise_burst(out, rng, 0.0, 0.008, 0.45, 0.7)
-		_noise_burst(out, rng, 0.012, 0.07, 0.4, 0.5)
-		for i in 14:
-			_tick(out, rng.randf_range(0.015, 0.15), rng.randf_range(1800.0, 5200.0), 0.004, rng.randf_range(0.06, 0.16))
-	return out
 
 ## A can or tin: a short ring of inharmonic partials over a small thud.
 static func _metal(rng: RandomNumberGenerator) -> PackedFloat32Array:

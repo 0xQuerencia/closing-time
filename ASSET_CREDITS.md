@@ -6,7 +6,7 @@ All market geometry, fixture meshes, fictional product packaging, signage, surfa
 - Texture and signage artwork: deterministic Python/Pillow, `tools/textures/generate.py`. The pixel-art product label atlas, shelf metal, counter laminate, register face, aisle board and price tag textures come from local tooling that is not part of this repository.
 - Typography rasterized into original artwork: DejaVu Sans (DejaVu Fonts, Bitstream Vera-derived free font license). The font file is supplied by the build machine, not bundled. License: https://dejavu-fonts.github.io/License.html
 - The in-game UI uses a deliberate font hierarchy: VT323 for title cards, Roboto Condensed for menus and gameplay text, and Pixelify Sans for the Nokia LCD. CCTV overlays retain JetBrains Mono for a separate low-resolution monitor look. License texts are included beside the bundled fonts.
-- Audio: original synthesized electrical harmonics, `tools/audio/generate.py`; no samples or recorded third-party material.
+- Room-tone audio: original synthesized electrical harmonics, `tools/audio/generate.py`. Footstep recordings are credited separately below.
 
 ## Imported PSX assets
 
@@ -26,3 +26,5 @@ Fears to Fathom is a visual study reference only. This is an independent project
 - **Roboto Condensed** by the Roboto Project Authors, SIL Open Font License 1.1: `assets/fonts/roboto_condensed/`, used for menus, dialogue, prompts and the in-game HUD. License text included beside the font.
 
 - Loading-screen image: `assets/art/market_loading.png`, captured from the running Godot store using `tools/capture_opening.gd`. The user-supplied rainy-night concept is a visual reference only and is not bundled in the game.
+
+- Player and antagonist footsteps: five concrete recordings from **Kenney Impact Sounds**, CC0, https://kenney.nl/assets/impact-sounds. Filtered mono PCM conversions, source revision and original license in `assets/audio/footsteps/`.

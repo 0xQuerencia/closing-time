@@ -47,12 +47,13 @@ var _threat_was_present: Array[bool] = []
 var _rng := RandomNumberGenerator.new()
 var _capture_pending: Array[bool] = []
 var _record_clock := 0.0
+var _record_next := 0
 var _history: Array = []
 var _opening_tape: Array = []
 var _playback_frames: Array = []
 var playback := false
 var _playback_cursor := -1
-const RECORD_INTERVAL := 1.0
+const RECORD_INTERVAL := 3.0  # per-feed archive sample, live monitor remains 10 fps
 const HISTORY_SECONDS := 300
 const OPENING_CLIP_MAX_FRAMES := 18
 const OPENING_CLIP_SPAN_MSEC := 18000
@@ -87,7 +88,7 @@ func _build_feed(index: int) -> Dictionary:
 	viewport.world_3d = get_viewport().world_3d
 	viewport.msaa_3d = Viewport.MSAA_DISABLED
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
-	viewport.positional_shadow_atlas_size = 1024
+	viewport.positional_shadow_atlas_size = 0  # recorder feeds reuse lighting without extra shadow passes
 	viewport.gui_disable_input = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(viewport)
@@ -234,10 +235,12 @@ func _process(delta: float) -> void:
 	var dead: bool = feeds[selected].dead
 	_record_clock -= delta
 	if live and _record_clock <= 0.0:
-		_record_clock = RECORD_INTERVAL
-		for index in feeds.size():
-			if not feeds[index].dead:
-				_record_frame(index)
+		# Archive each feed every three seconds, render/read back one camera per second.
+		# Avoid concentrating three GPU readbacks and JPEG encodes in one frame.
+		_record_clock = RECORD_INTERVAL / feeds.size()
+		if not feeds[_record_next].dead:
+			_record_frame(_record_next)
+		_record_next = (_record_next + 1) % feeds.size()
 	var leon_seen := _leon_in_feed(selected)
 	if leon_seen and not _threat_was_present[selected] and _rng.randf() < 0.55:
 		# A cheap DVR briefly repeats a frame as a person crosses the camera's view.
@@ -322,7 +325,7 @@ func _capture_frame_after_render(index: int) -> void:
 			_opening_tape[index] = opening
 	var frames: Array = _history[index]
 	frames.append(frame)
-	while frames.size() > HISTORY_SECONDS:
+	while frames.size() > ceili(HISTORY_SECONDS / RECORD_INTERVAL):
 		frames.pop_front()
 	_history[index] = frames
 
@@ -379,6 +382,7 @@ func select(index: int) -> void:
 		if _switch_click != null:
 			_switch_click.play()
 	feed_selected.emit(index)
+	_watch_screen()  # Commit the visible feed transition before the next input event.
 
 func _show_selected_feed() -> void:
 	if playback and not _playback_frames.is_empty():
@@ -474,6 +478,7 @@ func enter() -> bool:
 	if viewing:
 		return false
 	viewing = true
+	_watching = -1
 	playback = false
 	_playback_frames.clear()
 	_set_live_hint()
@@ -487,12 +492,14 @@ func enter() -> bool:
 	_glide(1.0)
 	_ui.visible = true
 	entered.emit()
+	_watch_screen()
 	return true
 
 func leave() -> bool:
 	if not viewing:
 		return false
 	viewing = false
+	_watching = -1
 	playback = false
 	_playback_frames.clear()
 	_ui.visible = false
