@@ -12,12 +12,19 @@ func _capture() -> void:
 	await process_frame
 	var flow = market.gameplay.flow
 	flow.persist_settings = false
-	flow.settings.render_scale = 1.0
+	flow.settings.graphics_mode = "safe"
 	flow.show_settings()
-	for expected in [0.7, 0.85, 1.0]:
-		flow.press("render_scale")
-		assert(is_equal_approx(root.scaling_3d_scale, expected), "Resolution selection must reach the real viewport")
-		await _save("settings_%d" % roundi(expected * 100))
+	var modes := ["performance", "balanced", "quality", "safe"]
+	for expected_mode in modes:
+		flow.press("graphics_mode")
+		var preset: Dictionary = flow.GRAPHICS_PRESETS[expected_mode]
+		assert(flow.settings.graphics_mode == expected_mode, "Graphics mode selection must persist in the menu")
+		assert(is_equal_approx(root.scaling_3d_scale, float(preset.scale)), "Graphics mode must reach the real viewport")
+		assert(root.msaa_3d == int(preset.msaa), "Graphics mode must apply MSAA")
+		assert(root.positional_shadow_atlas_size == int(preset.shadow_atlas), "Graphics mode must apply shadow budget")
+		await _save("settings_%s" % expected_mode)
+	flow.settings.graphics_mode = "balanced"
+	flow.apply_settings()
 	flow.hide_all()
 	market.player.enabled = false
 	market.player.global_position = Vector3(-1.5, 0.05, 4.6)
@@ -43,7 +50,7 @@ func _capture() -> void:
 		unique[sound.resource_path] = true
 		previous = sound
 	assert(unique.size() == 5, "All five recordings should be available")
-	print("OPTIMIZATION CAPTURE COMPLETE; render scale cycle and 40 footstep selections passed")
+	print("OPTIMIZATION CAPTURE COMPLETE; graphics presets and 40 footstep selections passed")
 	await market.finish_run(0)
 
 func _save(label: String) -> void:

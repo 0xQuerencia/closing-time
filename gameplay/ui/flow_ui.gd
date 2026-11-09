@@ -32,16 +32,56 @@ var _title: Label
 var _body: Label
 var _buttons: VBoxContainer
 var _footer: Label
-var settings := {"retro": true, "sensitivity": 1.0, "bob": false, "render_scale": 1.0}
+const GRAPHICS_MODES := ["safe", "performance", "balanced", "quality"]
+const GRAPHICS_PRESETS := {
+	"safe": {
+		"label": "safe",
+		"scale": 0.65,
+		"msaa": Viewport.MSAA_DISABLED,
+		"shadow_atlas": 512,
+		"post": false,
+		"shadows": false,
+	},
+	"performance": {
+		"label": "performance",
+		"scale": 0.75,
+		"msaa": Viewport.MSAA_DISABLED,
+		"shadow_atlas": 1024,
+		"post": false,
+		"shadows": false,
+	},
+	"balanced": {
+		"label": "balanced",
+		"scale": 0.85,
+		"msaa": Viewport.MSAA_2X,
+		"shadow_atlas": 1536,
+		"post": true,
+		"shadows": true,
+	},
+	"quality": {
+		"label": "quality",
+		"scale": 1.0,
+		"msaa": Viewport.MSAA_2X,
+		"shadow_atlas": 2048,
+		"post": true,
+		"shadows": true,
+	},
+}
+var settings := {"retro": true, "sensitivity": 1.0, "bob": false, "graphics_mode": "balanced", "render_scale": 0.85}
 var _return_to := "title"
 var _guide_return := "game"
 var _ui_font: FontVariation
 const SETTINGS_PATH := "user://settings.cfg"
 var persist_settings := false
 const SENSITIVITIES := [0.6, 1.0, 1.6]
+var _shadow_defaults: Dictionary = {}
+var _force_safe_mode := false
 
 func setup(owner_game: Gameplay) -> FlowUI:
 	game = owner_game
+	_force_safe_mode = "--safe-mode" in OS.get_cmdline_user_args()
+	if _force_safe_mode:
+		settings.graphics_mode = "safe"
 	_ui_font = _make_ui_font(550)
 	name = "FlowUI"
 	layer = 30
@@ -97,15 +137,34 @@ func setup(owner_game: Gameplay) -> FlowUI:
 func enable_persistence() -> void:
 	persist_settings = true
 	var file := ConfigFile.new()
-	if file.load(SETTINGS_PATH) == OK:
+	if not _force_safe_mode and file.load(SETTINGS_PATH) == OK:
 		settings.retro = bool(file.get_value("view", "retro", true))
 		settings.sensitivity = float(file.get_value("view", "sensitivity", 1.0))
 		settings.bob = bool(file.get_value("view", "bob", false))
-		settings.render_scale = clampf(float(file.get_value("view", "render_scale", 1.0)), 0.7, 1.0)
+		var saved_mode := str(file.get_value("view", "graphics_mode", ""))
+		if saved_mode in GRAPHICS_MODES:
+			settings.graphics_mode = saved_mode
+		else:
+			# Older builds only saved a scalar. Keep those installs working and
+			# map the old value to the closest complete preset.
+			var old_scale := clampf(float(file.get_value("view", "render_scale", 0.85)), 0.65, 1.0)
+			settings.graphics_mode = _mode_for_scale(old_scale)
+	if _force_safe_mode:
+		settings.graphics_mode = "safe"
 	apply_settings()
 
 func apply_settings() -> void:
-	game.get_viewport().scaling_3d_scale = settings.render_scale
+	var mode := str(settings.graphics_mode)
+	if not GRAPHICS_PRESETS.has(mode):
+		mode = "balanced"
+		settings.graphics_mode = mode
+	var preset: Dictionary = GRAPHICS_PRESETS[mode]
+	settings.render_scale = float(preset.scale)
+	var viewport := game.get_viewport()
+	viewport.scaling_3d_scale = settings.render_scale
+	viewport.msaa_3d = int(preset.msaa)
+	viewport.positional_shadow_atlas_size = int(preset.shadow_atlas)
+	_apply_world_quality(bool(preset.post), bool(preset.shadows))
 	var player = game.player
 	player.sensitivity = settings.sensitivity
 	player.head_bob = settings.bob
@@ -115,19 +174,20 @@ func apply_settings() -> void:
 			node.palette_enabled = false
 			node.analog_enabled = settings.retro
 			node._sync_toggles()
-	if not persist_settings:
+	if not persist_settings or _force_safe_mode:
 		return
 	var file := ConfigFile.new()
 	file.set_value("view", "retro", settings.retro)
 	file.set_value("view", "sensitivity", settings.sensitivity)
 	file.set_value("view", "bob", settings.bob)
+	file.set_value("view", "graphics_mode", settings.graphics_mode)
 	file.set_value("view", "render_scale", settings.render_scale)
 	file.save(SETTINGS_PATH)
 
 func show_settings() -> void:
 	_return_to = mode if mode in ["title", "pause"] else _return_to
 	_clear_buttons()
-	_present("settings", "SETTINGS", "", "Saved automatically")
+	_present("settings", "SETTINGS", "", "Saved automatically  /  safe mode is the crash fallback")
 	var first := _button("retro", "Retro filter: %s" % ("on" if settings.retro else "off"), func():
 		settings.retro = not settings.retro
 		apply_settings()
@@ -137,10 +197,9 @@ func show_settings() -> void:
 		settings.sensitivity = SENSITIVITIES[next]
 		apply_settings()
 		show_settings())
-	_button("render_scale", "3D resolution: %d%%" % roundi(settings.render_scale * 100), func():
-		var scales := [0.7, 0.85, 1.0]
-		var current := 0 if settings.render_scale < 0.8 else (1 if settings.render_scale < 0.95 else 2)
-		settings.render_scale = scales[(current + 1) % scales.size()]
+	_button("graphics_mode", "Graphics mode: %s" % str(GRAPHICS_PRESETS[settings.graphics_mode].label).to_upper(), func():
+		var current := GRAPHICS_MODES.find(settings.graphics_mode)
+		settings.graphics_mode = GRAPHICS_MODES[(current + 1) % GRAPHICS_MODES.size()]
 		apply_settings()
 		show_settings())
 	_button("bob", "Head bob: %s" % ("on" if settings.bob else "off"), func():
@@ -149,6 +208,32 @@ func show_settings() -> void:
 		show_settings())
 	_button("back", "Back", func(): show_title() if _return_to == "title" else show_pause())
 	first.grab_focus()
+
+func _mode_for_scale(scale: float) -> String:
+	if scale <= 0.68:
+		return "safe"
+	if scale <= 0.79:
+		return "performance"
+	if scale < 0.93:
+		return "balanced"
+	return "quality"
+
+func _apply_world_quality(post_enabled: bool, shadows_enabled: bool) -> void:
+	# Cache the authored shadow choices once, so cycling modes never destroys the
+	# intended dark composition. Safe/performance can turn them off and restore
+	# them when the player returns to balanced/quality.
+	for node in game.world.find_children("*", "Light3D", true, false):
+		var light := node as Light3D
+		var id := light.get_instance_id()
+		if not _shadow_defaults.has(id):
+			_shadow_defaults[id] = light.shadow_enabled
+		light.shadow_enabled = bool(_shadow_defaults[id]) and shadows_enabled
+	for node in game.world.find_children("*", "WorldEnvironment", true, false):
+		var environment := (node as WorldEnvironment).environment
+		if environment == null:
+			continue
+		environment.ssao_enabled = post_enabled
+		environment.glow_enabled = post_enabled
 
 func show_guide(return_to := "game") -> void:
 	_guide_return = return_to

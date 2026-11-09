@@ -449,7 +449,17 @@ func _test_save_and_flow() -> void:
 	game.flow.press("back")
 	check(game.flow.mode == "pause", "the pause guide returns to pause")
 	game.flow.press("settings")
-	check(game.flow.mode == "settings" and game.flow.has_button("retro"), "the pause menu opens settings")
+	check(game.flow.mode == "settings" and game.flow.has_button("retro") and game.flow.has_button("graphics_mode"), "the pause menu opens settings with graphics presets")
+	var viewport := get_viewport()
+	for i in 4:
+		var expected_mode: String = game.flow.GRAPHICS_MODES[(game.flow.GRAPHICS_MODES.find(game.flow.settings.graphics_mode) + 1) % game.flow.GRAPHICS_MODES.size()]
+		game.flow.press("graphics_mode")
+		var preset: Dictionary = game.flow.GRAPHICS_PRESETS[expected_mode]
+		check(game.flow.settings.graphics_mode == expected_mode, "%s graphics preset can be selected" % expected_mode)
+		check(is_equal_approx(viewport.scaling_3d_scale, float(preset.scale)), "%s preset applies its 3D scale" % expected_mode)
+		check(viewport.msaa_3d == int(preset.msaa) and viewport.positional_shadow_atlas_size == int(preset.shadow_atlas), "%s preset applies render limits" % expected_mode)
+	game.flow.settings.graphics_mode = "balanced"
+	game.flow.apply_settings()
 	game.flow.press("sensitivity")
 	check(game.flow.settings.sensitivity == 1.6 and player.sensitivity == 1.6, "mouse look can be sped up and applies to the player")
 	game.flow.press("bob")

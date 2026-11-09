@@ -47,6 +47,20 @@ or open `project.godot` in Godot and hit **Run**.
 | G | open the guide |
 | Esc | pause |
 
+the pause menu's **Graphics mode** cycles through `SAFE`, `PERFORMANCE`, `BALANCED`, and `QUALITY`. safe turns off shadows and post effects and renders at 65%, while quality keeps the full dark look at native 3D resolution. if a saved setting ever makes the game unhappy, launch the project once with:
+
+```sh
+godot --path . -- --safe-mode
+```
+
+that forces the safe preset without deleting your saved settings.
+
+if Vulkan itself cannot initialize on your machine, try Godot's compatibility renderer with the same fallback:
+
+```sh
+godot --rendering-method gl_compatibility --path . -- --safe-mode
+```
+
 ## help
 
 if it won't launch, make sure you're on Godot 4.6.3 and try opening `project.godot` from the Project Manager. to run the headless project checks:
