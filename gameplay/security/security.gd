@@ -96,11 +96,18 @@ func _hinges(body: Node3D, leaf_w: float, hinge_x: float, thickness: float, mate
 	for y in [-0.8, 0.0, 0.8]:
 		_bar(body, Vector3(0.035, 0.12, thickness + 0.03), Vector3(hinge_x, y, 0), material)
 
-## Non-colliding casing around a door opening, in the door's own frame.
+## Non-colliding casing around a door opening, in the door's own frame. The
+## jambs overlap the moving slab by a few millimetres so dark render gaps do
+## not appear when the camera is close to a closed door.
 func _casing(door: Door, span: float, height: float, depth: float, material: Material) -> void:
-	for x in [-span / 2.0 - 0.035, span / 2.0 + 0.035]:
-		_bar(door, Vector3(0.07, height, depth), Vector3(x, height / 2.0, 0), material)
-	_bar(door, Vector3(span + 0.14, 0.07, depth), Vector3(0, height + 0.035, 0), material)
+	var jamb := 0.11
+	for x in [-span / 2.0 - jamb / 2.0, span / 2.0 + jamb / 2.0]:
+		_bar(door, Vector3(jamb, height + 0.04, depth), Vector3(x, (height + 0.04) / 2.0 - 0.01, 0), material)
+	# The head overlaps the leaf top instead of floating above it.
+	_bar(door, Vector3(span + jamb * 2.0, 0.12, depth), Vector3(0, height - 0.02, 0), material)
+	# A real sill/door sweep closes the black line under the slab and gives the
+	# exterior pair one continuous threshold to meet.
+	_bar(door, Vector3(span + jamb * 2.0, 0.08, depth + 0.05), Vector3(0, 0.015, 0), material)
 
 func _build_front_door() -> void:
 	var glass := _material(Color(0.4, 0.5, 0.46, 0.12), 0.25, 0.0, true)
@@ -109,6 +116,7 @@ func _build_front_door() -> void:
 	front_door.lock_gate = func():
 		return "" if game.director != null and game.director.step >= StoryDirector.Step.ANOMALY else "We're open until midnight."
 	var frame := _material(Color(0.13, 0.14, 0.15), 0.4, 0.7)
+	var meeting_seal := _material(Color(0.018, 0.022, 0.022), 0.7, 0.05)
 	var alu := _texture_material("res://assets/materials/door_alu.png")
 	var decal := _texture_material("res://assets/materials/door_decal.png", true)
 	var push_decal := _texture_material("res://assets/materials/door_decal_push.png", true)
@@ -119,8 +127,13 @@ func _build_front_door() -> void:
 		var toward: float = leaf.dir
 		_bar(body, Vector3(leaf_w, 0.14, 0.07), Vector3(0, 1.0, 0), frame)
 		_bar(body, Vector3(leaf_w, 0.08, 0.06), Vector3(0, 0.05, 0), frame)
-		for x in [-leaf_w * 0.5 + 0.045, leaf_w * 0.5 - 0.045]:
-			_bar(body, Vector3(0.09, 2.16, 0.07), Vector3(x, 0, 0), frame)
+		# Hinge and meeting rails. The meeting rail is narrower than before; the
+		# two leaves now read as a sealed pair instead of a chunky black divider.
+		for x in [-leaf_w * 0.5 + 0.025, leaf_w * 0.5 - 0.025]:
+			_bar(body, Vector3(0.05, 2.16, 0.07), Vector3(x, 0, 0), frame)
+		# The rubber seal travels with the meeting edge. It closes the seam when
+		# shut without leaving a fake mullion across the open doorway.
+		_bar(body, Vector3(0.012, 2.08, 0.035), Vector3(toward * (leaf_w * 0.5 - 0.008), 1.04, 0), meeting_seal)
 		_door_face(body, leaf_w - 0.12, 0.34, -0.9, 0.07, alu)
 		_bar(body, Vector3(leaf_w, 0.05, 0.075), Vector3(0, -0.72, 0), frame)
 		_door_face(body, leaf_w - 0.14, 0.12, 0.3, 0.045, push_decal, 0.0, decal)
@@ -130,6 +143,12 @@ func _build_front_door() -> void:
 		_bar(body, Vector3(0.035, 0.75, 0.035), Vector3(bar_x, 0.0, -0.085), brass)
 		for y in [-0.3, 0.3]:
 			_bar(body, Vector3(0.03, 0.03, 0.17), Vector3(bar_x, y, 0), brass)
+	# The storefront has a shallow transom above the two leaves. Without this
+	# fixed pane the tall shell opening reads as a black hole over the frame.
+	var transom_glass := _material(Color(0.24, 0.31, 0.3, 0.12), 0.3, 0.0, true)
+	_bar(front_door, Vector3(1.64, 0.46, 0.028), Vector3(0, 2.47, 0), transom_glass)
+	_bar(front_door, Vector3(1.64, 0.07, 0.085), Vector3(0, 2.23, 0), frame)
+	_bar(front_door, Vector3(1.64, 0.07, 0.085), Vector3(0, 2.71, 0), frame)
 	var right_body: StaticBody3D = front_door.leaves[1].body
 	var bolt := Door.DoorBolt.new()
 	bolt.door = front_door
@@ -211,6 +230,7 @@ func _build_rear_door() -> void:
 	# The latch and key from the M3 chore ride on the door leaf.
 	for part in game.shift.latch_parts:
 		part.reparent(body, true)
+	_casing(rear_door, 1.0, 2.18, 0.17, hardware)
 
 ## The back step: a pad to stand on and one flat bulb, so the doorway is not a hole into the void.
 func _build_stoop() -> void:
