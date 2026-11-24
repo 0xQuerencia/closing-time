@@ -18,6 +18,7 @@ func setup(owner: StoryDirector, snapshot: Dictionary, resume := false) -> bool:
 		return false
 	director.event_logged.connect(_on_director_event)
 	game.dialogue.finished.connect(_on_dialogue_finished)
+	game.phone.read_changed.connect(_on_phone_read)
 	_build_spots()
 	if not resume:
 		director._set_step(StoryDirector.Step.INTRO)
@@ -46,6 +47,7 @@ func _enter_chapter() -> void:
 			_sync_chores()
 			director._spawn("ruth",StoryDirector.Step.WORK)
 		"outage":
+			game.phone.deliver("dina_truth","Dina","I saw Evan come back that night. I didn’t see what happened after that. Get out, Jamie.",game.clock.text())
 			director._anomaly()
 		"escape":
 			pass
@@ -137,8 +139,7 @@ func _on_director_event(id: String) -> void:
 			_record("safety_route_open")
 		"clue_boot_prints":
 			_record("wet_prints")
-		"msg_dina_8":
-			game.phone.deliver("dina_truth","Dina","I saw Evan come back that night. I didn't see what happened after that. Get out, Jamie.",game.clock.text())
+
 
 func outcome_for(kind: String) -> String:
 	var mapped: String = {"escape":"escaped","secured":"rescued","caught":"caught"}.get(kind,kind)
@@ -171,7 +172,6 @@ func _build_spots() -> void:
 		"training_binder":[Vector3(7.03,.83,-4.82),false],
 		"key_log":[Vector3(5.35,1.2,-3.11),true],
 		"dvr_clip":[Vector3(7.72,.81,-4.76),false],
-		"dina_statement":[Vector3(7.1,.81,-4.73),false],
 		"arthur_message":[Vector3(8.43,.80,-4.92),false],
 		"maintenance_log":[Vector3(4.58,1.35,-4.82),true]
 	}
@@ -248,3 +248,11 @@ func _use(id: String) -> void:
 
 func snapshot() -> Dictionary:
 	return progress.snapshot()
+
+func _on_phone_read() -> void:
+	if progress.current_id() != "outage":
+		return
+	for entry in game.phone.threads.get("Dina",[]):
+		if entry.id == "dina_truth" and entry.read:
+			_record("dina_statement")
+			return

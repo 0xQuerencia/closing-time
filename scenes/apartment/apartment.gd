@@ -11,18 +11,33 @@ var targets: Dictionary = {}
 var materials: Dictionary = {}
 var selected := ""
 var leaving := false
+var epilogue := ""
 
 func _ready() -> void:
 	GameInput.ensure()
 	if not progress.load_content():
 		push_error("Opening story could not load")
 		return
+	if get_tree().has_meta("closing_time_epilogue"):
+		epilogue = str(get_tree().get_meta("closing_time_epilogue"))
+		get_tree().remove_meta("closing_time_epilogue")
+	elif get_tree().has_meta("closing_time_opening_preview"):
+		progress.restore(get_tree().get_meta("closing_time_opening_preview"))
+		get_tree().remove_meta("closing_time_opening_preview")
 	_build_room()
 	_build_ui()
 	player = CharacterBody3D.new()
 	player.set_script(Player)
 	player.position = Vector3(-1.6,.05,2.4)
 	add_child(player)
+	if not epilogue.is_empty():
+		_build_epilogue()
+		return
+	for id in ["keys_taken","vest_taken"]:
+		if progress.events.has(id):
+			targets[id].node.hide()
+			targets[id].node.set_collision_layer_value(1,false)
+	OpeningCheckpoint.write(progress.snapshot())
 	_refresh()
 	narration.text = "I was twenty when I started working nights at Marlow's.\nIt was supposed to be a favor, just one extra shift."
 
@@ -48,6 +63,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _use(id: String) -> void:
+	if not epilogue.is_empty():
+		if id == "apartment_exit":
+			leaving = true
+			get_tree().change_scene_to_file("res://scenes/world/market_root.tscn")
+		elif targets.has(id):
+			narration.text = targets[id].body
+		return
 	if id == "apartment_exit":
 		for required in ["shift_read","keys_taken","vest_taken"]:
 			if not progress.events.has(required):
@@ -56,6 +78,7 @@ func _use(id: String) -> void:
 		progress.record(id)
 		if progress.advance():
 			leaving = true
+			OpeningCheckpoint.write(progress.snapshot())
 			get_tree().set_meta("closing_time_opening_preview", progress.snapshot())
 			get_tree().change_scene_to_file("res://scenes/route9/route9.tscn")
 		return
@@ -64,6 +87,7 @@ func _use(id: String) -> void:
 		if id in ["keys_taken","vest_taken"]:
 			targets[id].node.hide()
 			targets[id].node.set_collision_layer_value(1, false)
+		OpeningCheckpoint.write(progress.snapshot())
 		_refresh()
 	elif targets.has(id):
 		narration.text = targets[id].body
@@ -225,3 +249,27 @@ func _build_room() -> void:
 	fill.light_energy = .9
 	fill.omni_range = 6.0
 	add_child(fill)
+
+func _build_epilogue() -> void:
+	checklist.text = "MONDAY / DEC 11, 2006   8:17 AM"
+	for id in targets:
+		if id != "apartment_exit":
+			targets[id].node.hide()
+			targets[id].node.set_collision_layer_value(1,false)
+	targets["apartment_exit"].verb = "Return to title"
+	var headline := "Marlow's closed pending investigation."
+	var account := "I kept wondering what would have happened if I'd found the records sooner."
+	if epilogue == "evidence_preserved":
+		headline = "Police reopen missing employee inquiry after new documents emerge."
+		account = "Dina gave her statement. The papers weren't proof of everything, but somebody was finally listening."
+	elif epilogue == "rescued":
+		headline = "Police respond to intrusion at local market."
+		account = "The officers told me I was safe. It took a while before I could believe them."
+	_target("epilogue_paper","Read the newspaper",headline + "\n" + account,Vector3(.88,.77,-3.73),Vector3(.30,.022,.33),Color("#d3c9ac"))
+	_target("epilogue_phone","Read Kay's message","Kay: Breakfast is on me. No arguments.",Vector3(.48,.79,-3.62),Vector3(.065,.045,.13),Color("#303332"))
+	narration.text = "I didn't go back to work. For the first time in weeks, I had nowhere to be."
+	for child in get_children():
+		if child is WorldEnvironment:
+			child.environment.background_color = Color("#8b9295")
+			child.environment.ambient_light_color = Color("#d5cfc2")
+			child.environment.ambient_light_energy = .85

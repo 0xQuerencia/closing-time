@@ -24,6 +24,7 @@ func _ready() -> void:
 		get_tree().change_scene_to_file.call_deferred("res://scenes/apartment/apartment.tscn")
 		return
 	progress.record("drive_started")
+	OpeningCheckpoint.write(progress.snapshot())
 	_build_road()
 	_build_car()
 	_build_ui()
@@ -69,11 +70,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			radio_on = not radio_on
 			if radio_on:
 				progress.record("radio_tuned")
+				OpeningCheckpoint.write(progress.snapshot())
 		KEY_T:
 			wipers_on = not wipers_on
 		KEY_E:
 			if travelled >= 120.0 and travelled < 155.0:
 				progress.record("bypass_sign")
+				OpeningCheckpoint.write(progress.snapshot())
 				caption_label.text = "Through traffic: use the new bypass."
 			elif travelled >= 430.0 and speed <= 2.0:
 				_arrive()
@@ -85,6 +88,7 @@ func _arrive() -> void:
 	if not progress.advance():
 		return
 	finishing = true
+	OpeningCheckpoint.write(progress.snapshot())
 	get_tree().set_meta("closing_time_opening_preview", progress.snapshot())
 	get_tree().change_scene_to_file("res://scenes/world/market_root.tscn")
 
