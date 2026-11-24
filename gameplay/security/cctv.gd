@@ -26,6 +26,8 @@ var selected := 0
 var viewing := false
 var viewed := {}
 var screen_material: ShaderMaterial
+var _screen_mesh: MeshInstance3D
+var _screen_surface := -1
 var terminal: SecurityTerminal
 var _view_camera: Camera3D
 var _ui: CanvasLayer
@@ -127,8 +129,13 @@ func _build_screen() -> void:
 	screen_material.shader = load("res://gameplay/security/cctv_screen.gdshader")
 	screen_material.set_shader_parameter("feed", (feeds[0].viewport as SubViewport).get_texture())
 	var root: Node = game.world.find_child("OfficeMonitor",true,false)
-	if not preload("res://scenes/world/art_reference.gd").set_screen(root,screen_material):
+	var target := preload("res://scenes/world/art_reference.gd").crt_surface(root)
+	if target.is_empty():
 		push_error("Office monitor screen missing")
+		return
+	_screen_mesh = target.mesh
+	_screen_surface = target.surface
+	preload("res://scenes/world/art_reference.gd").set_screen(root,screen_material)
 
 func _build_terminal() -> void:
 	terminal = SecurityTerminal.new()
@@ -296,6 +303,8 @@ func _point_is_in_feed(camera: Camera3D, world_point: Vector3) -> bool:
 	return Rect2(Vector2.ZERO, viewport_size).has_point(point)
 
 func _record_frame(index: int) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
 	if _capture_pending[index]:
 		return  # the previous grab for this camera has not finished drawing yet
 	_capture_pending[index] = true
@@ -577,3 +586,21 @@ class SecurityTerminal extends Interactable:
 	func interact(actor: Node) -> void:
 		cctv.enter()
 		interacted.emit(actor)
+
+## Release viewport references before renderer shutdown; the screen mesh is a world sibling.
+func shutdown_rendering() -> void:
+	set_process(false)
+	if is_instance_valid(_screen_mesh):
+		if _screen_surface < 0:
+			_screen_mesh.material_override = null
+		else:
+			_screen_mesh.set_surface_override_material(_screen_surface,null)
+	if screen_material != null:
+		screen_material.set_shader_parameter("feed",null)
+	for feed in feeds:
+		var viewport := feed.viewport as SubViewport
+		if is_instance_valid(viewport):
+			viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+
+func _exit_tree() -> void:
+	shutdown_rendering()

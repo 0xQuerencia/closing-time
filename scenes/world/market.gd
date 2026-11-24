@@ -22,6 +22,8 @@ func _ready() -> void:
 			var instance := scene.instantiate()
 			add_child(instance)
 			RetroMaterials.apply_nearest_filter(instance)
+			if part == "retail":
+				preload("res://scenes/world/retail_art.gd").replace(self,instance)
 	add_child(OriginalExterior.new())
 	build_original_props()
 	build_collisions()
@@ -618,6 +620,8 @@ func finish_run(code: int) -> void:
 	if is_instance_valid(ambient_dread):
 		ambient_dread.queue_free()
 	_stop_audio_tree(self)
+	if is_instance_valid(gameplay) and is_instance_valid(gameplay.security) and is_instance_valid(gameplay.security.cctv):
+		gameplay.security.cctv.shutdown_rendering()
 	# Let AudioServer retire stopped playbacks even when a test changed Engine.time_scale.
 	await get_tree().create_timer(0.35, true, false, true).timeout
 	get_tree().quit(code)

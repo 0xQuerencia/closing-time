@@ -187,8 +187,8 @@ func _build_road() -> void:
 func _sign(body: String,t: float) -> void:
 	var at := Vector3(_center(t)+4.9,0,-t)
 	var sign_mesh := PSX.place(self,"roadside_sign",at)
-	# The original sign artwork is for the bypass; retain distinct text at the store.
-	if t > 300 and sign_mesh != null:
+	# The authored sign mesh is retained; make the actual story text readable.
+	if sign_mesh != null:
 		var label := Label3D.new()
 		label.text = body
 		label.font_size = 38

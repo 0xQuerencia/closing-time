@@ -27,6 +27,8 @@ var terminal: RegisterTerminal
 var _lcd: Label3D
 var _beep: AudioStreamPlayer3D
 var _scan_window: StandardMaterial3D
+var _drawer: Node3D
+var _drawer_tween: Tween
 var _chime: AudioStreamPlayer3D
 
 func build(world: Node3D) -> void:
@@ -59,6 +61,12 @@ func build(world: Node3D) -> void:
 ## Real CRT monitor + keyboard on the cash drawer; the register text is drawn on the CRT glass.
 func _build_workstation() -> void:
 	var factory := OriginalOfficeProps.new()
+	if get_parent().has_meta("psx_retail_replaced"):
+		var drawer_model := PSX.place(self,"cash_drawer",Vector3(-5.8,COUNTER_TOP,4.33),0,Vector3(1,.982,1))
+		if drawer_model != null:
+			_drawer = drawer_model.find_child("Drawer",true,false) as Node3D
+			if _drawer != null:
+				_drawer.position.z = -.08
 	var crt := factory.make("crt")
 	crt.position = CRT_POS
 	add_child(crt)
@@ -212,6 +220,7 @@ func take_payment() -> bool:
 	var tx := {"id": "T%04d" % (history.size() + 1), "items": ids, "total": total_cents()}
 	history.append(tx)
 	_set_state(State.PAID)
+	_move_drawer(true)
 	_chime.play()
 	_refresh_screen()
 	sale_completed.emit(tx)
@@ -232,8 +241,17 @@ func close_sale() -> void:
 	reader_error = false
 	items.clear()
 	_set_state(State.IDLE)
+	_move_drawer(false)
 	_refresh_screen()
 	sale_closed.emit()
+
+func _move_drawer(open: bool) -> void:
+	if not is_instance_valid(_drawer):
+		return
+	if _drawer_tween != null:
+		_drawer_tween.kill()
+	_drawer_tween = create_tween()
+	_drawer_tween.tween_property(_drawer,"position:z",.045 if open else -.08,.18)
 
 func status_text() -> String:
 	match state:

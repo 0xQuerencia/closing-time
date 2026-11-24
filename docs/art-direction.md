@@ -16,3 +16,5 @@ The opening now reuses the existing handset GLB, authored surface textures and t
 ## PSX pack integration
 
 The 44 approved GLBs now live in assets/models/psx_pack. The production scene uses the pack for office props, scanner/CRT, apartment furniture and evidence objects, exterior wagon and fixtures, the cockpit and roadside trees. Baked market fixtures remain until their layout-specific stock and collision coordinates can be verified; never hide the entire retail mesh to replace a single prop. The pack is original static art, not a replacement for the rigged cast.
+
+The batched retail GLB is trimmed only in collision-derived fixture regions; original endcaps and restock slots remain. New counter, 12 shelf modules, six cooler cases and an animated cash drawer replace the old fixture visuals. The original game collision geometry and glass overlays remain. If the expected mesh shape changes, the replacement is skipped rather than corrupting unrelated art.
