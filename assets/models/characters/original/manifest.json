@@ -1,0 +1,54 @@
+{
+  "jamie": {
+    "lod0": {
+      "triangles": 2864,
+      "vertices": 7987,
+      "texture": 512,
+      "bytes": 820164,
+      "clips": 21,
+      "sha256": "50ca98022a37bbaec6df7b6fb62836740628f5e4daf9eadd60f00b67f17f716f"
+    },
+    "lod1": {
+      "triangles": 944,
+      "vertices": 2138,
+      "texture": 256,
+      "bytes": 334084,
+      "clips": 21,
+      "sha256": "0773fd82c9de7ef983dc11c5ea2448aec975a7a054c6fcc6fc8a01bc9c06a3e1"
+    },
+    "lod2": {
+      "triangles": 532,
+      "vertices": 1136,
+      "texture": 128,
+      "bytes": 231644,
+      "clips": 21,
+      "sha256": "9a53f9d0b238768319fc8ed67e05504af961da7cdfad923347cb746e290450fc"
+    }
+  },
+  "leon": {
+    "lod0": {
+      "triangles": 2864,
+      "vertices": 7695,
+      "texture": 512,
+      "bytes": 775348,
+      "clips": 21,
+      "sha256": "9d3e23d5d83e48b5f429ee52e7818b31edc743259eb25c9163a237e6de0f1bdc"
+    },
+    "lod1": {
+      "triangles": 944,
+      "vertices": 2144,
+      "texture": 256,
+      "bytes": 321172,
+      "clips": 21,
+      "sha256": "b0f0b1f3f697c13539ad0972493e23543ca371eeda4398adf250063e6949af83"
+    },
+    "lod2": {
+      "triangles": 532,
+      "vertices": 1138,
+      "texture": 128,
+      "bytes": 227912,
+      "clips": 21,
+      "sha256": "d33de478cc4aa914dc9553e285ed16a7ac55d5fd1ec2ed05dbcaffd0a8ebb40b"
+    }
+  }
+}
