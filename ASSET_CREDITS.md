@@ -34,3 +34,12 @@ Fears to Fathom is a visual study reference only. This is an independent project
 The production market now instantiates project-authored office/security props from `scenes/world/original_office_props.gd`: desk, chair, CRT, computer, keyboard, phone, mug, crate, extinguisher and CCTV housing. Meshes and small procedural grain textures are generated in Godot; no third-party geometry or texture is used by this factory. These are first-pass models pending visual review.
 
 Historical imported assets listed above remain in the repository and may still be referenced elsewhere. They are not cleared for the original-only release. Character rigs and animation, the embedded exterior wagon, remaining imported props, footstep audio and bundled fonts require replacement or an explicit owner-approved exception. Preserve the historical notices until the underlying files are removed; do not relabel third-party work as original.
+
+### Original-only replacement work
+
+- Original Jamie and Leon GLBs and their 21 clips were copied from the owner's PSX-char project with matching Git blob hashes. Cast variants use the same authored skeleton and mesh with generated vertex colors and original accessories.
+- Dry and wet shoe sounds are generated in `gameplay/audio/foley.gd`.
+- The outdoor geometry and parked wagon are authored in `scenes/world/original_exterior.gd`.
+- Both active CRTs and keyboards use the original prop factory. The office CRT displays the live security shader on an original quad.
+- Marlow Terminal is an original bitmap typeface, with 111 authored glyphs in `tools/fonts/glyphs.json` and a deterministic PNG/BMFont generator. It replaces the four imported UI fonts.
+- The export presets now exclude the known imported assets. The historical notices above are preserved for repository provenance. The resulting package still requires a verified contents audit; authored artwork with previously rasterized external typography has not yet been regenerated.

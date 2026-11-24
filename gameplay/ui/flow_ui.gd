@@ -7,8 +7,8 @@ signal continue_requested
 signal retry_requested
 signal restart_requested
 signal quit_requested
-const FONT_FILE := preload("res://assets/fonts/roboto_condensed/RobotoCondensed[wght].ttf")
-const LOGO_FONT := preload("res://assets/fonts/vt323/VT323-Regular.ttf")
+const FONT_FILE := preload("res://assets/fonts/original/marlow.fnt")
+const LOGO_FONT := preload("res://assets/fonts/original/marlow.fnt")
 const INK := Color(0.9, 0.89, 0.84)
 const DIM := Color(0.9, 0.89, 0.84, 0.6)
 const WARM := Color(0.98, 0.84, 0.3)
@@ -346,11 +346,9 @@ func _present(next_mode: String, title: String, body: String, footer: String) ->
 	game.hud.visible = false
 	game.phone_ui.visible = false
 
-func _make_ui_font(weight: int) -> FontVariation:
+func _make_ui_font(_weight: int) -> FontVariation:
 	var variation := FontVariation.new()
 	variation.base_font = FONT_FILE
-	var text_server := TextServerManager.get_primary_interface()
-	variation.variation_opentype = {text_server.name_to_tag("wght"): weight}
 	return variation
 
 func hide_all() -> void:

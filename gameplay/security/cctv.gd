@@ -7,7 +7,7 @@ signal exited
 signal feed_selected(index: int)
 signal feed_viewed(index: int)
 signal feed_lost(index: int)
-const FONT := preload("res://assets/fonts/jetbrains_mono/JetBrainsMono-Bold.ttf")
+const FONT := preload("res://assets/fonts/original/marlow.fnt")
 const FEED_SIZE := Vector2i(320, 240)
 const FRAME_SECONDS := 0.1  # ~10 fps, like a cheap recorder
 const SCREEN_VIEW_POS := Vector3(7.9, 1.0, -4.62)
@@ -126,14 +126,12 @@ func _build_screen() -> void:
 	screen_material = ShaderMaterial.new()
 	screen_material.shader = load("res://gameplay/security/cctv_screen.gdshader")
 	screen_material.set_shader_parameter("feed", (feeds[0].viewport as SubViewport).get_texture())
-	var monitor := game.world.find_child("crt_monitor__static", true, false) as MeshInstance3D
+	var root: Node = game.world.find_child("OfficeMonitor",true,false)
+	var monitor := root.find_child("OriginalCRTGlass",true,false) as MeshInstance3D if root != null else null
 	if monitor == null:
-		push_warning("Cctv: office monitor not found, feed will not show on the CRT")
+		push_error("Original office monitor screen missing")
 		return
-	for surface in monitor.mesh.get_surface_count():
-		var mat := monitor.mesh.surface_get_material(surface)
-		if mat != null and mat.resource_name == "prop_crt_screen_static":
-			monitor.set_surface_override_material(surface, screen_material)
+	monitor.material_override = screen_material
 
 func _build_terminal() -> void:
 	terminal = SecurityTerminal.new()
@@ -162,7 +160,7 @@ func _build_ui() -> void:
 	add_child(_ui)
 	_hint = Label.new()
 	_hint.text = "A / D  camera     R  review tape     wheel  scrub     E  leave"
-	_hint.add_theme_font_override("font", load("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf"))
+	_hint.add_theme_font_override("font", load("res://assets/fonts/original/marlow.fnt"))
 	_hint.add_theme_font_size_override("font_size", 22)
 	_hint.add_theme_color_override("font_color", Color(0.9, 0.89, 0.84, 0.8))
 	_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0))

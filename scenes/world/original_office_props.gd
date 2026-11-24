@@ -34,7 +34,14 @@ func make(kind: String) -> Node3D:
 			_box(root, Vector3(.36,.30,.34), Vector3(0,.20,-.035), beige.darkened(.12))
 			_box(root, Vector3(.39,.32,.08), Vector3(0,.20,.13), beige)
 			_box(root, Vector3(.32,.235,.018), Vector3(0,.212,.177), Color("#202a29"))
-			_box(root, Vector3(.29,.205,.009), Vector3(0,.212,.191), Color("#37423c"))
+			var screen := MeshInstance3D.new()
+			var quad := QuadMesh.new()
+			quad.size = Vector2(.29,.205)
+			screen.mesh = quad
+			screen.name = "OriginalCRTGlass"
+			screen.position = Vector3(0,.212,.191)
+			screen.material_override = _material(Color("#37423c"))
+			root.add_child(screen)
 			_box(root, Vector3(.19,.045,.17), Vector3(0,.023,0), beige.darkened(.13))
 			_box(root, Vector3(.013,.009,.007), Vector3(.157,.071,.18), Color("#827e43"))
 			for i in range(6):

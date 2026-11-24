@@ -2,7 +2,7 @@ class_name GameHud
 extends CanvasLayer
 ## Restrained HUD: plain pixel text, no panels. Only the clock is always on. The objective, the shift list and the
 ## control hints appear when something changes, then fade. Yellow marks things you can act on.
-const FONT_FILE := preload("res://assets/fonts/roboto_condensed/RobotoCondensed[wght].ttf")
+const FONT_FILE := preload("res://assets/fonts/original/marlow.fnt")
 const INK := Color(0.92, 0.91, 0.87)
 const DIM := Color(0.92, 0.91, 0.87, 0.55)
 const WARM := Color(0.98, 0.84, 0.3)
@@ -391,9 +391,7 @@ func _refresh_list() -> void:
 			step.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			_list_box.add_child(step)
 
-func _make_ui_font(weight: int) -> FontVariation:
+func _make_ui_font(_weight: int) -> FontVariation:
 	var variation := FontVariation.new()
 	variation.base_font = FONT_FILE
-	var text_server := TextServerManager.get_primary_interface()
-	variation.variation_opentype = {text_server.name_to_tag("wght"): weight}
 	return variation
