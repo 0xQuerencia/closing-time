@@ -7,6 +7,7 @@ signal exited
 signal feed_selected(index: int)
 signal feed_viewed(index: int)
 signal feed_lost(index: int)
+signal archive_viewed
 const FONT := preload("res://assets/fonts/original/marlow.fnt")
 const FEED_SIZE := Vector2i(320, 240)
 const FRAME_SECONDS := 0.1  # ~10 fps, like a cheap recorder
@@ -53,6 +54,7 @@ var _opening_tape: Array = []
 var _playback_frames: Array = []
 var playback := false
 var _playback_cursor := -1
+var _archive: Array = []
 const RECORD_INTERVAL := 3.0  # per-feed archive sample, live monitor remains 10 fps
 const HISTORY_SECONDS := 300
 const OPENING_CLIP_MAX_FRAMES := 18
@@ -232,7 +234,7 @@ func _process(delta: float) -> void:
 		_toggle_playback()  # the recorder lost power, so drop back to the live (dark) screen
 	var dead: bool = feeds[selected].dead
 	_record_clock -= delta
-	if live and _record_clock <= 0.0:
+	if live and _record_clock <= 0.0 and not _production_mode():
 		# Archive each feed every three seconds, render/read back one camera per second.
 		# Avoid concentrating three GPU readbacks and JPEG encodes in one frame.
 		_record_clock = RECORD_INTERVAL / feeds.size()
@@ -269,6 +271,8 @@ func _process(delta: float) -> void:
 		_proxy.visible = viewing or live
 	_frame_clock -= delta
 	if _frame_clock > 0.0 or not live:
+		return
+	if _production_mode() and (not viewing or playback):
 		return
 	if not _someone_can_see():
 		return
@@ -344,7 +348,10 @@ func _someone_can_see() -> bool:
 func _update_overlay() -> void:
 	var minutes: int = (StoryClock.SHIFT_START + int(game.clock.elapsed)) % 1440
 	var hours: int = minutes / 60  # integer division is intended
-	var text := "11/05  %02d:%02d:%02d" % [hours, minutes % 60, int(Time.get_ticks_msec() / 1000.0) % 60]
+	var date := "11/05"
+	if _production_mode():
+		date = "11/24" if hours >= 12 else "11/25"
+	var text := "%s  %02d:%02d:%02d" % [date, hours, minutes % 60, int(Time.get_ticks_msec() / 1000.0) % 60]
 	var blink := int(Time.get_ticks_msec() / 600.0) % 2 == 0
 	for feed in feeds:
 		(feed.stamp as Label).text = text.substr(0, text.length() - 2) + "??" if _stamp_jam_left > 0.0 else text
@@ -400,6 +407,8 @@ func _show_selected_feed() -> void:
 		screen_material.set_shader_parameter("playback", 0.0)
 
 func _tape_frames(index: int) -> Array:
+	if _production_mode():
+		return _historical_tape() if index == 1 else []
 	var combined: Array = _opening_tape[index].duplicate()
 	combined.append_array(_history[index])
 	combined.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.at_msec) < int(b.at_msec))
@@ -414,6 +423,8 @@ func _tape_frames(index: int) -> Array:
 	return unique
 
 func _first_sighting_index(index: int) -> int:
+	if _production_mode():
+		return 0
 	var opening: Array = _opening_tape[index]
 	if opening.is_empty():
 		return -1
@@ -427,6 +438,9 @@ func _first_sighting_index(index: int) -> int:
 
 func _set_live_hint() -> void:
 	_hint.text = "A / D  camera     R  review tape     wheel  scrub     E  leave"
+	if _production_mode():
+		_hint.text = "A / D  camera     R  archive (rear hall)     E  leave"
+		return
 	if not _opening_tape[selected].is_empty():
 		_hint.text = "A / D  camera     R  review earlier lot footage     E  leave"
 
@@ -442,7 +456,7 @@ func _toggle_playback() -> void:
 		playback = true
 		_playback_cursor = _first_sighting_index(selected)
 		if _playback_cursor >= 0:
-			_hint.text = "EARLIER LOT FOOTAGE  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
+			_hint.text = ("ARCHIVE  %s     wheel  scrub     R  live     E  leave" if _production_mode() else "EARLIER LOT FOOTAGE  %s     wheel  scrub     R  live     E  leave") % _playback_frames[_playback_cursor].time
 		else:
 			_playback_cursor = _playback_frames.size() - 1
 			_hint.text = "RECENT TAPE  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
@@ -457,6 +471,9 @@ func _scrub_tape(step: int) -> void:
 		return
 	_playback_cursor = clampi(_playback_cursor + step, 0, _playback_frames.size() - 1)
 	_hint.text = "RECORDED  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
+	if _production_mode() and _playback_frames[_playback_cursor].get("evidence", false):
+		archive_viewed.emit()
+		_hint.text = "ARCHIVE  %s     evidence noted     R  live     E  leave" % _playback_frames[_playback_cursor].time
 	_show_selected_feed()
 
 func cycle(step: int) -> void:
@@ -562,6 +579,42 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			return
 		get_viewport().set_input_as_handled()
+
+func _production_mode() -> bool:
+	return game != null and game.director != null and game.director.production != null
+
+## Original, deterministic archive art. Four low-resolution frames are generated once,
+## rather than continuously reading back and compressing live GPU textures.
+func _historical_tape() -> Array:
+	if not _archive.is_empty():
+		return _archive
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8192006
+	for frame in range(4):
+		var image := Image.create(160, 120, false, Image.FORMAT_RGB8)
+		image.fill(Color("#292e2a"))
+		image.fill_rect(Rect2i(0,0,160,25),Color("#343b36"))
+		image.fill_rect(Rect2i(0,25,160,65),Color("#414842"))
+		image.fill_rect(Rect2i(0,90,160,30),Color("#222823"))
+		image.fill_rect(Rect2i(104,25,37,65),Color("#141914"))
+		image.fill_rect(Rect2i(106,27,33,61),Color("#242c26"))
+		image.fill_rect(Rect2i(0,36,42,54),Color("#303a33"))
+		for y in range(40,90,12):
+			image.fill_rect(Rect2i(0,y,42,2),Color("#68716a"))
+		if frame > 0:
+			var x := 119 - frame * 18
+			image.fill_rect(Rect2i(x,48,10,10),Color("#a1a39b"))
+			image.fill_rect(Rect2i(x-3,58,16,20),Color("#626e63"))
+			image.fill_rect(Rect2i(x-2,78,6,13),Color("#19231c"))
+			image.fill_rect(Rect2i(x+7,78,6,13),Color("#19231c"))
+			image.fill_rect(Rect2i(x-4,60,3,16),Color("#969b8e"))
+		for y in range(120):
+			for x in range(160):
+				var shade := rng.randf_range(-0.035,0.035) - (0.025 if y % 3 == 0 else 0.0)
+				var old := image.get_pixel(x,y)
+				image.set_pixel(x,y,Color(old.r+shade,old.g+shade,old.b+shade))
+		_archive.append({"texture":ImageTexture.create_from_image(image),"time":"08/19  00:12:%02d" % (frame*3),"at_msec":frame*3000,"evidence":frame == 3})
+	return _archive
 
 class SecurityTerminal extends Interactable:
 	var cctv: Cctv

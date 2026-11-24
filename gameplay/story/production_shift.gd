@@ -21,6 +21,7 @@ func setup(owner: StoryDirector, snapshot: Dictionary, resume := false) -> bool:
 	director.event_logged.connect(_on_director_event)
 	game.dialogue.finished.connect(_on_dialogue_finished)
 	game.phone.read_changed.connect(_on_phone_read)
+	game.security.cctv.archive_viewed.connect(func(): _record("dvr_clip"))
 	_build_spots()
 	journal = EvidenceJournal.new()
 	add_child(journal)
@@ -142,7 +143,7 @@ func _on_director_event(id: String) -> void:
 	match id:
 		"cameras_begin":
 			_record("security_alert")
-		"power_back":
+		"power_back", "power_bypassed":
 			_record("power_decision")
 		"security_done":
 			_record("safety_route_open")
@@ -186,7 +187,6 @@ func _build_spots() -> void:
 		"ledger_copy":[Vector3(7.15,.81,-5.13),false],
 		"training_binder":[Vector3(7.03,.83,-4.82),false],
 		"key_log":[Vector3(5.35,1.2,-3.11),true],
-		"dvr_clip":[Vector3(7.72,.81,-4.76),false],
 		"arthur_message":[Vector3(8.43,.80,-4.92),false],
 		"maintenance_log":[Vector3(4.58,1.35,-4.82),true]
 	}

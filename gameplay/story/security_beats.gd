@@ -77,9 +77,18 @@ func blackout() -> void:
 		{"id": "cover", "text": "Open the breaker panel", "guide": "Go through the stockroom into the narrow rear hall. Press E on the gray breaker box cover."},
 		{"id": "main", "text": "Switch the main on", "guide": "With the cover open, use E on the large main breaker."},
 		{"id": "security", "text": "Switch the security breaker on", "guide": "Use E on the smaller security breaker beside the main."}], 140)
-	game.interactor.message.emit("Power's out.  T  phone light")
+	game.interactor.message.emit("Power's out. T: phone light. Restore power or leave through the front." if director.production != null else "Power's out.  T  phone light")
 	director._later(3.0, func(): director._text("dina_6", "Dina", "The panel says you're on battery. Breaker box is in the back hall past the stockroom. Try the main.", 0, 15))
 	director._later(entry_fallback, leon_enters)
+
+func _physics_process(_delta: float) -> void:
+	if director == null or director.production == null or director.step != StoryDirector.Step.BLACKOUT:
+		return
+	var pos: Vector3 = game.player.global_position
+	if pos.z > ThreatBeats.ESCAPE_Z and absf(pos.x - 1.7) <= 2.2 and not sec.front_door.locked:
+		director._record("power_bypassed")
+		game.tasks.retire("power")
+		finish()
 
 func _on_cover_opened() -> void:
 	if director.step == StoryDirector.Step.BLACKOUT:
@@ -110,6 +119,8 @@ func power_back() -> void:
 
 ## Unlocks with the spare key, opens the rear door and stops just inside. Spooked off if the player walks up.
 func leon_enters() -> void:
+	if director.production != null and director._fired.has("security_done"):
+		return
 	if not director._once("leon_rear_entry"):
 		return
 	var leon := sec.spawn_intruder()
