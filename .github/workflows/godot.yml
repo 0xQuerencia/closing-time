@@ -28,6 +28,8 @@ jobs:
           mkdir -p "$target"
           cp -a /tmp/godot-templates/templates/. "$target/"
           godot --version
+      - name: Install validation dependency
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Existing engine checks
         run: bash scripts/validate_project.sh
       - name: Export browser package
