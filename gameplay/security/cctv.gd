@@ -177,7 +177,7 @@ func _build_ui() -> void:
 
 ## The clerk has no body in first person, so the cameras see a stand-in on a visibility layer the player's eyes skip.
 func _build_player_proxy() -> void:
-	var scene := load("res://assets/models/characters/vinrax/casual_male.glb") as PackedScene
+	var scene := load("res://assets/models/characters/original/jamie_lod1.glb") as PackedScene
 	if scene == null:
 		return
 	_proxy = scene.instantiate() as Node3D
