@@ -392,11 +392,16 @@
     }
   },
   "nora_greet": {
-    "start": "0",
+    "start": "a",
     "nodes": {
-      "0": {
+      "a": {
         "speaker": "Nora",
-        "text": "Hey, where'd you move the batteries? I have to get home before my roommate locks me out."
+        "text": "Where'd you move the batteries? I have to get home before my roommate locks me out.",
+        "next": "b"
+      },
+      "b": {
+        "speaker": "Jamie",
+        "text": "By the end of aisle three, I think."
       }
     }
   },
@@ -538,6 +543,43 @@
       "right": {
         "speaker": "Jamie",
         "text": "I'll write down what is actually here."
+      }
+    }
+  },
+  "gus_delivery": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Gus",
+        "text": "Two cartons. That's everything the depot sent.",
+        "next": "b"
+      },
+      "b": {
+        "speaker": "Jamie",
+        "text": "The invoice says three.",
+        "next": "c"
+      },
+      "c": {
+        "speaker": "Gus",
+        "text": "Sign for what I actually brought, not what the sheet says. Been getting calls about that all month."
+      }
+    }
+  },
+  "dina_excuse": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Dina",
+        "text": "Mind if I get past?"
+      }
+    }
+  },
+  "gus_excuse": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Gus",
+        "text": "Mind if I get past?"
       }
     }
   }
