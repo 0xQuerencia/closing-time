@@ -184,7 +184,8 @@ var persist_saves := false  # only the shipped game writes to disk; tests keep c
 func save_checkpoint(checkpoint: String) -> void:
 	checkpoint_data = SaveGame.snapshot(self, checkpoint)
 	if persist_saves:
-		SaveGame.write(checkpoint_data)
+		if SaveGame.write(checkpoint_data):
+			OpeningCheckpoint.erase()
 
 ## Rebuild the shop at the last checkpoint and start the next beat. Used for retry and for Continue.
 func load_checkpoint(data := {}) -> bool:
