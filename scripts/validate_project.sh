@@ -47,3 +47,9 @@ if rg -n 'SCRIPT ERROR|ERROR:' local/validation-threat.log; then
 fi
 rg 'THREAT TESTS COMPLETE' local/validation-threat.log
 echo '[PASS] Threat: Leon pathing and senses, hiding, three endings, retry, saves and menus'
+
+"$G" --headless --audio-driver Dummy --path . --script tests/chapter_progress_tests.gd > local/validation-chapters.log 2>&1
+if rg -n 'SCRIPT ERROR|ERROR:|FAIL:' local/validation-chapters.log; then
+  echo '[FAIL] Chapter progression checks'; exit 1
+fi
+rg 'CHAPTER PROGRESSION TESTS COMPLETE: 0 failures' local/validation-chapters.log
