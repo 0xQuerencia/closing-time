@@ -480,5 +480,65 @@
         "text": "Thank you. Take care getting home."
       }
     }
+  },
+  "inventory_count": {
+    "start": "q",
+    "nodes": {
+      "q": {
+        "speaker": "Jamie",
+        "text": "Inventory sheet: total bottles in rows A–C?",
+        "choices": [
+          {
+            "text": "12 bottles",
+            "next": "wrong"
+          },
+          {
+            "text": "11 bottles",
+            "next": "right",
+            "set": {
+              "inventory_correct": true
+            }
+          }
+        ]
+      },
+      "wrong": {
+        "speaker": "Jamie",
+        "text": "That doesn't match the count. Better check again."
+      },
+      "right": {
+        "speaker": "Jamie",
+        "text": "I'll write down what is actually here."
+      }
+    }
+  },
+  "delivery_count": {
+    "start": "q",
+    "nodes": {
+      "q": {
+        "speaker": "Jamie",
+        "text": "Invoice claims three cartons. How many arrived?",
+        "choices": [
+          {
+            "text": "3 cartons; sign as printed",
+            "next": "wrong"
+          },
+          {
+            "text": "2 cartons; note the discrepancy",
+            "next": "right",
+            "set": {
+              "delivery_correct": true
+            }
+          }
+        ]
+      },
+      "wrong": {
+        "speaker": "Jamie",
+        "text": "That doesn't match the count. Better check again."
+      },
+      "right": {
+        "speaker": "Jamie",
+        "text": "I'll write down what is actually here."
+      }
+    }
   }
 }

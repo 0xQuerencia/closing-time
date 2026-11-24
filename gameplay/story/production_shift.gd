@@ -8,6 +8,8 @@ var spots: Dictionary = {}
 var stage_flags: Dictionary = {}
 var ready_for_customers := false
 var transitioning := false
+var cash_envelope: Product
+var journal: EvidenceJournal
 
 func setup(owner: StoryDirector, snapshot: Dictionary, resume := false) -> bool:
 	director = owner
@@ -20,6 +22,9 @@ func setup(owner: StoryDirector, snapshot: Dictionary, resume := false) -> bool:
 	game.dialogue.finished.connect(_on_dialogue_finished)
 	game.phone.read_changed.connect(_on_phone_read)
 	_build_spots()
+	journal = EvidenceJournal.new()
+	add_child(journal)
+	journal.setup(self)
 	if not resume:
 		director._set_step(StoryDirector.Step.INTRO)
 		director._add_chores()
@@ -32,18 +37,18 @@ func _enter_chapter() -> void:
 		"handover":
 			game.clock.elapsed = 5
 			game.clock.changed.emit(game.clock.text())
-			_task("handover", "Start the shift", [["dina_handover","Read Dina's handover at the counter"],["cooler_counted","Count the cooler stock"],["mara_served","Serve Mara"]])
+			_task("handover", "Start the shift", [["dina_handover","Read Dina's handover at the counter"],["cooler_counted","Inspect three cooler rows and submit the count"],["mara_served","Serve Mara"]])
 			director._text("dina_handover_sms","Dina","I'm in the office. Read the handover sheet first, then count the drinks in the cooler.",23,5)
 		"routine":
 			director._set_step(StoryDirector.Step.WORK)
 			director._text("routine_sms","Kay","You still owe me breakfast. Don't forget to eat something.",23,24)
-			_task("routine", "Evening work", [["ben_served","Serve Ben"],["nora_served","Serve Nora"],["delivery_checked","Check the delivery invoice"],["restock_done","Finish stocking shelves"]])
+			_task("routine", "Evening work", [["ben_served","Serve Ben"],["nora_served","Serve Nora"],["delivery_checked","Check the cartons and reconcile the invoice"],["restock_done","Finish stocking shelves"]])
 			_sync_chores()
 			director._spawn("ben",StoryDirector.Step.BEN)
 		"closing":
 			director._set_step(StoryDirector.Step.WORK)
 			director._text("close_sms","Dina","Cash drop goes in the office drawer. Trash out, then lift the rear latch before you turn the key.",23,49)
-			_task("closing_shift", "Closing checklist", [["ruth_served","Serve Ruth"],["leon_first_left","Serve the last customer"],["cash_drop_done","Seal the cash drop"],["trash_done","Take the trash to pickup"],["latch_checked","Lock the rear latch"],["leon_second_left","Finish the last transaction"]])
+			_task("closing_shift", "Closing checklist", [["ruth_served","Serve Ruth"],["leon_first_left","Serve the last customer"],["cash_drop_done","Take the sealed envelope from the counter to the office drawer"],["trash_done","Take the trash to pickup"],["latch_checked","Lock the rear latch"],["leon_second_left","Finish the last transaction"]])
 			_sync_chores()
 			director._spawn("ruth",StoryDirector.Step.WORK)
 		"outage":
@@ -122,6 +127,10 @@ func _on_dialogue_finished(id: String) -> void:
 		if not ready_for_customers:
 			ready_for_customers = true
 			director._spawn("mara",StoryDirector.Step.MARA)
+	if id == "inventory_count" and game.dialogue.flags.get("inventory_correct",false):
+		_record("cooler_counted")
+	if id == "delivery_count" and game.dialogue.flags.get("delivery_correct",false):
+		_record("delivery_checked")
 	if id == "mara_talk" and game.dialogue.flags.get("mara_memory",false):
 		_record("mara_memory")
 	if id == "ben_talk" and game.dialogue.flags.get("ben_memory",false):
@@ -156,7 +165,13 @@ func _build_spots() -> void:
 	_add_spot("dina_handover","handover","Handover sheet",Vector3(-7.8,1.02,4.22),Color("#c7b994"))
 	_add_spot("cooler_counted","handover","Cooler inventory card",Vector3(-5.9,1.30,-4.59),Color("#b9bca5"),true)
 	_add_spot("delivery_checked","routine","Delivery invoice",Vector3(5.60,.92,1.32),Color("#cfbf9b"))
-	_add_spot("cash_drop_done","closing","Cash drop ledger",Vector3(8.10,.80,-4.91),Color("#bfa67d"))
+	_add_spot("cooler_row_a","handover","Cooler row A",Vector3(-7.1,1.3,-4.58),Color("#b9bca5"),true)
+	_add_spot("cooler_row_b","handover","Cooler row B",Vector3(-3.96,1.3,-4.58),Color("#b9bca5"),true)
+	_add_spot("cooler_row_c","handover","Cooler row C",Vector3(-.82,1.3,-4.58),Color("#b9bca5"),true)
+	_add_spot("delivery_a","routine","Carton A label",Vector3(5.42,.75,1.05),Color("#bfa67d"))
+	_add_spot("delivery_b","routine","Carton B label",Vector3(6.45,.75,1.42),Color("#bfa67d"))
+	_add_spot("cash_pickup","closing","Prepare cash envelope",Vector3(-7.65,1.01,4.42),Color("#bfa67d"))
+	_add_spot("cash_drop_done","closing","Office cash drawer",Vector3(8.10,.80,-4.91),Color("#bfa67d"))
 	var positions := {
 		"opening_photo":[Vector3(-8.3,1.74,5.87),true],
 		"employee_schedule":[Vector3(5.14,1.59,-2.85),true],
@@ -221,6 +236,8 @@ func _refresh_spots() -> void:
 		var row: Dictionary = spots[id]
 		var node: Interactable = row.node
 		var available: bool = row.chapter == progress.current_id()
+		if id == "cash_pickup" and (is_instance_valid(cash_envelope) or progress.events.has("cash_drop_done")):
+			available = false
 		node.visible = available
 		node.enabled = available
 
@@ -236,15 +253,54 @@ func _use(id: String) -> void:
 		"dina_handover":
 			if not progress.events.has(id) and not game.dialogue.is_active():
 				game.dialogue.start("production_handover")
+		"cooler_row_a", "cooler_row_b", "cooler_row_c":
+			var count: int = {"cooler_row_a":4,"cooler_row_b":3,"cooler_row_c":4}[id]
+			stage_flags[id] = true
+			game.interactor.message.emit("Row %s: %d bottles." % [id.right(1).to_upper(),count])
 		"cooler_counted":
-			game.interactor.message.emit("Cooler count: eleven bottles. The sheet says twelve. Write down eleven.")
-			_record(id)
+			if progress.events.has(id):
+				return
+			if not _checked(["cooler_row_a","cooler_row_b","cooler_row_c"]):
+				game.interactor.message.emit("Check rows A, B and C before signing.")
+			elif not game.dialogue.is_active():
+				game.dialogue.flags.erase("inventory_correct")
+				game.dialogue.start("inventory_count")
+		"delivery_a", "delivery_b":
+			stage_flags[id] = true
+			game.interactor.message.emit("Carton %s: %s." % [id.right(1).to_upper(),"received, seal intact" if id == "delivery_a" else "received; third carton not delivered"])
 		"delivery_checked":
-			game.interactor.message.emit("Gus marked the actual quantity. One carton less than the invoice. Signed with correction.")
-			_record(id)
+			if progress.events.has(id):
+				return
+			if not _checked(["delivery_a","delivery_b"]):
+				game.interactor.message.emit("Inspect both carton labels before signing the invoice.")
+			elif not game.dialogue.is_active():
+				game.dialogue.flags.erase("delivery_correct")
+				game.dialogue.start("delivery_count")
+		"cash_pickup":
+			if game.interactor.held != null:
+				game.interactor.message.emit("Put down what you're holding first.")
+				return
+			if not is_instance_valid(cash_envelope) and not progress.events.has("cash_drop_done"):
+				cash_envelope = game.spawn_product("cash_envelope",null)
+				game.interactor.pick_up(cash_envelope)
+				_refresh_spots()
+				game.interactor.message.emit("Sealed. Take this to the office drawer.")
 		"cash_drop_done":
-			game.interactor.message.emit("Counted and sealed. Cash drop ready for the office drawer.")
+			if progress.events.has(id):
+				return
+			if not is_instance_valid(cash_envelope) or game.interactor.held != cash_envelope:
+				game.interactor.message.emit("Bring the sealed cash envelope from the counter.")
+				return
+			game.interactor.release_held()
+			cash_envelope.queue_free()
 			_record(id)
+			game.interactor.message.emit("Cash secured in the drawer.")
+
+func _checked(ids: Array) -> bool:
+	for id in ids:
+		if not stage_flags.has(id):
+			return false
+	return true
 
 func snapshot() -> Dictionary:
 	return progress.snapshot()

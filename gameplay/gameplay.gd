@@ -49,7 +49,10 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	interactor = Interactor.new()
 	add_child(interactor)
 	interactor.setup(player.camera, player)
-	interactor.placement_validator = func(pos, _item): return checkout.placement_reason(pos)
+	interactor.placement_validator = func(pos, item):
+		if item.product_id == "cash_envelope" and checkout.in_zone(pos):
+			return "That is the deposit, not a sale item."
+		return checkout.placement_reason(pos)
 	hud = GameHud.new()
 	add_child(hud)
 	hud.setup(interactor, dialogue, tasks)
