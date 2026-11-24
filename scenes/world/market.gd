@@ -3,6 +3,7 @@ extends Node3D
 const Player = preload("res://scenes/world/inspection_player.gd")
 const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
+const ArtReference = preload("res://scenes/world/art_reference.gd")
 var player: CharacterBody3D
 var capture_mode := false
 var samples: Array[float] = []
@@ -20,7 +21,12 @@ func _ready() -> void:
 			var instance := scene.instantiate()
 			add_child(instance)
 			RetroMaterials.apply_nearest_filter(instance)
-	add_child(OriginalExterior.new())
+	var exterior := ArtReference.scene("res://assets/models/exterior.glb")
+	if exterior != null:
+		exterior.name = "ReferenceExterior"
+		add_child(exterior)
+	else:
+		add_child(OriginalExterior.new())
 	build_original_props()
 	build_collisions()
 	build_glass()
@@ -212,7 +218,7 @@ func build_original_props() -> void:
 		["camera", Vector3(3.25, 2.72, 6.12), PI],
 	]
 	for placement in placements:
-		var prop := factory.make(placement[0])
+		var prop := ArtReference.prop(str(placement[0]), factory)
 		if placement[0] == "crt":
 			prop.name = "OfficeMonitor"
 		prop.position = placement[1]

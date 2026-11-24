@@ -27,6 +27,7 @@ func _ready() -> void:
 	OpeningCheckpoint.write(progress.snapshot())
 	_build_road()
 	_build_car()
+	add_child(preload("res://scenes/world/retro_effects.gd").new())
 	_build_ui()
 	_build_audio()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

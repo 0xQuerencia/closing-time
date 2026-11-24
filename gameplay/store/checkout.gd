@@ -57,21 +57,19 @@ func build(world: Node3D) -> void:
 ## Real CRT monitor + keyboard on the cash drawer; the register text is drawn on the CRT glass.
 func _build_workstation() -> void:
 	var factory := OriginalOfficeProps.new()
-	var crt := factory.make("crt")
+	var crt := preload("res://scenes/world/art_reference.gd").prop("crt",factory)
 	crt.position = CRT_POS
 	add_child(crt)
-	var keyboard := factory.make("keyboard")
+	var keyboard := preload("res://scenes/world/art_reference.gd").prop("keyboard",factory)
 	keyboard.position = Vector3(-5.8, COUNTER_TOP + 0.004, 4.6)
 	add_child(keyboard)
 	_build_scanner()
-	var glass := crt.find_child("OriginalCRTGlass",true,false) as MeshInstance3D
-	if glass != null:
-		var lcd_material := StandardMaterial3D.new()
-		lcd_material.albedo_color = Color(0.02,0.06,0.035)
-		lcd_material.emission_enabled = true
-		lcd_material.emission = Color(0.03,0.09,0.05)
-		lcd_material.roughness = .3
-		glass.material_override = lcd_material
+	var lcd_material := StandardMaterial3D.new()
+	lcd_material.albedo_color = Color(0.02,0.06,0.035)
+	lcd_material.emission_enabled = true
+	lcd_material.emission = Color(0.03,0.09,0.05)
+	lcd_material.roughness = .3
+	preload("res://scenes/world/art_reference.gd").set_screen(crt,lcd_material)
 	_lcd = Label3D.new()
 	_lcd.font = preload("res://assets/fonts/original/marlow.fnt")
 	_lcd.pixel_size = 0.00058

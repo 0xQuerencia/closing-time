@@ -16,7 +16,7 @@ mkdir -p "$target"
 unzip -jo "$work/templates.zip" 'templates/web*.zip' -d "$target"
 mkdir -p build/web
 "$engine" --headless --audio-driver Dummy --path . --editor --import --quit
-"$engine" --headless --audio-driver Dummy --path . --export-release Web build/web/index.html
+"$engine" --headless --audio-driver Dummy --path . --export-release "${GODOT_WEB_PRESET:-Web}" build/web/index.html
 for file in index.html index.js index.wasm index.pck; do
   test -s "build/web/$file"
 done

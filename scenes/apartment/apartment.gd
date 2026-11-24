@@ -29,6 +29,7 @@ func _ready() -> void:
 		progress.restore(get_tree().get_meta("closing_time_opening_preview"))
 		get_tree().remove_meta("closing_time_opening_preview")
 	_build_room()
+	add_child(preload("res://scenes/world/retro_effects.gd").new())
 	_build_ui()
 	player = CharacterBody3D.new()
 	player.set_script(Player)
