@@ -12,6 +12,10 @@ var materials: Dictionary = {}
 var selected := ""
 var leaving := false
 var epilogue := ""
+var prologue: CanvasLayer
+var prologue_text: Label
+var prologue_page := 0
+const PROLOGUE_LINES := ["This happened in November 2006. I was working nights at a little market outside Bellwick.","It was just a favor for someone at work. I thought I would be home before one.","There was something I didn't know about the man who came in that night."]
 
 func _ready() -> void:
 	GameInput.ensure()
@@ -39,10 +43,13 @@ func _ready() -> void:
 			targets[id].node.set_collision_layer_value(1,false)
 	OpeningCheckpoint.write(progress.snapshot())
 	_refresh()
+	if get_tree().has_meta("closing_time_new_game"):
+		get_tree().remove_meta("closing_time_new_game")
+		_show_prologue()
 	narration.text = "I was twenty when I started working nights at Marlow's.\nIt was supposed to be a favor, just one extra shift."
 
 func _physics_process(_delta: float) -> void:
-	if player == null or leaving:
+	if player == null or leaving or is_instance_valid(prologue):
 		return
 	selected = ""
 	var camera: Camera3D = player.camera
@@ -58,6 +65,14 @@ func _physics_process(_delta: float) -> void:
 	prompt.text = "+\n[E] " + targets[selected].verb if targets.has(selected) else "+"
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_instance_valid(prologue):
+		if event is InputEventKey and event.pressed and not event.echo:
+			if event.physical_keycode == KEY_ESCAPE:
+				_close_prologue()
+			elif event.physical_keycode in [KEY_ENTER,KEY_SPACE,KEY_E]:
+				_next_prologue()
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed(GameInput.INTERACT) and not selected.is_empty() and not leaving:
 		_use(selected)
 		get_viewport().set_input_as_handled()
@@ -273,3 +288,48 @@ func _build_epilogue() -> void:
 			child.environment.background_color = Color("#8b9295")
 			child.environment.ambient_light_color = Color("#d5cfc2")
 			child.environment.ambient_light_energy = .85
+
+func _show_prologue() -> void:
+	player.enabled = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	prologue = CanvasLayer.new()
+	prologue.layer = 40
+	add_child(prologue)
+	var shade := ColorRect.new()
+	shade.color = Color(.025,.025,.025)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	prologue.add_child(shade)
+	var box := VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	box.offset_left = -340
+	box.offset_right = 340
+	box.offset_top = -130
+	box.add_theme_constant_override("separation",24)
+	shade.add_child(box)
+	prologue_text = Label.new()
+	prologue_text.text = PROLOGUE_LINES[0]
+	prologue_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	prologue_text.add_theme_font_override("font",preload("res://assets/fonts/original/marlow.fnt"))
+	prologue_text.add_theme_font_size_override("font_size",28)
+	box.add_child(prologue_text)
+	for row in [["Continue",_next_prologue],["Skip",_close_prologue]]:
+		var button := Button.new()
+		button.text = row[0]
+		button.flat = true
+		button.pressed.connect(row[1])
+		box.add_child(button)
+
+func _next_prologue() -> void:
+	prologue_page += 1
+	if prologue_page >= PROLOGUE_LINES.size():
+		_close_prologue()
+	else:
+		prologue_text.text = PROLOGUE_LINES[prologue_page]
+
+func _close_prologue() -> void:
+	if is_instance_valid(prologue):
+		prologue.queue_free()
+		prologue = null
+	player.enabled = true
+	if DisplayServer.get_name() != "headless":
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
