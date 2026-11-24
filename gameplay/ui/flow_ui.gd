@@ -366,6 +366,8 @@ func show_title() -> void:
 	var first := _button("start", "New Game", func(): _begin(false))
 	if SaveGame.exists():
 		_button("continue", "Continue", func(): _begin(true))
+	if game.persist_saves:
+		_button("opening_preview", "Opening preview", func(): hide_all(); get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn"))
 	_button("guide", "How to play", func(): show_guide("title"))
 	_button("settings", "Settings", show_settings)
 	_button("quit", "Quit", func(): quit_requested.emit())
