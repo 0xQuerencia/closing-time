@@ -1,6 +1,7 @@
 class_name ProductCatalog
 ## Fictional products. Prices are integer cents.
 const ITEMS := {
+	"cash_envelope": {"name":"Sealed cash envelope","price":0,"shape":"box","size":Vector3(.21,.025,.13),"color":Color(.61,.48,.29),"band":Color(.85,.76,.55),"blurb":"Closing deposit. Put it in the office drawer."},
 	"crisps": {"name": "Hollis Salt Crisps", "price": 249, "shape": "box", "size": Vector3(0.21, 0.28, 0.07), "color": Color(0.5, 0.1, 0.07), "band": Color(0.88, 0.8, 0.55), "blurb": "Family bag. Best before March."},
 	"cola": {"name": "Marlow's Cola", "price": 179, "shape": "can", "size": Vector3(0.066, 0.122, 0.066), "color": Color(0.35, 0.04, 0.04), "band": Color(0.85, 0.82, 0.75), "blurb": "330 ml, ice cold if the cooler is behaving."},
 	"water": {"name": "Birch Spring Water", "price": 149, "shape": "can", "size": Vector3(0.07, 0.21, 0.07), "color": Color(0.55, 0.7, 0.78), "band": Color(0.12, 0.3, 0.22), "blurb": "500 ml. Still."},
