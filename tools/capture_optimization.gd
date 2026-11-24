@@ -46,10 +46,10 @@ func _capture() -> void:
 	for i in 40:
 		var sound := Foley.take("step_tile")
 		assert(sound != previous, "Consecutive footsteps must vary")
-		assert(sound.get_length() > 0.04 and sound.get_length() < 0.5, "Footstep recording must import correctly")
-		unique[sound.resource_path] = true
+		assert(sound.get_length() > 0.04 and sound.get_length() < 0.5, "Footstep must have a valid duration")
+		unique[sound.resource_name] = true
 		previous = sound
-	assert(unique.size() == 5, "All five recordings should be available")
+	assert(unique.size() == 5, "All five generated takes should be available")
 	print("OPTIMIZATION CAPTURE COMPLETE; graphics presets and 40 footstep selections passed")
 	await market.finish_run(0)
 
