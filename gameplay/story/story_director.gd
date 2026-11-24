@@ -22,6 +22,7 @@ var _away := 0.0
 var _chores_done := {}
 var beats: SecurityBeats
 var threat: ThreatBeats
+var production: ProductionShift
 
 func setup(owner_game: Gameplay) -> StoryDirector:
 	game = owner_game
@@ -39,6 +40,31 @@ func setup(owner_game: Gameplay) -> StoryDirector:
 	add_child(threat)
 	return self
 
+func start_production(snapshot: Dictionary) -> bool:
+	if step != Step.IDLE or production != null:
+		return false
+	production = ProductionShift.new()
+	add_child(production)
+	if not production.setup(self,snapshot):
+		production.queue_free()
+		production = null
+		return false
+	return true
+
+func restore_production(snapshot: Dictionary) -> bool:
+	if production != null:
+		var restored := production.progress.restore(snapshot)
+		if restored:
+			production._refresh_spots()
+		return restored
+	production = ProductionShift.new()
+	add_child(production)
+	if not production.setup(self,snapshot,true):
+		production.queue_free()
+		production = null
+		return false
+	return true
+
 func start() -> bool:
 	if step != Step.IDLE:
 		return false
@@ -51,7 +77,7 @@ func start() -> bool:
 	return true
 
 func _process(delta: float) -> void:
-	if step != Step.LEON_1_AWAY:
+	if production != null or step != Step.LEON_1_AWAY:
 		return
 	_away += delta
 	var enough := _chores_done.size() >= LEON_RETURN_AFTER_CHORES and _away >= LEON_RETURN_MIN_AWAY
@@ -80,6 +106,9 @@ func _on_sale_completed(_tx: Dictionary) -> void:
 
 func _on_customer_finished(customer: Customer) -> void:
 	var id: String = customer.profile.id
+	if production != null:
+		production.customer_left(id)
+		return
 	match id:
 		"mara":
 			if step != Step.MARA:
@@ -146,6 +175,8 @@ func _on_task_completed(task_id: String) -> void:
 	if task_id in ["restock", "trash", "latch"]:
 		_chores_done[task_id] = true
 		_record("chore_" + task_id)
+		if production != null:
+			production.task_done(task_id)
 
 func _on_clue_seen(clue_id: String) -> void:
 	flags[clue_id + "_seen"] = true
