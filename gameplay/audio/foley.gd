@@ -1,31 +1,36 @@
 class_name Foley
-## Recorded shoe steps and synthesised object one-shots: products in the hand and door hardware.
+## Original synthesised shoe steps and object one-shots: products in the hand and door hardware.
 ## Every sound has a few takes so repeats do not machine-gun. Built once and cached.
 const RATE := 22050
 const TAKES := 4
 static var _bank: Dictionary = {}
-static var _last_step := -1
-const STEPS := [
-	preload("res://assets/audio/footsteps/footstep_concrete_000.wav"),
-	preload("res://assets/audio/footsteps/footstep_concrete_001.wav"),
-	preload("res://assets/audio/footsteps/footstep_concrete_002.wav"),
-	preload("res://assets/audio/footsteps/footstep_concrete_003.wav"),
-	preload("res://assets/audio/footsteps/footstep_concrete_004.wav")]
+static var _last_step: Dictionary = {}
 
+static func warm_steps() -> void:
+	for kind in ["step_tile", "step_wet"]:
+		_ensure_bank(kind)
+
+static func _ensure_bank(kind: String) -> void:
+	if _bank.has(kind):
+		return
+	var takes: Array[AudioStreamWAV] = []
+	var count := 5 if kind in ["step_tile", "step_wet"] else TAKES
+	for i in count:
+		var sample := _build(kind, hash(kind) + i * 7919)
+		sample.resource_name = "%s_%d" % [kind, i]
+		takes.append(sample)
+	_bank[kind] = takes
 
 ## A random take of `kind`. Kinds: step_tile, step_wet, metal, plastic, paper, bag, card, latch, door_shut, glass_shut, bolt.
 static func take(kind: String) -> AudioStreamWAV:
-	if kind in ["step_tile", "step_wet"]:
-		# Loaded during scene setup, never synthesised on the first walking frame.
-		_last_step = (_last_step + 1 + randi() % (STEPS.size() - 1)) % STEPS.size()
-		return STEPS[_last_step]
-	if not _bank.has(kind):
-		var takes: Array[AudioStreamWAV] = []
-		for i in TAKES:
-			takes.append(_build(kind, hash(kind) + i * 7919))
-		_bank[kind] = takes
+	_ensure_bank(kind)
 	var list: Array = _bank[kind]
-	return list[randi() % list.size()]
+	var previous: int = _last_step.get(kind, -1)
+	var selected := randi() % list.size()
+	if previous >= 0:
+		selected = (previous + 1 + randi() % (list.size() - 1)) % list.size()
+	_last_step[kind] = selected
+	return list[selected]
 
 ## What a product sounds like in the hand, from its catalogue id.
 static func handling_kind(product_id: String) -> String:
@@ -60,6 +65,8 @@ static func _build(kind: String, seed_value: int) -> AudioStreamWAV:
 	rng.seed = seed_value
 	var out: PackedFloat32Array
 	match kind:
+		"step_tile", "step_wet":
+			out = _shoe(rng, kind == "step_wet")
 		"metal":
 			out = _metal(rng)
 		"plastic":
@@ -79,6 +86,24 @@ static func _build(kind: String, seed_value: int) -> AudioStreamWAV:
 		_:
 			out = _card(rng)
 	return _wav(out)
+
+static func _shoe(rng: RandomNumberGenerator, wet: bool) -> PackedFloat32Array:
+	var out := _silence(rng.randf_range(.19, .25))
+	var toe := rng.randf_range(.038, .065)
+	_knock(out, .002, rng.randf_range(78.0, 108.0), .032, .55)
+	_knock(out, .005, rng.randf_range(180.0, 240.0), .019, .24)
+	_noise_burst(out, rng, .002, .012, .42, .32)
+	_knock(out, toe, rng.randf_range(125.0, 175.0), .022, .26)
+	_noise_burst(out, rng, toe, .021, .19, .45)
+	if wet:
+		_noise_burst(out, rng, .018, .045, .24, .65)
+		for i in 6:
+			_tick(out, rng.randf_range(.025, .095), rng.randf_range(800.0, 2200.0), .009, .035)
+	# Short attack/release to avoid hard PCM edges.
+	for i in mini(96, out.size()):
+		out[i] *= float(i) / 96.0
+		out[out.size() - 1 - i] *= float(i) / 96.0
+	return out
 
 # --- generators -----------------------------------------------------------------------------------
 

@@ -23,6 +23,7 @@ func setup(owner_game: Gameplay) -> Soundscape:
 	game = owner_game
 	player = game.player
 	name = "Soundscape"
+	Foley.warm_steps()
 	_ensure_buses()
 	_build_room()
 	_rain = AudioStreamPlayer.new()
