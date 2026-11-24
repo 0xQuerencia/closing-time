@@ -38,6 +38,19 @@ jobs:
           godot --headless --path . --script tests/original_characters_tests.gd
       - name: Export browser package
         run: bash scripts/build_web.sh
+      - name: Audit packaged resource contents
+        run: bash scripts/audit_web_pack.sh
+      - name: Browser smoke test (software WebGL)
+        run: |
+          npm install --prefix /tmp/closing-time-browser playwright
+          /tmp/closing-time-browser/node_modules/.bin/playwright install --with-deps chromium
+          NODE_PATH=/tmp/closing-time-browser/node_modules node scripts/browser_smoke.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-smoke
+          path: build/browser-smoke/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: closing-time-web
