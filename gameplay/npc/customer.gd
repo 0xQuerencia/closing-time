@@ -82,27 +82,12 @@ const HAND_RIGS := [
 	"upper_axis": Vector3.RIGHT, "lower_axis": Vector3.RIGHT, "upper_angle": 0.0, "lower_angle": 1.1},
 	{"hand": "RightHand", "upper": "RightUpperArm", "lower": "RightLowerArm", "offset": Vector3(0, 0.05, 0), "tilt": Vector3(PI / 2, 0, 0),
 	"upper_axis": Vector3.BACK, "lower_axis": Vector3.BACK, "upper_angle": 0.0, "lower_angle": -1.1}]
-const MODELS := {
-	"vinrax": "res://assets/models/characters/vinrax/casual_male.glb",
-	"young_man": "res://assets/models/characters/young_man.glb",
-	"office_worker": "res://assets/models/characters/office_worker.glb"}
-const OUTFITS := {
-	"leon_jacket": "res://assets/models/characters/vinrax/casual_male_leon_jacket.png",
-	"leon_overshirt": "res://assets/models/characters/vinrax/casual_male_leon_overshirt.png"}
-
 func _build_body() -> void:
-	var original_leon := String(profile.get("id", "")).begins_with("leon")
-	var model_path: String = "res://assets/models/characters/original/leon_lod0.glb" if original_leon else MODELS.get(profile.get("model", "vinrax"), MODELS.vinrax)
-	var model_scene := load(model_path) as PackedScene
-	if model_scene == null:
-		push_error("Customer visual model failed to load: " + model_path)
+	var model := OriginalCast.instantiate(str(profile.get("id","ben")))
+	if model == null:
+		push_error("Original customer model failed to load")
 		return
-	var model := model_scene.instantiate()
 	model.name = "CustomerVisual"
-	if not original_leon and profile.has("outfit"):
-		_apply_outfit(model, OUTFITS[profile.outfit])
-	if not original_leon and profile.get("cap", false):
-		_attach_cap(model)
 	# These authored models face +Z; the store's customer paths use Godot's -Z forward.
 	model.rotation.y = PI
 	add_child(model)
@@ -167,53 +152,6 @@ func _rig_hand(model: Node) -> void:
 	_carry.upper_angle = rig.upper_angle
 	_carry.lower_angle = rig.lower_angle
 	skeleton.add_child(_carry)
-
-## Outfit variant of the shared texture (same UVs, only the clothing recoloured).
-func _apply_outfit(model: Node, texture_path: String) -> void:
-	var texture := load(texture_path) as Texture2D
-	if texture == null:
-		return
-	for mesh_instance in model.find_children("*", "MeshInstance3D", true, false):
-		var mi := mesh_instance as MeshInstance3D
-		if mi.mesh == null:
-			continue
-		for surface in mi.mesh.get_surface_count():
-			var base := mi.get_active_material(surface) as BaseMaterial3D
-			if base == null:
-				continue
-			var tinted := base.duplicate() as BaseMaterial3D
-			tinted.albedo_texture = texture
-			mi.set_surface_override_material(surface, tinted)
-
-## Simple low-poly cap on the head bone (Vinrax has none of his own).
-func _attach_cap(model: Node) -> void:
-	var skeletons := model.find_children("*", "Skeleton3D", true, false)
-	if skeletons.is_empty():
-		return
-	var skeleton := skeletons[0] as Skeleton3D
-	var attach := BoneAttachment3D.new()
-	attach.bone_name = "head" if skeleton.find_bone("head") >= 0 else "Head"
-	skeleton.add_child(attach)
-	var cloth := StandardMaterial3D.new()
-	cloth.albedo_color = Color(0.2, 0.22, 0.2)
-	cloth.roughness = 0.9
-	var crown := MeshInstance3D.new()
-	var dome := SphereMesh.new()
-	dome.radius = 0.112
-	dome.height = 0.16
-	dome.is_hemisphere = true
-	crown.mesh = dome
-	crown.material_override = cloth
-	crown.position = Vector3(0, 0.082, -0.012)
-	attach.add_child(crown)
-	var brim := MeshInstance3D.new()
-	var brim_mesh := BoxMesh.new()
-	brim_mesh.size = Vector3(0.17, 0.01, 0.085)
-	brim.mesh = brim_mesh
-	brim.material_override = cloth
-	brim.position = Vector3(0, 0.1, 0.1)
-	brim.rotation.x = 0.18
-	attach.add_child(brim)
 
 func _set_phase(next: Phase) -> void:
 	phase = next
