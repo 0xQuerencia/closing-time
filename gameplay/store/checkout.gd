@@ -56,28 +56,31 @@ func build(world: Node3D) -> void:
 
 ## Real CRT monitor + keyboard on the cash drawer; the register text is drawn on the CRT glass.
 func _build_workstation() -> void:
-	var crt := _spawn_prop("res://assets/models/office_props/crt_monitor__static.glb", CRT_POS)
-	_spawn_prop("res://assets/models/office_props/keyboard.glb", Vector3(-5.8, COUNTER_TOP + 0.004, 4.6))
+	var factory := OriginalOfficeProps.new()
+	var crt := factory.make("crt")
+	crt.position = CRT_POS
+	add_child(crt)
+	var keyboard := factory.make("keyboard")
+	keyboard.position = Vector3(-5.8, COUNTER_TOP + 0.004, 4.6)
+	add_child(keyboard)
 	_build_scanner()
-	if crt:
-		var glass := crt.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
+	var glass := crt.find_child("OriginalCRTGlass",true,false) as MeshInstance3D
+	if glass != null:
 		var lcd_material := StandardMaterial3D.new()
-		lcd_material.albedo_color = Color(0.02, 0.06, 0.035)
+		lcd_material.albedo_color = Color(0.02,0.06,0.035)
 		lcd_material.emission_enabled = true
-		lcd_material.emission = Color(0.03, 0.09, 0.05)
-		lcd_material.roughness = 0.3
-		glass.set_surface_override_material(1, lcd_material)
+		lcd_material.emission = Color(0.03,0.09,0.05)
+		lcd_material.roughness = .3
+		glass.material_override = lcd_material
 	_lcd = Label3D.new()
-	var mono := SystemFont.new()
-	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Liberation Mono", "monospace"])
-	_lcd.font = mono
+	_lcd.font = preload("res://assets/fonts/original/marlow.fnt")
 	_lcd.pixel_size = 0.00058
 	_lcd.font_size = 44
 	_lcd.modulate = Color(0.62, 0.95, 0.62)
 	_lcd.outline_size = 0
 	_lcd.shaded = false
 	_lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.1895)
+	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.1945)
 	add_child(_lcd)
 
 ## A handheld scanner in its cradle by the keyboard, window toward the customer. It flashes red on each scan.

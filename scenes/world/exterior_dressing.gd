@@ -56,9 +56,7 @@ func _label(text: String, pos: Vector3, size: int, pixel: float, color: Color, i
 	label.shaded = not unshaded
 	label.double_sided = false
 	label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(["DejaVu Sans", "Liberation Sans", "sans-serif"])
-	font.font_weight = 800
+	var font := preload("res://assets/fonts/original/marlow.fnt")
 	var variation := FontVariation.new()
 	variation.base_font = font
 	if italic:
@@ -182,9 +180,7 @@ func _dress_store_sign() -> void:
 		label.modulate = SIGN_RED
 		label.position.z += 0.05
 		var variation := FontVariation.new()
-		var base := SystemFont.new()
-		base.font_names = PackedStringArray(["DejaVu Sans", "Liberation Sans", "sans-serif"])
-		base.font_weight = 800
+		var base := preload("res://assets/fonts/original/marlow.fnt")
 		variation.base_font = base
 		variation.variation_transform = Transform2D(Vector2(1, 0), Vector2(-0.2, 1), Vector2.ZERO)
 		label.font = variation

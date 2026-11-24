@@ -207,6 +207,8 @@ func build_original_props() -> void:
 	]
 	for placement in placements:
 		var prop := factory.make(placement[0])
+		if placement[0] == "crt":
+			prop.name = "OfficeMonitor"
 		prop.position = placement[1]
 		prop.rotation.y = placement[2]
 		add_child(prop)

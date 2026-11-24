@@ -2,8 +2,8 @@ class_name PhoneUI
 extends CanvasLayer
 ## Pocket phone. A new text shows as one plain line at the top-right. Tab raises a Nokia-style handset into
 ## the player's right hand and the thread is read on its real screen. Never pauses the world.
-const FONT_FILE := preload("res://assets/fonts/roboto_condensed/RobotoCondensed[wght].ttf")
-const LCD_FONT := preload("res://assets/fonts/pixelify_sans/PixelifySans-Regular.ttf")
+const FONT_FILE := preload("res://assets/fonts/original/marlow.fnt")
+const LCD_FONT := preload("res://assets/fonts/original/marlow.fnt")
 const PHONE_MODEL := preload("res://assets/models/props/phone.glb")
 const LCD_BG := Color(0.6, 0.73, 0.54)
 const LCD_INK := Color(0.08, 0.14, 0.08)
@@ -139,11 +139,9 @@ func _outlined(text: String, size: int, color: Color) -> Label:
 	l.add_theme_constant_override("outline_size", 4)
 	return l
 
-func _make_ui_font(weight: int) -> FontVariation:
+func _make_ui_font(_weight: int) -> FontVariation:
 	var variation := FontVariation.new()
 	variation.base_font = FONT_FILE
-	var text_server := TextServerManager.get_primary_interface()
-	variation.variation_opentype = {text_server.name_to_tag("wght"): weight}
 	return variation
 
 # --- the LCD, drawn into a small viewport that the 3D handset's screen displays ----------------
