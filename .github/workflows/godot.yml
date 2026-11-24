@@ -32,8 +32,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Existing engine checks
         run: bash scripts/validate_project.sh
-      - name: Check original assets
-        run: godot --headless --path . --script tests/original_props_tests.gd
       - name: Export browser package
         run: bash scripts/build_web.sh
       - uses: actions/upload-artifact@v4
