@@ -76,3 +76,8 @@ func current_guide() -> Dictionary:
 func clear() -> void:
 	tasks.clear()
 	cleared.emit()
+
+## A superseded objective is not a completed objective.
+func retire(id: String) -> void:
+	if tasks.erase(id):
+		cleared.emit()
