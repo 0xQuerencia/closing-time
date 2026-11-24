@@ -12,3 +12,7 @@ The owner's earlier Blender market and PSX-char GLBs are the visual reference. R
 - Visual approval before release: compare actual renders of title exterior, apartment, road cockpit, market aisle, checkout, office CRT, staff and shoppers. Verify interactables, navigation, camera feeds, loading and mobile/desktop performance. No claim of final visual quality without review.
 
 The opening now reuses the existing handset GLB, authored surface textures and the actual market shell at the end of Route 9. The reference apartment desk also reuses the previously selected mesh. No claim that the remaining bed, kitchen, car interior or female cast has been remodeled.
+
+## PSX pack integration
+
+The 44 approved GLBs now live in assets/models/psx_pack. The production scene uses the pack for office props, scanner/CRT, apartment furniture and evidence objects, exterior wagon and fixtures, the cockpit and roadside trees. Baked market fixtures remain until their layout-specific stock and collision coordinates can be verified; never hide the entire retail mesh to replace a single prop. The pack is original static art, not a replacement for the rigged cast.

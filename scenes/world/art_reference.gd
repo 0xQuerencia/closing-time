@@ -44,11 +44,6 @@ static func crt_surface(root: Node) -> Dictionary:
 	return {}
 
 static func prop(id: String, factory: OriginalOfficeProps) -> Node3D:
-	var model := scene(str(PROPS.get(id,"")))
-	if model != null:
-		if id != "crt" or not crt_surface(model).is_empty():
-			return model
-		model.free()
 	return factory.make(id)
 
 static func set_screen(root: Node, material: Material) -> bool:

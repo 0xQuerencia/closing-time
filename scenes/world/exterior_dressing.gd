@@ -1,5 +1,7 @@
 class_name ExteriorDressing
 extends Node3D
+
+const PSX = preload("res://assets/models/psx_pack/asset_loader.gd")
 ## Night-lot dressing: wet asphalt, roadside sign, ice machine, bin, moon and treeline.
 ## Added on top of the generated exterior; it does not alter the Blender-built shell.
 const SIGN_RED := Color(0.62, 0.07, 0.06)
@@ -114,17 +116,13 @@ func _build_pole_sign() -> void:
 	var origin := Vector3(-11.4, 0.0, 10.4)
 	for dx in [-0.8, 0.8]:
 		_box(Vector3(0.12, 3.4, 0.12), origin + Vector3(dx, 1.6, 0), steel, true)
-	_box(Vector3(2.1, 1.25, 0.14), origin + Vector3(0, 3.0, 0), _mat(BOARD_CREAM.darkened(0.15), 0.8, 0.0, 0.35))
-	_box(Vector3(1.9, 0.07, 0.02), origin + Vector3(0, 2.72, 0.08), _mat(SIGN_RED, 0.7, 0.0, 0.4))
-	_label("Marlow's\nMarket", origin + Vector3(0, 3.18, 0.085), 78, 0.0045, SIGN_RED, true)
+	PSX.place(self,"store_sign",origin + Vector3(0,3.0,0))
 	_box(Vector3(2.1, 0.8, 0.14), origin + Vector3(0, 2.0, 0), _mat(Color(0.2, 0.2, 0.2), 0.7, 0.0, 0.08))
 
 func _build_ice_machine() -> void:
-	var body := _mat(Color(0.5, 0.52, 0.5), 0.55, 0.3)
-	var pos := Vector3(7.7, 0.62, 6.55)
-	_box(Vector3(0.95, 1.24, 0.6), pos, body, true)
-	_box(Vector3(0.95, 0.12, 0.62), pos + Vector3(0, 0.66, 0), _mat(Color(0.4, 0.42, 0.4), 0.5, 0.4))
-	_label("ICE", pos + Vector3(0, -0.05, 0.31), 120, 0.004, Color(0.55, 0.12, 0.1), false, false)
+	var collision_visual := _box(Vector3(.95,1.24,.6),Vector3(7.7,.62,6.55),_mat(Color(.5,.52,.5)),true)
+	collision_visual.hide()
+	PSX.place(self,"ice_machine",Vector3(7.7,0,6.55))
 
 func _build_bin() -> void:
 	var pos := Vector3(5.9, 0.43, 6.5)

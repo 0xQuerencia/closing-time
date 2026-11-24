@@ -1,5 +1,7 @@
 class_name Checkout
 extends Node3D
+
+const PSX = preload("res://assets/models/psx_pack/asset_loader.gd")
 ## Counter zone + register state machine: IDLE -> OPEN (items on counter) -> PAID -> IDLE.
 enum State { IDLE, OPEN, PAID }
 signal sale_opened(customer: Node)
@@ -57,10 +59,10 @@ func build(world: Node3D) -> void:
 ## Real CRT monitor + keyboard on the cash drawer; the register text is drawn on the CRT glass.
 func _build_workstation() -> void:
 	var factory := OriginalOfficeProps.new()
-	var crt := preload("res://scenes/world/art_reference.gd").prop("crt",factory)
+	var crt := factory.make("crt")
 	crt.position = CRT_POS
 	add_child(crt)
-	var keyboard := preload("res://scenes/world/art_reference.gd").prop("keyboard",factory)
+	var keyboard := factory.make("keyboard")
 	keyboard.position = Vector3(-5.8, COUNTER_TOP + 0.004, 4.6)
 	add_child(keyboard)
 	_build_scanner()
@@ -78,26 +80,22 @@ func _build_workstation() -> void:
 	_lcd.outline_size = 0
 	_lcd.shaded = false
 	_lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.1945)
+	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.203)
 	add_child(_lcd)
 
 ## A handheld scanner in its cradle by the keyboard, window toward the customer. It flashes red on each scan.
 func _build_scanner() -> void:
-	var scanner := _spawn_prop("res://assets/models/props/scanner.glb", Vector3(-6.22, COUNTER_TOP, 4.62))
+	var scanner := PSX.place(self,"scanner",Vector3(-6.22,COUNTER_TOP,4.62),.35)
 	if scanner == null:
 		return
-	scanner.rotation.y = 0.35
-	for mi in scanner.find_children("*", "MeshInstance3D", true, false):
-		var mesh := mi as MeshInstance3D
-		for i in mesh.get_surface_override_material_count():
-			var m := mesh.get_active_material(i) as StandardMaterial3D
-			if m == null:
-				continue
-			m = m.duplicate() as StandardMaterial3D
-			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			mesh.set_surface_override_material(i, m)
-			if m.resource_name == "scan_window":
-				_scan_window = m
+	var window := scanner.find_child("ScanWindow",true,false) as MeshInstance3D
+	if window != null:
+		var material := window.get_active_material(0).duplicate() as StandardMaterial3D
+		material.emission_enabled = true
+		material.emission = Color(.5,.035,.025)
+		material.emission_energy_multiplier = .4
+		window.material_override = material
+		_scan_window = material
 
 func _flash_scanner() -> void:
 	if _scan_window == null:

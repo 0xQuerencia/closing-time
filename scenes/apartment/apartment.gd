@@ -1,5 +1,7 @@
 extends Node3D
 
+const PSX = preload("res://assets/models/psx_pack/asset_loader.gd")
+
 const Player = preload("res://scenes/world/inspection_player.gd")
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
 const ArtReference = preload("res://scenes/world/art_reference.gd")
@@ -212,6 +214,11 @@ func _target(id: String, verb: String, body: String, pos: Vector3, size: Vector3
 		RetroMaterials.apply_nearest_filter(handset)
 		_hide_visual(node)
 		node.add_child(handset)
+	var visual_specs := {"keys_taken":["keyring",Vector3(0,-.013,0),0.0],"vest_taken":["vest",Vector3(0,-.29,0),PI/2.0],"kay_photo":["photo_frame",Vector3(0,-.115,0),0.0],"rent_notice":["rent_notice",Vector3(0,.009,0),0.0],"epilogue_paper":["rent_notice",Vector3(0,.013,0),0.0]}
+	if visual_specs.has(id):
+		var spec: Array = visual_specs[id]
+		_hide_visual(node)
+		PSX.place(node,str(spec[0]),spec[1],spec[2])
 
 func _hide_visual(root: Node) -> void:
 	for child in root.find_children("*","MeshInstance3D",true,false):
@@ -233,45 +240,44 @@ func _build_room() -> void:
 	_box(Vector3(.65,2.52,4.5),Vector3(1.5,.35,.15),wall)
 	_target("apartment_exit","Leave apartment","Time for work.",Vector3(.65,1.15,4.45),Vector3(1.28,2.28,.12),wood)
 	_box(Vector3(1.14,1.05,4.33),Vector3(.10,.04,.09),Color("#9b8a5d"),false)
-	# Bed, blanket and pillow.
-	_box(Vector3(-2.35,.22,-2.45),Vector3(1.45,.4,2.10),wood)
-	_box(Vector3(-2.35,.47,-2.45),Vector3(1.4,.16,2.02),Color("#a5a18e"))
-	_box(Vector3(-2.35,.57,-2.18),Vector3(1.42,.06,1.45),fabric)
-	_box(Vector3(-2.35,.61,-3.12),Vector3(.78,.13,.42),Color("#b3b0a0"))
-	# Desk and paper/photo/phone, all original geometry.
+	# Keep every authored collision and replace the visual meshes only.
+	var bed_parts: Array[Node3D] = [
+		_box(Vector3(-2.35,.22,-2.45),Vector3(1.45,.4,2.10),wood),
+		_box(Vector3(-2.35,.47,-2.45),Vector3(1.4,.16,2.02),Color("#a5a18e")),
+		_box(Vector3(-2.35,.57,-2.18),Vector3(1.42,.06,1.45),fabric),
+		_box(Vector3(-2.35,.61,-3.12),Vector3(.78,.13,.42),Color("#b3b0a0"))]
+	for part in bed_parts:
+		_hide_visual(part)
+	PSX.place(self,"bed",Vector3(-2.35,0,-2.45))
 	var desk_parts: Array[Node3D] = [_box(Vector3(.65,.70,-3.91),Vector3(1.7,.10,.76),wood)]
 	for x in [-.10,1.40]:
 		desk_parts.append(_box(Vector3(x,.34,-3.91),Vector3(.09,.68,.64),wood))
-	var desk := ArtReference.scene("res://assets/models/office_props/desk_office.glb")
-	if desk != null:
-		for part in desk_parts:
-			_hide_visual(part)
-		desk.position = Vector3(.65,0,-3.91)
-		add_child(desk)
+	for part in desk_parts:
+		_hide_visual(part)
+	PSX.place(self,"apartment_desk",Vector3(.65,0,-3.91))
 	_target("shift_read","Read phone","Dina: Could you cover closing tonight? I'll leave the checklist on the counter.\nKay: You owe me breakfast if you're working again.",Vector3(.48,.79,-3.62),Vector3(.065,.045,.13),dark)
 	_target("rent_notice","Read rent reminder","Rent due December 1. I'd written 'extra shift?' in the margin.",Vector3(.88,.76,-3.73),Vector3(.22,.014,.29),Color("#d1c5a3"))
 	_target("kay_photo","Look at photograph","Kay and me last June. It felt like a different year.",Vector3(1.25,.87,-4.14),Vector3(.19,.23,.035),Color("#89795f"))
 	_box(Vector3(-.02,.79,-4.11),Vector3(.18,.07,.18),dark,false)
 	_box(Vector3(-.02,.97,-4.11),Vector3(.036,.35,.036),dark,false)
 	_box(Vector3(-.02,1.15,-4.11),Vector3(.24,.10,.22),Color("#b8a276"),false)
-	# Kitchen cabinets and worn appliances.
-	_box(Vector3(2.93,.43,-1.55),Vector3(.95,.86,2.6),wood)
-	_box(Vector3(2.93,.90,-1.55),Vector3(1.02,.08,2.68),Color("#99978b"))
-	_box(Vector3(2.95,1.0,-2.29),Vector3(.57,.12,.58),dark,false)
-	_box(Vector3(3.02,.83,1.2),Vector3(.80,1.65,.76),Color("#a7a596"))
-	_box(Vector3(2.60,1.12,1.2),Vector3(.06,.43,.04),dark,false)
+	var kitchen_parts: Array[Node3D] = [
+		_box(Vector3(2.93,.43,-1.55),Vector3(.95,.86,2.6),wood),
+		_box(Vector3(2.93,.90,-1.55),Vector3(1.02,.08,2.68),Color("#99978b")),
+		_box(Vector3(2.95,1.0,-2.29),Vector3(.57,.12,.58),dark,false),
+		_box(Vector3(3.02,.83,1.2),Vector3(.80,1.65,.76),Color("#a7a596")),
+		_box(Vector3(2.60,1.12,1.2),Vector3(.06,.43,.04),dark,false)]
+	for part in kitchen_parts:
+		_hide_visual(part)
+	PSX.place(self,"kitchen",Vector3(2.93,0,-1.55))
+	PSX.place(self,"fridge",Vector3(3.02,0,1.2),-PI/2.0)
 	# Entry table, keys and vest.
 	_box(Vector3(-2.74,.72,3.70),Vector3(1.10,.10,.55),wood)
 	for x in [-3.18,-2.3]:
 		_box(Vector3(x,.35,3.70),Vector3(.08,.7,.48),wood)
 	_target("keys_taken","Pick up keys","Keys. I checked the ring twice, like I always did.",Vector3(-2.63,.80,3.58),Vector3(.10,.04,.075),Color("#a99c64"))
 	_target("vest_taken","Take work vest","The maroon vest still smelled like coffee.",Vector3(-3.36,1.23,2.82),Vector3(.12,.55,.48),Color("#683d40"))
-	# Window, night and curtain.
-	_box(Vector3(0,1.69,-4.40),Vector3(1.25,.97,.045),Color("#283c45"),false)
-	for x in [-.63,.63]:
-		_box(Vector3(x,1.69,-4.36),Vector3(.07,1.10,.08),wood,false)
-	for y in [1.17,2.21]:
-		_box(Vector3(0,y,-4.36),Vector3(1.32,.07,.08),wood,false)
+	PSX.place(self,"window",Vector3(0,1.16,-4.34))
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("#151c24")

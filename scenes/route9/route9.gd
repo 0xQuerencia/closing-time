@@ -1,5 +1,7 @@
 extends Node3D
 
+const PSX = preload("res://assets/models/psx_pack/asset_loader.gd")
+
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
 const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
 const LENGTH := 460.0
@@ -132,25 +134,21 @@ func _build_road() -> void:
 	add_child(world)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20061124
-	var tree_mesh := CylinderMesh.new()
-	tree_mesh.top_radius = .05
-	tree_mesh.bottom_radius = 1.8
-	tree_mesh.height = 5.5
-	tree_mesh.radial_segments = 5
-	tree_mesh.rings = 0
+	var tree_asset := PSX.mesh_and_material("pine_tree")
 	var trees := MultiMesh.new()
 	trees.transform_format = MultiMesh.TRANSFORM_3D
-	trees.mesh = tree_mesh
+	trees.mesh = tree_asset.mesh
 	trees.instance_count = 240
 	var grove := MultiMeshInstance3D.new()
 	grove.multimesh = trees
-	grove.material_override = _mat(Color("#26352e"))
+	grove.material_override = tree_asset.material
 	add_child(grove)
 	for i in range(240):
 		var t := rng.randf_range(-30.0,LENGTH+50)
 		var side := -1.0 if i%2 == 0 else 1.0
 		var h := rng.randf_range(.65,1.65)
-		trees.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(h,h,h)),Vector3(_center(t)+side*rng.randf_range(9.0,35.0),2.5*h,-t)))
+		var basis := Basis(Vector3.UP,rng.randf_range(0,TAU)).scaled(Vector3(h,h,h))
+		trees.set_instance_transform(i,Transform3D(basis,Vector3(_center(t)+side*rng.randf_range(9.0,35.0),0,-t)))
 	for i in range(65):
 		var t := float(i)*8.0-20.0
 		var center := _center(t)
@@ -187,16 +185,18 @@ func _build_road() -> void:
 	add_child(lamp)
 
 func _sign(body: String,t: float) -> void:
-	var at := Vector3(_center(t)+4.9,1.9,-t)
-	_box(self,at-Vector3(0,.7,0),Vector3(.08,2.4,.08),Color("#777a70"))
-	_box(self,at,Vector3(1.9,.78,.09),Color("#525e47"))
-	var label := Label3D.new()
-	label.text = body
-	label.font_size = 38
-	label.pixel_size = .0032
-	label.position = at+Vector3(0,0,.055)
-	label.modulate = Color("#e2dfcd")
-	add_child(label)
+	var at := Vector3(_center(t)+4.9,0,-t)
+	var sign_mesh := PSX.place(self,"roadside_sign",at)
+	# The original sign artwork is for the bypass; retain distinct text at the store.
+	if t > 300 and sign_mesh != null:
+		var label := Label3D.new()
+		label.text = body
+		label.font_size = 38
+		label.pixel_size = .0027
+		label.position = Vector3(0,1.65,.048)
+		label.modulate = Color("#e2dfcd")
+		sign_mesh.add_child(label)
+
 
 func _build_car() -> void:
 	car = Node3D.new()
@@ -207,33 +207,23 @@ func _build_car() -> void:
 	camera.current = true
 	car.add_child(camera)
 	var dash := Color("#363b39")
-	_box(car,Vector3(0,.72,-.65),Vector3(1.65,.25,.42),dash)
-	_box(car,Vector3(0,.44,-.86),Vector3(1.65,.48,.2),dash)
+	PSX.place(car,"dashboard",Vector3.ZERO)
 	_box(car,Vector3(0,1.72,-.8),Vector3(1.65,.10,.12),dash)
 	for x in [-.82,.82]:
 		var pillar := _box(car,Vector3(x,1.3,-.84),Vector3(.09,.87,.12),dash)
 		pillar.rotation.x = -.15
 	_box(car,Vector3(0,1.64,-.22),Vector3(1.72,.09,1.35),dash)
-	_box(car,Vector3(-.38,.84,-.50),Vector3(.39,.12,.12),Color("#242a26"))
 	wheel = Node3D.new()
 	wheel.position = Vector3(-.38,.91,-.35)
 	car.add_child(wheel)
-	var torus := TorusMesh.new()
-	torus.inner_radius = .11
-	torus.outer_radius = .145
-	torus.rings = 12
-	torus.ring_segments = 8
-	var steering := MeshInstance3D.new()
-	steering.mesh = torus
-	steering.rotation.x = PI/2.0
-	steering.material_override = _mat(Color("#232725"))
-	wheel.add_child(steering)
-	_box(wheel,Vector3.ZERO,Vector3(.24,.045,.035),dash)
-	_box(car,Vector3(.25,.79,-.49),Vector3(.25,.09,.025),Color("#292e2a"))
+	PSX.place(wheel,"steering_wheel",Vector3.ZERO)
+	PSX.place(car,"rearview_mirror",Vector3(0,1.52,-.60))
+	PSX.place(car,"car_seat",Vector3(.38,.12,.18),PI)
+	PSX.place(car,"gear_lever",Vector3(0,.44,-.25))
 	wiper = Node3D.new()
 	wiper.position = Vector3(.30,.93,-.9)
 	car.add_child(wiper)
-	_box(wiper,Vector3(-.30,.16,0),Vector3(.64,.022,.025),Color("#252a29"))
+	PSX.place(wiper,"wiper",Vector3.ZERO)
 	for x in [-.55,.55]:
 		var light := SpotLight3D.new()
 		light.position = Vector3(x,.6,-1.1)

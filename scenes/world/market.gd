@@ -4,6 +4,7 @@ const Player = preload("res://scenes/world/inspection_player.gd")
 const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
 const ArtReference = preload("res://scenes/world/art_reference.gd")
+const PSX = preload("res://assets/models/psx_pack/asset_loader.gd")
 var player: CharacterBody3D
 var capture_mode := false
 var samples: Array[float] = []
@@ -21,12 +22,7 @@ func _ready() -> void:
 			var instance := scene.instantiate()
 			add_child(instance)
 			RetroMaterials.apply_nearest_filter(instance)
-	var exterior := ArtReference.scene("res://assets/models/exterior.glb")
-	if exterior != null:
-		exterior.name = "ReferenceExterior"
-		add_child(exterior)
-	else:
-		add_child(OriginalExterior.new())
+	add_child(OriginalExterior.new())
 	build_original_props()
 	build_collisions()
 	build_glass()
@@ -224,6 +220,9 @@ func build_original_props() -> void:
 		prop.position = placement[1]
 		prop.rotation.y = placement[2]
 		add_child(prop)
+	PSX.place(self,"wall_phone",Vector3(8.83,1.30,-4.25),-PI/2)
+	PSX.place(self,"coffee_machine",Vector3(-8.28,.92,-.75),PI/2)
+	PSX.place(self,"payphone",Vector3(-8.78,1.15,6.35),0)
 
 func build_collisions() -> void:
 	var entries = JSON.parse_string(FileAccess.get_file_as_string("res://assets/models/collisions.json"))
