@@ -26,7 +26,7 @@ func _ready() -> void:
 	_refresh()
 	narration.text = "I was twenty when I started working nights at Marlow's.\nIt was supposed to be a favor, just one extra shift."
 
-func _process(_delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	if player == null or leaving:
 		return
 	selected = ""
