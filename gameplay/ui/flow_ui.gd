@@ -70,7 +70,7 @@ const GRAPHICS_PRESETS := {
 		"shadows": true,
 	},
 }
-var settings := {"retro": true, "sensitivity": 1.0, "bob": false, "graphics_mode": "balanced", "render_scale": 0.85}
+var settings := {"retro": true, "sensitivity": 1.0, "bob": false, "graphics_mode": "balanced", "render_scale": 0.85, "master_volume": 1.0, "weather_volume": 1.0, "toggle_sprint": false, "reduced_flashes": false}
 var _return_to := "title"
 var _guide_return := "game"
 var _ui_font: FontVariation
@@ -144,6 +144,10 @@ func enable_persistence() -> void:
 		settings.retro = bool(file.get_value("view", "retro", true))
 		settings.sensitivity = float(file.get_value("view", "sensitivity", 1.0))
 		settings.bob = bool(file.get_value("view", "bob", false))
+		for key in ["master_volume","weather_volume"]:
+			settings[key] = clampf(float(file.get_value("accessibility",key,1.0)),0.0,1.0)
+		for key in ["toggle_sprint","reduced_flashes"]:
+			settings[key] = bool(file.get_value("accessibility",key,false))
 		var saved_mode := str(file.get_value("view", "graphics_mode", ""))
 		if saved_mode in GRAPHICS_MODES:
 			settings.graphics_mode = saved_mode
@@ -171,6 +175,12 @@ func apply_settings() -> void:
 	var player = game.player
 	player.sensitivity = settings.sensitivity
 	player.head_bob = settings.bob
+	player.toggle_sprint = settings.toggle_sprint
+	game.director.threat.reduced_flashes = settings.reduced_flashes
+	for pair in [["Master","master_volume"],["Weather","weather_volume"]]:
+		var bus := AudioServer.get_bus_index(pair[0])
+		if bus >= 0:
+			AudioServer.set_bus_volume_db(bus,linear_to_db(maxf(.0001,float(settings[pair[1]]))))
 	for node in game.world.get_children():
 		var script: Script = node.get_script()
 		if script != null and script.resource_path.ends_with("retro_effects.gd"):
@@ -185,6 +195,8 @@ func apply_settings() -> void:
 	file.set_value("view", "bob", settings.bob)
 	file.set_value("view", "graphics_mode", settings.graphics_mode)
 	file.set_value("view", "render_scale", settings.render_scale)
+	for key in ["master_volume","weather_volume","toggle_sprint","reduced_flashes"]:
+		file.set_value("accessibility",key,settings[key])
 	file.save(SETTINGS_PATH)
 
 func show_settings() -> void:
@@ -209,6 +221,7 @@ func show_settings() -> void:
 		settings.bob = not settings.bob
 		apply_settings()
 		show_settings())
+	_button("accessibility", "Accessibility / audio", show_accessibility)
 	_button("back", "Back", func(): show_title() if _return_to == "title" else show_pause())
 	first.grab_focus()
 
@@ -439,6 +452,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif mode == "guide":
 			_close_guide()
 			get_viewport().set_input_as_handled()
+		elif mode == "accessibility":
+			show_settings()
+			get_viewport().set_input_as_handled()
 		elif mode == "settings":
 			show_title() if _return_to == "title" else show_pause()
 			get_viewport().set_input_as_handled()
@@ -460,3 +476,25 @@ func _open_epilogue(kind: String) -> void:
 	get_tree().paused = false
 	get_tree().set_meta("closing_time_epilogue",kind)
 	get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn")
+
+func show_accessibility() -> void:
+	_clear_buttons()
+	_present("accessibility","ACCESSIBILITY","","Enter to change  /  Esc back")
+	var first := _button("master_volume","Master volume: %d%%" % roundi(settings.master_volume*100),func():
+		settings.master_volume = fposmod(settings.master_volume + .25,1.25)
+		apply_settings()
+		show_accessibility())
+	_button("weather_volume","Rain volume: %d%%" % roundi(settings.weather_volume*100),func():
+		settings.weather_volume = fposmod(settings.weather_volume + .25,1.25)
+		apply_settings()
+		show_accessibility())
+	_button("toggle_sprint","Sprint: %s" % ("toggle" if settings.toggle_sprint else "hold"),func():
+		settings.toggle_sprint = not settings.toggle_sprint
+		apply_settings()
+		show_accessibility())
+	_button("reduced_flashes","Reduced siren flashes: %s" % ("on" if settings.reduced_flashes else "off"),func():
+		settings.reduced_flashes = not settings.reduced_flashes
+		apply_settings()
+		show_accessibility())
+	_button("back","Back",show_settings)
+	first.grab_focus()
