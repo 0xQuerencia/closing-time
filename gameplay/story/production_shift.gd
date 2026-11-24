@@ -184,7 +184,7 @@ func _add_spot(id: String, chapter: String, title: String, pos: Vector3, color: 
 	var spot := Interactable.new()
 	spot.display_name = title
 	spot.verb = "Read" if progress.evidence.has(id) else "Check"
-	spot.description = title
+	spot.description = str(progress.evidence[id].text) if progress.evidence.has(id) else title
 	var size := Vector3(.20,.28,.045) if vertical else Vector3(.22,.035,.18)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
