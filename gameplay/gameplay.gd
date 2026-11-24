@@ -24,6 +24,8 @@ var profiles: Array[Dictionary] = []
 var next_profile := 0
 var customers_served := 0
 var auto_customers := true
+var production_spawn: Transform3D
+var production_look: Vector3
 
 func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> void:
 	world = world_root
@@ -73,14 +75,31 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	SetDressing.new().build(self)
 	flow = FlowUI.new().setup(self)
 	add_child(flow)
-	director.threat.ending.connect(flow.show_ending)
+	director.threat.ending.connect(func(kind): flow.show_ending(director.production.outcome_for(kind) if director.production != null else kind))
 	flow.retry_requested.connect(retry)
 	flow.start_requested.connect(begin_shift)
 	flow.continue_requested.connect(continue_game)
 	flow.restart_requested.connect(restart_game)
 	flow.quit_requested.connect(func(): get_tree().quit())
-	if auto_customers:
+	production_spawn = player.global_transform
+	production_look = player.camera.rotation
+	if get_tree().has_meta("closing_time_opening_preview"):
+		var incoming: Dictionary = get_tree().get_meta("closing_time_opening_preview")
+		get_tree().remove_meta("closing_time_opening_preview")
+		begin_production.call_deferred(incoming)
+	elif auto_customers:
 		begin_shift()
+
+func begin_production(snapshot: Dictionary) -> void:
+	player.global_transform = production_spawn
+	player.camera.rotation = production_look
+	player.enabled = true
+	flow.hide_all()
+	profiles = CustomerProfiles.production(markers)
+	if not director.start_production(snapshot):
+		flow.show_title()
+		return
+	save_checkpoint("shift_start")
 
 func begin_shift() -> void:
 	if director.start():
@@ -169,7 +188,15 @@ func save_checkpoint(checkpoint: String) -> void:
 ## Rebuild the shop at the last checkpoint and start the next beat. Used for retry and for Continue.
 func load_checkpoint(data := {}) -> bool:
 	var source := data if not data.is_empty() else checkpoint_data
-	if source.is_empty() or not SaveGame.apply(self, source):
+	if source.is_empty():
+		return false
+	if source.get("production", {}) is Dictionary and not source.get("production", {}).is_empty():
+		if source.checkpoint == "shift_start":
+			restart_game()
+			return true
+		if not director.restore_production(source.production):
+			return false
+	if not SaveGame.apply(self, source):
 		return false
 	checkpoint_data = source
 	if source.checkpoint == "closing_time":
@@ -182,7 +209,9 @@ func retry() -> void:
 
 func continue_game() -> void:
 	var data := SaveGame.read()
-	if data.is_empty() or data.checkpoint == "shift_start" or not load_checkpoint(data):
+	if data.get("checkpoint") == "shift_start" and not data.get("production", {}).is_empty():
+		begin_production(data.production)
+	elif data.is_empty() or data.checkpoint == "shift_start" or not load_checkpoint(data):
 		begin_shift()
 
 func restart_game() -> void:
