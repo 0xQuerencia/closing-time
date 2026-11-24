@@ -1,8 +1,7 @@
 class_name OpeningWitness
 extends Node3D
 ## Leon waits by the empty lot before the shift's ordinary customer routine begins, then walks away.
-const MODEL := "res://assets/models/characters/vinrax/casual_male.glb"
-const JACKET := "res://assets/models/characters/vinrax/casual_male_leon_jacket.png"
+const MODEL := "res://assets/models/characters/original/leon_lod1.glb"
 const WAIT_POSITION := Vector3(-2.5, 0.0, 12.3)
 var _delay: Timer
 var _animator: AnimationPlayer
@@ -25,23 +24,12 @@ func _ready() -> void:
 	# The authored model faces +Z, toward the store windows from the lot.
 	model.rotation.y = 0.0
 	add_child(model)
-	var jacket := load(JACKET) as Texture2D
-	for candidate in model.find_children("*", "MeshInstance3D", true, false):
-		var mesh_instance := candidate as MeshInstance3D
-		if mesh_instance.mesh == null:
-			continue
-		for surface in mesh_instance.mesh.get_surface_count():
-			var source := mesh_instance.get_active_material(surface) as BaseMaterial3D
-			if source == null:
-				continue
-			var material := source.duplicate() as BaseMaterial3D
-			material.albedo_texture = jacket
-			mesh_instance.set_surface_override_material(surface, material)
 	var players := model.find_children("*", "AnimationPlayer", true, false)
 	if not players.is_empty():
 		_animator = players[0] as AnimationPlayer
 		for clip in ["Idle", "IdleWait", "IdleShift"]:
 			if _animator.has_animation(clip):
+				_animator.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
 				_animator.play(clip)
 				break
 	_delay.start(11.0)
@@ -52,6 +40,7 @@ func _begin_departure() -> void:
 	if _animator != null:
 		for clip in ["Walk", "Stroll"]:
 			if _animator.has_animation(clip):
+				_animator.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
 				_animator.play(clip, 0.2)
 				break
 	rotation.y = PI / 2.0
