@@ -391,6 +391,7 @@ func _begin(continuing: bool) -> void:
 		if not continuing:
 			OpeningCheckpoint.erase()
 			SaveGame.erase()
+			get_tree().set_meta("closing_time_new_game",true)
 			get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn")
 			return
 		var opening := OpeningCheckpoint.read()

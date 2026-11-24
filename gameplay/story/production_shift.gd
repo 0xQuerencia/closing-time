@@ -10,6 +10,7 @@ var ready_for_customers := false
 var transitioning := false
 var cash_envelope: Product
 var journal: EvidenceJournal
+var staff: Dictionary = {}
 
 func setup(owner: StoryDirector, snapshot: Dictionary, resume := false) -> bool:
 	director = owner
@@ -35,14 +36,16 @@ func _enter_chapter() -> void:
 	_refresh_spots()
 	match progress.current_id():
 		"handover":
+			_spawn_staff("dina","Dina",Vector3(-5.0,.05,3.15),"production_handover")
 			game.clock.elapsed = 5
 			game.clock.changed.emit(game.clock.text())
-			_task("handover", "Start the shift", [["dina_handover","Read Dina's handover at the counter"],["cooler_counted","Inspect three cooler rows and submit the count"],["mara_served","Serve Mara"]])
-			director._text("dina_handover_sms","Dina","I'm in the office. Read the handover sheet first, then count the drinks in the cooler.",23,5)
+			_task("handover", "Start the shift", [["dina_handover","Talk to Dina or read her handover at the counter"],["cooler_counted","Inspect three cooler rows and submit the count"],["mara_served","Serve Mara"]])
+			director._text("dina_handover_sms","Dina","I'm by the counter. I'll show you the closing checklist before I head out.",23,5)
 		"routine":
 			director._set_step(StoryDirector.Step.WORK)
 			director._text("routine_sms","Kay","You still owe me breakfast. Don't forget to eat something.",23,24)
 			_task("routine", "Evening work", [["ben_served","Serve Ben"],["nora_served","Serve Nora"],["delivery_checked","Check the cartons and reconcile the invoice"],["restock_done","Finish stocking shelves"]])
+			_spawn_staff("gus","Gus",Vector3(5.9,.05,2.4),"gus_delivery")
 			_sync_chores()
 			director._spawn("ben",StoryDirector.Step.BEN)
 		"closing":
@@ -124,6 +127,7 @@ func _sync_chores() -> void:
 func _on_dialogue_finished(id: String) -> void:
 	if id == "production_handover" and progress.current_id() == "handover":
 		_record("dina_handover")
+		_depart_staff("dina",[CustomerProfiles.AISLE_MOUTH,CustomerProfiles.DOOR_INSIDE,game.markers.FrontDoor,game.markers.NPCExit])
 		if not ready_for_customers:
 			ready_for_customers = true
 			director._spawn("mara",StoryDirector.Step.MARA)
@@ -131,6 +135,7 @@ func _on_dialogue_finished(id: String) -> void:
 		_record("cooler_counted")
 	if id == "delivery_count" and game.dialogue.flags.get("delivery_correct",false):
 		_record("delivery_checked")
+		_depart_staff("gus",[Vector3(4.25,0,2.5),Vector3(4.25,0,4.6),CustomerProfiles.DOOR_INSIDE,game.markers.FrontDoor,game.markers.NPCExit])
 	if id == "mara_talk" and game.dialogue.flags.get("mara_memory",false):
 		_record("mara_memory")
 	if id == "ben_talk" and game.dialogue.flags.get("ben_memory",false):
@@ -312,3 +317,30 @@ func _on_phone_read() -> void:
 		if entry.id == "dina_truth" and entry.read:
 			_record("dina_statement")
 			return
+
+func _spawn_staff(id: String, title: String, point: Vector3, conversation: String) -> void:
+	if staff.has(id):
+		return
+	var actor := Customer.new().setup(game,{"id":id,"name":title})
+	game.world.add_child(actor)
+	actor.global_position = point
+	actor.rotation.y = PI if id == "dina" else 0.0
+	actor._set_phase(Customer.Phase.TRANSACTION)
+	actor.talk.display_name = title
+	actor.talk.available = true
+	actor.talk.talk_requested.disconnect(actor._on_talk)
+	actor.talk.talk_requested.connect(func(): if not game.dialogue.is_active(): game.dialogue.start(conversation))
+	staff[id] = actor
+
+func _depart_staff(id: String, route: Array) -> void:
+	if not staff.has(id):
+		return
+	var actor: Customer = staff[id]
+	staff.erase(id)
+	if not is_instance_valid(actor):
+		return
+	actor.talk.available = false
+	actor._set_phase(Customer.Phase.LEAVE)
+	await actor._walk(route)
+	if is_instance_valid(actor):
+		actor.queue_free()

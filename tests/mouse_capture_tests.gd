@@ -40,6 +40,8 @@ func run() -> void:
 	await _settle()
 	var apartment = current_scene
 	check(apartment.scene_file_path.ends_with("apartment.tscn"),"New Game loads apartment")
+	check(is_instance_valid(apartment.prologue),"new game displays the prologue")
+	apartment._close_prologue()
 	await _look(apartment.player,"centered motion reaches apartment player")
 	apartment._use("apartment_exit")
 	check(not apartment.leaving,"apartment exit requires preparation")
