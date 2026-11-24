@@ -1,5 +1,7 @@
 class_name Checkout
 extends Node3D
+
+const PSX = preload("res://assets/models/psx_pack/asset_loader.gd")
 ## Counter zone + register state machine: IDLE -> OPEN (items on counter) -> PAID -> IDLE.
 enum State { IDLE, OPEN, PAID }
 signal sale_opened(customer: Node)
@@ -25,6 +27,8 @@ var terminal: RegisterTerminal
 var _lcd: Label3D
 var _beep: AudioStreamPlayer3D
 var _scan_window: StandardMaterial3D
+var _drawer: Node3D
+var _drawer_tween: Tween
 var _chime: AudioStreamPlayer3D
 
 func build(world: Node3D) -> void:
@@ -57,6 +61,12 @@ func build(world: Node3D) -> void:
 ## Real CRT monitor + keyboard on the cash drawer; the register text is drawn on the CRT glass.
 func _build_workstation() -> void:
 	var factory := OriginalOfficeProps.new()
+	if get_parent().has_meta("psx_retail_replaced"):
+		var drawer_model := PSX.place(self,"cash_drawer",Vector3(-5.8,COUNTER_TOP,4.33),0,Vector3(1,.982,1))
+		if drawer_model != null:
+			_drawer = drawer_model.find_child("Drawer",true,false) as Node3D
+			if _drawer != null:
+				_drawer.position.z = -.08
 	var crt := factory.make("crt")
 	crt.position = CRT_POS
 	add_child(crt)
@@ -64,14 +74,12 @@ func _build_workstation() -> void:
 	keyboard.position = Vector3(-5.8, COUNTER_TOP + 0.004, 4.6)
 	add_child(keyboard)
 	_build_scanner()
-	var glass := crt.find_child("OriginalCRTGlass",true,false) as MeshInstance3D
-	if glass != null:
-		var lcd_material := StandardMaterial3D.new()
-		lcd_material.albedo_color = Color(0.02,0.06,0.035)
-		lcd_material.emission_enabled = true
-		lcd_material.emission = Color(0.03,0.09,0.05)
-		lcd_material.roughness = .3
-		glass.material_override = lcd_material
+	var lcd_material := StandardMaterial3D.new()
+	lcd_material.albedo_color = Color(0.02,0.06,0.035)
+	lcd_material.emission_enabled = true
+	lcd_material.emission = Color(0.03,0.09,0.05)
+	lcd_material.roughness = .3
+	preload("res://scenes/world/art_reference.gd").set_screen(crt,lcd_material)
 	_lcd = Label3D.new()
 	_lcd.font = preload("res://assets/fonts/original/marlow.fnt")
 	_lcd.pixel_size = 0.00058
@@ -80,26 +88,22 @@ func _build_workstation() -> void:
 	_lcd.outline_size = 0
 	_lcd.shaded = false
 	_lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.1945)
+	_lcd.position = CRT_POS + Vector3(-0.115, 0.22, 0.203)
 	add_child(_lcd)
 
 ## A handheld scanner in its cradle by the keyboard, window toward the customer. It flashes red on each scan.
 func _build_scanner() -> void:
-	var scanner := _spawn_prop("res://assets/models/props/scanner.glb", Vector3(-6.22, COUNTER_TOP, 4.62))
+	var scanner := PSX.place(self,"scanner",Vector3(-6.22,COUNTER_TOP,4.62),.35)
 	if scanner == null:
 		return
-	scanner.rotation.y = 0.35
-	for mi in scanner.find_children("*", "MeshInstance3D", true, false):
-		var mesh := mi as MeshInstance3D
-		for i in mesh.get_surface_override_material_count():
-			var m := mesh.get_active_material(i) as StandardMaterial3D
-			if m == null:
-				continue
-			m = m.duplicate() as StandardMaterial3D
-			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			mesh.set_surface_override_material(i, m)
-			if m.resource_name == "scan_window":
-				_scan_window = m
+	var window := scanner.find_child("ScanWindow",true,false) as MeshInstance3D
+	if window != null:
+		var material := window.get_active_material(0).duplicate() as StandardMaterial3D
+		material.emission_enabled = true
+		material.emission = Color(.5,.035,.025)
+		material.emission_energy_multiplier = .4
+		window.material_override = material
+		_scan_window = material
 
 func _flash_scanner() -> void:
 	if _scan_window == null:
@@ -216,6 +220,7 @@ func take_payment() -> bool:
 	var tx := {"id": "T%04d" % (history.size() + 1), "items": ids, "total": total_cents()}
 	history.append(tx)
 	_set_state(State.PAID)
+	_move_drawer(true)
 	_chime.play()
 	_refresh_screen()
 	sale_completed.emit(tx)
@@ -236,8 +241,17 @@ func close_sale() -> void:
 	reader_error = false
 	items.clear()
 	_set_state(State.IDLE)
+	_move_drawer(false)
 	_refresh_screen()
 	sale_closed.emit()
+
+func _move_drawer(open: bool) -> void:
+	if not is_instance_valid(_drawer):
+		return
+	if _drawer_tween != null:
+		_drawer_tween.kill()
+	_drawer_tween = create_tween()
+	_drawer_tween.tween_property(_drawer,"position:z",.045 if open else -.08,.18)
 
 func status_text() -> String:
 	match state:

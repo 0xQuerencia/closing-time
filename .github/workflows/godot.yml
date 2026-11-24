@@ -43,6 +43,18 @@ jobs:
           name: closing-time-web
           path: build/closing-time-web.zip
           if-no-files-found: error
+      - name: Render reference scene captures
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y xvfb mesa-utils
+          LIBGL_ALWAYS_SOFTWARE=1 timeout 120 xvfb-run -a godot --audio-driver Dummy --path . --resolution 640x360 -- --capture-reference --only=register
+          test -s local/screenshots/ref_7_register.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: art-reference-renders
+          path: local/screenshots/ref_*.png
+          if-no-files-found: ignore
       - name: Print failed validation logs
         if: failure()
         run: |

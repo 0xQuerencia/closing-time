@@ -3,6 +3,8 @@ extends Node3D
 const Player = preload("res://scenes/world/inspection_player.gd")
 const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
+const ArtReference = preload("res://scenes/world/art_reference.gd")
+const PSX = preload("res://assets/models/psx_pack/asset_loader.gd")
 var player: CharacterBody3D
 var capture_mode := false
 var samples: Array[float] = []
@@ -20,6 +22,8 @@ func _ready() -> void:
 			var instance := scene.instantiate()
 			add_child(instance)
 			RetroMaterials.apply_nearest_filter(instance)
+			if part == "retail":
+				preload("res://scenes/world/retail_art.gd").replace(self,instance)
 	add_child(OriginalExterior.new())
 	build_original_props()
 	build_collisions()
@@ -212,12 +216,15 @@ func build_original_props() -> void:
 		["camera", Vector3(3.25, 2.72, 6.12), PI],
 	]
 	for placement in placements:
-		var prop := factory.make(placement[0])
+		var prop := ArtReference.prop(str(placement[0]), factory)
 		if placement[0] == "crt":
 			prop.name = "OfficeMonitor"
 		prop.position = placement[1]
 		prop.rotation.y = placement[2]
 		add_child(prop)
+	PSX.place(self,"wall_phone",Vector3(8.83,1.30,-4.25),-PI/2)
+	PSX.place(self,"coffee_machine",Vector3(-8.28,.92,-.75),PI/2)
+	PSX.place(self,"payphone",Vector3(-8.78,1.15,6.35),0)
 
 func build_collisions() -> void:
 	var entries = JSON.parse_string(FileAccess.get_file_as_string("res://assets/models/collisions.json"))
@@ -613,6 +620,8 @@ func finish_run(code: int) -> void:
 	if is_instance_valid(ambient_dread):
 		ambient_dread.queue_free()
 	_stop_audio_tree(self)
+	if is_instance_valid(gameplay) and is_instance_valid(gameplay.security) and is_instance_valid(gameplay.security.cctv):
+		gameplay.security.cctv.shutdown_rendering()
 	# Let AudioServer retire stopped playbacks even when a test changed Engine.time_scale.
 	await get_tree().create_timer(0.35, true, false, true).timeout
 	get_tree().quit(code)

@@ -1,17 +1,17 @@
 shader_type canvas_item;
 
-uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
-uniform bool pixelation_enabled = false;
-uniform bool palette_enabled = false;
+uniform sampler2D screen_texture : hint_screen_texture, filter_nearest;
+uniform bool pixelation_enabled = true;
+uniform bool palette_enabled = true;
 uniform bool analog_enabled = true;
-uniform float pixel_size : hint_range(1.0, 3.0, 0.25) = 1.5;
+uniform float target_height : hint_range(240.0, 720.0, 30.0) = 360.0;
 uniform float palette_steps : hint_range(16.0, 48.0, 1.0) = 32.0;
-uniform float dither_strength : hint_range(0.0, 0.4, 0.01) = 0.12;
+uniform float dither_strength : hint_range(0.0, 0.4, 0.01) = 0.24;
 uniform float grain_strength : hint_range(0.0, 0.025, 0.001) = 0.005;
 uniform float scanline_strength : hint_range(0.0, 0.025, 0.001) = 0.002;
-uniform float vignette_strength : hint_range(0.0, 1.0, 0.01) = 0.42;
+uniform float vignette_strength : hint_range(0.0, 1.0, 0.01) = 0.24;
 uniform float saturation : hint_range(0.0, 1.0, 0.01) = 0.94;
-uniform float chroma_strength : hint_range(0.0, 1.0, 0.01) = 0.12;
+uniform float chroma_strength : hint_range(0.0, 1.0, 0.01) = 0.0;
 uniform float tape_wobble : hint_range(0.0, 0.001, 0.00005) = 0.0;
 
 float hash12(vec2 p) {
@@ -24,8 +24,10 @@ void fragment() {
 	vec2 uv = SCREEN_UV;
 	vec2 pixel = floor(SCREEN_UV / SCREEN_PIXEL_SIZE);
 	if (pixelation_enabled) {
-		vec2 snapped = (floor(pixel / pixel_size) + 0.5) * pixel_size;
-		uv = clamp(snapped * SCREEN_PIXEL_SIZE, SCREEN_PIXEL_SIZE * 0.5, vec2(1.0) - SCREEN_PIXEL_SIZE * 0.5);
+		vec2 resolution = 1.0 / SCREEN_PIXEL_SIZE;
+		float height = min(target_height, resolution.y);
+		vec2 grid = vec2(round(height * resolution.x / resolution.y), height);
+		uv = (floor(SCREEN_UV * grid) + 0.5) / grid;
 	}
 	vec2 sample_uv = uv;
 	if (analog_enabled) {
@@ -44,7 +46,7 @@ void fragment() {
 	}
 	if (palette_enabled) {
 		float threshold = hash12(floor(pixel / 2.0)) - 0.5;
-		color = floor(color * palette_steps + threshold * dither_strength) / palette_steps;
+		color = floor(color * palette_steps + 0.5 + threshold * dither_strength) / palette_steps;
 	}
 	if (analog_enabled) {
 		float grain = hash12(pixel + floor(TIME * 18.0)) - 0.5;
