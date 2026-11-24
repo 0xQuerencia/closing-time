@@ -31,3 +31,13 @@ static func build(markers: Dictionary) -> Array[Dictionary]:
 
 static func _route(entrance: Vector3, arrive: Array[Vector3], browse: Array[Vector3], queue: Array[Vector3], leave: Array[Vector3]) -> Dictionary:
 	return {"entrance": entrance, "arrive": arrive, "browse": browse, "queue": queue, "leave": leave}
+
+static func production(markers: Dictionary) -> Array[Dictionary]:
+	var profiles := build(markers)
+	var base := profiles[1].duplicate(true)
+	base.merge({"id":"nora","name":"Nora","items":["water","crisps"],"card_fails":0,"browse_pause":2.5,"second_look":false},true)
+	profiles.append(base)
+	var ruth := profiles[0].duplicate(true)
+	ruth.merge({"id":"ruth","name":"Ruth","items":["water"],"browse_pause":2.0},true)
+	profiles.append(ruth)
+	return profiles

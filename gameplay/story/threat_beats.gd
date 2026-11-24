@@ -81,15 +81,17 @@ func _physics_process(delta: float) -> void:
 		return
 	threat_time += delta
 	var player: CharacterBody3D = game.player
-	if player.global_position.z > ESCAPE_Z:
+	if player.global_position.z > ESCAPE_Z and (director.production == null or (absf(player.global_position.x - 1.7) <= 2.2 and not sec.front_door.locked)):
 		end("escape")
 		return
 	if police_left >= 0.0:
 		police_left -= delta
 		if police_left <= 0.0:
-			end("secured")
-			return
-	if threat_time > rescue_after:
+			if director.production == null or is_secured():
+				end("secured")
+				return
+			police_left = 0.0
+	if director.production == null and threat_time > rescue_after:
 		end("secured")  # Dina and the first car turn up regardless: nobody can be stuck in here forever
 
 func in_office() -> bool:
