@@ -28,3 +28,9 @@ Fears to Fathom is a visual study reference only. This is an independent project
 - Loading-screen image: `assets/art/market_loading.png`, captured from the running Godot store using `tools/capture_opening.gd`. The user-supplied rainy-night concept is a visual reference only and is not bundled in the game.
 
 - Player and antagonist footsteps: five concrete recordings from **Kenney Impact Sounds**, CC0, https://kenney.nl/assets/impact-sounds. Filtered mono PCM conversions, source revision and original license in `assets/audio/footsteps/`.
+
+## Original-only production migration
+
+The production market now instantiates project-authored office/security props from `scenes/world/original_office_props.gd`: desk, chair, CRT, computer, keyboard, phone, mug, crate, extinguisher and CCTV housing. Meshes and small procedural grain textures are generated in Godot; no third-party geometry or texture is used by this factory. These are first-pass models pending visual review.
+
+Historical imported assets listed above remain in the repository and may still be referenced elsewhere. They are not cleared for the original-only release. Character rigs and animation, the embedded exterior wagon, remaining imported props, footstep audio and bundled fonts require replacement or an explicit owner-approved exception. Preserve the historical notices until the underlying files are removed; do not relabel third-party work as original.
