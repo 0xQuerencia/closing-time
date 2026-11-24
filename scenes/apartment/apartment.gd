@@ -2,6 +2,8 @@ extends Node3D
 
 const Player = preload("res://scenes/world/inspection_player.gd")
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
+const ArtReference = preload("res://scenes/world/art_reference.gd")
+const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
 var progress := Progress.new()
 var player: CharacterBody3D
 var prompt: Label
@@ -150,13 +152,22 @@ func _build_ui() -> void:
 	frame.add_child(narration)
 
 func _mat(color: Color) -> StandardMaterial3D:
-	var key := color.to_html()
+	var key := color.to_html(false)
 	if materials.has(key):
 		return materials[key] as StandardMaterial3D
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.roughness = .95
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var texture_path := ""
+	match key:
+		"8c8978": texture_path = "res://assets/models/exterior_plaster.png"
+		"705640","62564b": texture_path = "res://assets/models/exterior_wood.png"
+	if not texture_path.is_empty() and ResourceLoader.exists(texture_path):
+		material.albedo_texture = load(texture_path) as Texture2D
+		material.albedo_color = color.lerp(Color.WHITE,.72)
+		materials[key] = material
+		return material
 	var image := Image.create(64,64,false,Image.FORMAT_RGB8)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = key.hash()
@@ -194,6 +205,17 @@ func _target(id: String, verb: String, body: String, pos: Vector3, size: Vector3
 	var node := _box(pos,size,color)
 	node.set_meta("story_item",id)
 	targets[id] = {"verb":verb,"body":body,"node":node}
+	if id in ["shift_read","epilogue_phone"]:
+		var handset := preload("res://assets/models/props/phone.glb").instantiate() as Node3D
+		handset.rotation.x = -PI / 2.0
+		handset.position.y = -.015
+		RetroMaterials.apply_nearest_filter(handset)
+		_hide_visual(node)
+		node.add_child(handset)
+
+func _hide_visual(root: Node) -> void:
+	for child in root.find_children("*","MeshInstance3D",true,false):
+		child.hide()
 
 func _build_room() -> void:
 	var wall := Color("#8c8978")
@@ -217,9 +239,15 @@ func _build_room() -> void:
 	_box(Vector3(-2.35,.57,-2.18),Vector3(1.42,.06,1.45),fabric)
 	_box(Vector3(-2.35,.61,-3.12),Vector3(.78,.13,.42),Color("#b3b0a0"))
 	# Desk and paper/photo/phone, all original geometry.
-	_box(Vector3(.65,.70,-3.91),Vector3(1.7,.10,.76),wood)
+	var desk_parts: Array[Node3D] = [_box(Vector3(.65,.70,-3.91),Vector3(1.7,.10,.76),wood)]
 	for x in [-.10,1.40]:
-		_box(Vector3(x,.34,-3.91),Vector3(.09,.68,.64),wood)
+		desk_parts.append(_box(Vector3(x,.34,-3.91),Vector3(.09,.68,.64),wood))
+	var desk := ArtReference.scene("res://assets/models/office_props/desk_office.glb")
+	if desk != null:
+		for part in desk_parts:
+			_hide_visual(part)
+		desk.position = Vector3(.65,0,-3.91)
+		add_child(desk)
 	_target("shift_read","Read phone","Dina: Could you cover closing tonight? I'll leave the checklist on the counter.\nKay: You owe me breakfast if you're working again.",Vector3(.48,.79,-3.62),Vector3(.065,.045,.13),dark)
 	_target("rent_notice","Read rent reminder","Rent due December 1. I'd written 'extra shift?' in the margin.",Vector3(.88,.76,-3.73),Vector3(.22,.014,.29),Color("#d1c5a3"))
 	_target("kay_photo","Look at photograph","Kay and me last June. It felt like a different year.",Vector3(1.25,.87,-4.14),Vector3(.19,.23,.035),Color("#89795f"))

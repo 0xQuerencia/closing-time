@@ -10,3 +10,5 @@ The owner's earlier Blender market and PSX-char GLBs are the visual reference. R
 - Apartment and Route 9: original blockouts still need fully modeled, UV-painted replacement kits; consistent post-processing is not a substitute.
 - Remaining cast: author distinct silhouettes, heads, hair, clothes and texture atlases; do not reuse recolored Jamie as finished cast.
 - Visual approval before release: compare actual renders of title exterior, apartment, road cockpit, market aisle, checkout, office CRT, staff and shoppers. Verify interactables, navigation, camera feeds, loading and mobile/desktop performance. No claim of final visual quality without review.
+
+The opening now reuses the existing handset GLB, authored surface textures and the actual market shell at the end of Route 9. The reference apartment desk also reuses the previously selected mesh. No claim that the remaining bed, kitchen, car interior or female cast has been remodeled.
