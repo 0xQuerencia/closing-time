@@ -20,7 +20,7 @@ func _ready() -> void:
 			var instance := scene.instantiate()
 			add_child(instance)
 			RetroMaterials.apply_nearest_filter(instance)
-	build_imported_props()
+	build_original_props()
 	build_collisions()
 	build_glass()
 	build_lighting()
@@ -188,32 +188,27 @@ func add_gameplay(auto_customers: bool) -> void:
 	gameplay.setup(self, player, auto_customers)
 	ambient_dread.bind_gameplay(gameplay)
 
-func build_imported_props() -> void:
-	# Office models replace the blockout computer set inside the existing office footprint.
-	_add_visual("res://assets/models/office_props/desk_office.glb", Vector3(7.6, 0, -5.25))
-	_add_visual("res://assets/models/office_props/chair_office.glb", Vector3(7.38, 0, -3.92), PI + 0.62)  # left pushed back and turned, as if someone got up in a hurry
-	_add_visual("res://assets/models/office_props/crt_monitor__static.glb", Vector3(7.9, .77, -5.43))
-	_add_visual("res://assets/models/props/desktop_pc.glb", Vector3(7.35, .77, -5.38))
-	_add_visual("res://assets/models/office_props/keyboard.glb", Vector3(7.9, .77, -4.96))
-	_add_visual("res://assets/models/office_props/desk_phone.glb", Vector3(6.92, .77, -5.1))
-	_add_visual("res://assets/models/props/mug.glb", Vector3(-8.02, .96, .15))
-	_add_visual("res://assets/models/props/bottle_crate.glb", Vector3(6.45, 0, 1.25), PI / 2.0)
-	_add_visual("res://assets/models/props/fire_extinguisher.glb", Vector3(4.74, 0, -1.0), PI / 2.0)
-	_add_visual("res://assets/models/props/cctv_a.glb", Vector3(-8.0, 2.56, 5.78))
-	_add_visual("res://assets/models/props/cctv_b.glb", Vector3(8.0, 2.56, -5.77), PI)
-	_add_visual("res://assets/models/props/cctv_a.glb", Vector3(3.25, 2.72, 6.12), PI)
-
-func _add_visual(path: String, point: Vector3, yaw: float = 0.0) -> Node3D:
-	var scene := load(path) as PackedScene
-	if scene == null:
-		push_error("Visual asset failed to load: " + path)
-		return null
-	var instance := scene.instantiate() as Node3D
-	instance.position = point
-	instance.rotation.y = yaw
-	add_child(instance)
-	RetroMaterials.apply_nearest_filter(instance)
-	return instance
+func build_original_props() -> void:
+	var factory := OriginalOfficeProps.new()
+	var placements := [
+		["desk", Vector3(7.6, 0, -5.25), 0.0],
+		["chair", Vector3(7.38, 0, -3.92), PI + .62],
+		["crt", Vector3(7.9, .77, -5.43), 0.0],
+		["computer", Vector3(7.35, .77, -5.38), 0.0],
+		["keyboard", Vector3(7.9, .77, -4.96), 0.0],
+		["phone", Vector3(6.92, .77, -5.1), 0.0],
+		["mug", Vector3(-8.02, .96, .15), 0.0],
+		["crate", Vector3(6.45, 0, 1.25), PI / 2.0],
+		["extinguisher", Vector3(4.74, 0, -1.0), PI / 2.0],
+		["camera", Vector3(-8.0, 2.56, 5.78), 0.0],
+		["camera", Vector3(8.0, 2.56, -5.77), PI],
+		["camera", Vector3(3.25, 2.72, 6.12), PI],
+	]
+	for placement in placements:
+		var prop := factory.make(placement[0])
+		prop.position = placement[1]
+		prop.rotation.y = placement[2]
+		add_child(prop)
 
 func build_collisions() -> void:
 	var entries = JSON.parse_string(FileAccess.get_file_as_string("res://assets/models/collisions.json"))
