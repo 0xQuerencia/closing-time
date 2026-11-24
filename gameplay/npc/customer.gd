@@ -76,6 +76,8 @@ func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
 	return self
 
 const HAND_RIGS := [
+	{"hand": "Hand_R", "upper": "UpperArm_R", "lower": "LowerArm_R", "offset": Vector3(0, 0.05, 0), "tilt": Vector3(PI, 0, 0),
+	"upper_axis": Vector3.RIGHT, "lower_axis": Vector3.RIGHT, "upper_angle": 0.0, "lower_angle": -1.1},
 	{"hand": "hand_right", "upper": "upper_arm_right", "lower": "forearm_right", "offset": Vector3(0, 0.05, 0), "tilt": Vector3(PI, 0, 0),
 	"upper_axis": Vector3.RIGHT, "lower_axis": Vector3.RIGHT, "upper_angle": 0.0, "lower_angle": 1.1},
 	{"hand": "RightHand", "upper": "RightUpperArm", "lower": "RightLowerArm", "offset": Vector3(0, 0.05, 0), "tilt": Vector3(PI / 2, 0, 0),
@@ -89,16 +91,17 @@ const OUTFITS := {
 	"leon_overshirt": "res://assets/models/characters/vinrax/casual_male_leon_overshirt.png"}
 
 func _build_body() -> void:
-	var model_path: String = MODELS.get(profile.get("model", "vinrax"), MODELS.vinrax)
+	var original_leon := String(profile.get("id", "")).begins_with("leon")
+	var model_path: String = "res://assets/models/characters/original/leon_lod0.glb" if original_leon else MODELS.get(profile.get("model", "vinrax"), MODELS.vinrax)
 	var model_scene := load(model_path) as PackedScene
 	if model_scene == null:
 		push_error("Customer visual model failed to load: " + model_path)
 		return
 	var model := model_scene.instantiate()
 	model.name = "CustomerVisual"
-	if profile.has("outfit"):
+	if not original_leon and profile.has("outfit"):
 		_apply_outfit(model, OUTFITS[profile.outfit])
-	if profile.get("cap", false):
+	if not original_leon and profile.get("cap", false):
 		_attach_cap(model)
 	# These authored models face +Z; the store's customer paths use Godot's -Z forward.
 	model.rotation.y = PI
