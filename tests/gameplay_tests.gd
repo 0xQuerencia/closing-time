@@ -191,8 +191,8 @@ func _test_manual_sale() -> void:
 
 ## Each rig turns its head toward a point beside it, nods down at the counter, and ignores what is behind it.
 func _test_head_look() -> void:
-	for model in Customer.MODELS:
-		var person := Customer.new().setup(game, {"id": "look_" + model, "name": "Look", "model": model})
+	for model in ["mara", "ben", "nora", "ruth", "leon1", "leon2"]:
+		var person := Customer.new().setup(game, {"id": model, "name": "Look"})
 		world.add_child(person)
 		person.global_position = Vector3(-1.5, 0.05, 2.6)
 		person.rotation.y = 0.0
