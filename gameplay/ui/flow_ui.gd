@@ -13,6 +13,9 @@ const INK := Color(0.9, 0.89, 0.84)
 const DIM := Color(0.9, 0.89, 0.84, 0.6)
 const WARM := Color(0.98, 0.84, 0.3)
 const ENDINGS := {
+	"escaped": {"title":"HOME","text":"I made it to the road. Dina called again, but I could barely hold the phone.\\nI never went back to Marlow's."},
+	"rescued": {"title":"WAITING FOR DAYLIGHT","text":"When the officers reached the office, I finally let go of the handle.\\nI kept thinking about Evan."},
+	"evidence_preserved": {"title":"THE SECOND COPY","text":"The records and Dina's account were enough to reopen the investigation.\\nThere were no easy answers. But at least someone was asking the right questions."},
 	"escape": {
 		"title": "OUT",
 		"text": "The store alarm is still going when you reach the road.\\nHeadlights turn in from Route 9. Behind you the back door stands open and the office light is on.\\nYour phone buzzes in your pocket. It's Dina. You let it ring."},
@@ -366,8 +369,6 @@ func show_title() -> void:
 	var first := _button("start", "New Game", func(): _begin(false))
 	if SaveGame.exists():
 		_button("continue", "Continue", func(): _begin(true))
-	if game.persist_saves:
-		_button("opening_preview", "Opening preview", func(): hide_all(); get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn"))
 	_button("guide", "How to play", func(): show_guide("title"))
 	_button("settings", "Settings", show_settings)
 	_button("quit", "Quit", func(): quit_requested.emit())
@@ -375,6 +376,9 @@ func show_title() -> void:
 
 func _begin(continuing: bool) -> void:
 	hide_all()
+	if not continuing and game.persist_saves:
+		get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn")
+		return
 	if continuing:
 		continue_requested.emit()
 	else:
@@ -394,7 +398,7 @@ func show_pause() -> void:
 func show_ending(kind: String) -> void:
 	var entry: Dictionary = ENDINGS[kind]
 	_clear_buttons()
-	_present("ending_" + kind, entry.title, entry.text, "Closing Time  -  a Hack Club Crescent entry")
+	_present("ending_" + kind, entry.title, entry.text, "Closing Time")
 	var first: Button
 	if kind == "caught":
 		first = _button("retry", "Try again", func(): hide_all(); retry_requested.emit())
