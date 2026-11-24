@@ -53,3 +53,7 @@ if rg -n 'SCRIPT ERROR|ERROR:|FAIL:' local/validation-chapters.log; then
   echo '[FAIL] Chapter progression checks'; exit 1
 fi
 rg 'CHAPTER PROGRESSION TESTS COMPLETE: 0 failures' local/validation-chapters.log
+
+"$G" --headless --audio-driver Dummy --path . -- --test-production > local/validation-production.log 2>&1 || { cat local/validation-production.log; exit 1; }
+if rg -n 'SCRIPT ERROR|ERROR:' local/validation-production.log; then exit 1; fi
+rg 'PRODUCTION TESTS COMPLETE failures=0' local/validation-production.log

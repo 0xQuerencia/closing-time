@@ -57,6 +57,12 @@ func _ready() -> void:
 		var gameplay_tests := GameplayTests.new()
 		add_child(gameplay_tests)
 		gameplay_tests.run(self)
+	elif "--test-production" in OS.get_cmdline_user_args():
+		player.enabled = false
+		add_gameplay(false)
+		var production_tests := ProductionTests.new()
+		add_child(production_tests)
+		production_tests.run_production(self)
 	elif "--test-story" in OS.get_cmdline_user_args():
 		player.enabled = false
 		add_gameplay(false)
