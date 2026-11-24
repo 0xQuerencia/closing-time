@@ -58,4 +58,4 @@ func run() -> void:
 	check(market.gameplay.director.production.progress.current_id() == "handover","market begins at handover")
 	await _look(market.player,"centered motion reaches market player")
 	print("MOUSE CAPTURE TESTS COMPLETE failures=",failures)
-	quit(1 if failures else 0)
+	await market.finish_run(1 if failures else 0)
