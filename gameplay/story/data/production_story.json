@@ -1,0 +1,292 @@
+{
+  "schema": 1,
+  "chapters": [
+    {
+      "id": "apartment",
+      "location": "apartment",
+      "time": "10:38 PM",
+      "minutes": 5,
+      "required": [
+        "shift_read",
+        "keys_taken",
+        "vest_taken",
+        "apartment_exit"
+      ],
+      "optional": [
+        "rent_notice",
+        "kay_photo"
+      ]
+    },
+    {
+      "id": "route9",
+      "location": "route9",
+      "time": "10:52 PM",
+      "minutes": 5,
+      "required": [
+        "drive_started",
+        "market_arrived"
+      ],
+      "optional": [
+        "bypass_sign",
+        "radio_tuned"
+      ]
+    },
+    {
+      "id": "handover",
+      "location": "market",
+      "time": "11:05 PM",
+      "minutes": 8,
+      "required": [
+        "dina_handover",
+        "mara_served",
+        "cooler_counted"
+      ],
+      "optional": [
+        "opening_photo",
+        "employee_schedule",
+        "evan_photo",
+        "mara_memory"
+      ]
+    },
+    {
+      "id": "routine",
+      "location": "market",
+      "time": "11:24 PM",
+      "minutes": 10,
+      "required": [
+        "ben_served",
+        "nora_served",
+        "delivery_checked",
+        "restock_done"
+      ],
+      "optional": [
+        "ben_memory",
+        "bypass_clipping",
+        "delivery_note",
+        "locker_note"
+      ]
+    },
+    {
+      "id": "closing",
+      "location": "market",
+      "time": "11:49 PM",
+      "minutes": 9,
+      "required": [
+        "ruth_served",
+        "leon_first_left",
+        "cash_drop_done",
+        "trash_done",
+        "latch_checked",
+        "leon_second_left"
+      ],
+      "optional": [
+        "owner_circular",
+        "termination_notice",
+        "missing_notice",
+        "evan_notebook",
+        "ledger_copy",
+        "training_binder",
+        "key_log"
+      ]
+    },
+    {
+      "id": "outage",
+      "location": "market",
+      "time": "12:07 AM",
+      "minutes": 9,
+      "required": [
+        "security_alert",
+        "power_decision",
+        "safety_route_open"
+      ],
+      "optional": [
+        "dvr_clip",
+        "dina_statement",
+        "arthur_message",
+        "maintenance_log",
+        "wet_prints"
+      ]
+    },
+    {
+      "id": "escape",
+      "location": "market",
+      "time": "12:21 AM",
+      "minutes": 6,
+      "required": [],
+      "optional": [
+        "dispatcher_record",
+        "evidence_packet"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "rent_notice",
+      "chapter": "apartment",
+      "title": "Rent reminder",
+      "text": "Payment due December 1. Jamie has written 'extra shift?' in the margin.",
+      "category": "life"
+    },
+    {
+      "id": "kay_photo",
+      "chapter": "apartment",
+      "title": "Photo on desk",
+      "text": "Kay and Jamie on a windy afternoon. The date on the back is June 2006.",
+      "category": "life"
+    },
+    {
+      "id": "bypass_sign",
+      "chapter": "route9",
+      "title": "Bypass sign",
+      "text": "Through traffic: use the new bypass.",
+      "category": "town"
+    },
+    {
+      "id": "radio_tuned",
+      "chapter": "route9",
+      "title": "Local radio",
+      "text": "Light rain overnight. The old Route 9 remains open to local traffic.",
+      "category": "town"
+    },
+    {
+      "id": "opening_photo",
+      "chapter": "handover",
+      "title": "Opening photograph",
+      "text": "Marlow's Market, May 16, 1987. Arthur is standing beside a ribbon.",
+      "category": "town"
+    },
+    {
+      "id": "employee_schedule",
+      "chapter": "handover",
+      "title": "Employee schedule",
+      "text": "Jamie Walker: hired November 10. A blank space remains on the older schedule.",
+      "category": "life"
+    },
+    {
+      "id": "evan_photo",
+      "chapter": "handover",
+      "title": "Staff photograph",
+      "text": "Evan wears a green shirt and holds a crooked paper crown from his birthday.",
+      "category": "life"
+    },
+    {
+      "id": "mara_memory",
+      "chapter": "handover",
+      "title": "Mara's recollection",
+      "text": "Evan always remembered which tea I bought. He never made me ask twice.",
+      "category": "witness"
+    },
+    {
+      "id": "ben_memory",
+      "chapter": "routine",
+      "title": "Ben's recollection",
+      "text": "He made decent coffee. Last time I saw him he said he was staying late for a meeting.",
+      "category": "witness"
+    },
+    {
+      "id": "bypass_clipping",
+      "chapter": "routine",
+      "title": "Local newspaper",
+      "text": "New bypass redirects through traffic away from old Route 9, 2003.",
+      "category": "town"
+    },
+    {
+      "id": "delivery_note",
+      "chapter": "routine",
+      "title": "Delivery discrepancy",
+      "text": "Invoice quantity differs from the office copy. Gus has circled the correction.",
+      "category": "records"
+    },
+    {
+      "id": "locker_note",
+      "chapter": "routine",
+      "title": "Locker note",
+      "text": "Training binder. Back sleeve. Don't leave the only copy in the office.",
+      "category": "records"
+    },
+    {
+      "id": "owner_circular",
+      "chapter": "closing",
+      "title": "Owner circular",
+      "text": "August 20. Evan Miller is no longer employed here. Direct inquiries to management.",
+      "category": "cover_story"
+    },
+    {
+      "id": "termination_notice",
+      "chapter": "closing",
+      "title": "Termination notice",
+      "text": "Leon Harker. Employment ended August 23. Reason: misconduct.",
+      "category": "cover_story"
+    },
+    {
+      "id": "missing_notice",
+      "chapter": "closing",
+      "title": "Missing-person notice",
+      "text": "September 2. Evan Miller, 23. Family asks anyone with information to contact authorities.",
+      "category": "cover_story"
+    },
+    {
+      "id": "evan_notebook",
+      "chapter": "closing",
+      "title": "Evan's notebook",
+      "text": "August 12: third discrepancy. August 15: Dina says not to confront him alone. August 18: made copies.",
+      "category": "records"
+    },
+    {
+      "id": "ledger_copy",
+      "chapter": "closing",
+      "title": "Ledger copy",
+      "text": "The same deposit appears with different totals on two signed sheets.",
+      "category": "records"
+    },
+    {
+      "id": "training_binder",
+      "chapter": "closing",
+      "title": "Training binder",
+      "text": "A duplicate set of adjusted summaries, folded behind the training checklist.",
+      "category": "records"
+    },
+    {
+      "id": "key_log",
+      "chapter": "closing",
+      "title": "Key log",
+      "text": "August 23. Leon: return pending. Dina has added a question mark.",
+      "category": "access"
+    },
+    {
+      "id": "dvr_clip",
+      "chapter": "outage",
+      "title": "Archived camera excerpt",
+      "text": "August 19. After midnight, Evan returns to the market. Arthur's account says he had already gone home.",
+      "category": "timeline"
+    },
+    {
+      "id": "dina_statement",
+      "chapter": "outage",
+      "title": "Dina's message",
+      "text": "I saw Evan come back. I didn't see what happened after that. I should have told someone sooner.",
+      "category": "witness"
+    },
+    {
+      "id": "arthur_message",
+      "chapter": "outage",
+      "title": "Owner message",
+      "text": "Do not give out employee records. I will handle questions about August.",
+      "category": "cover_story"
+    },
+    {
+      "id": "maintenance_log",
+      "chapter": "outage",
+      "title": "Maintenance log",
+      "text": "Rear sensor tested. Service call not completed.",
+      "category": "access"
+    },
+    {
+      "id": "wet_prints",
+      "chapter": "outage",
+      "title": "Wet marks",
+      "text": "Fresh water on the staff corridor floor. Someone has been through recently.",
+      "category": "access"
+    }
+  ]
+}
