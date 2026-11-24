@@ -5,10 +5,17 @@ var enabled := true
 var require_mouse_capture := true
 var head_bob := false
 var sensitivity := 1.0
+var toggle_sprint := false
+var _running := false
 var elapsed := 0.0
 
 func _ready() -> void:
 	name = "InspectionPlayer"
+	var preferences := ConfigFile.new()
+	if preferences.load("user://settings.cfg") == OK:
+		toggle_sprint = bool(preferences.get_value("accessibility","toggle_sprint",false))
+		head_bob = bool(preferences.get_value("view","bob",false))
+		sensitivity = float(preferences.get_value("view","sensitivity",1.0))
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.24
@@ -28,6 +35,8 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
+		if enabled and toggle_sprint and not event.echo and event.physical_keycode == KEY_SHIFT:
+			_running = not _running
 		if event.keycode == KEY_ESCAPE:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
 		if event.keycode == KEY_B:
@@ -45,7 +54,8 @@ func _physics_process(delta: float) -> void:
 	if (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or not require_mouse_capture):
 		move = Vector2(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
 	var direction := global_basis * Vector3(move.x, 0, move.y).normalized()
-	var speed := 2.8 if Input.is_physical_key_pressed(KEY_SHIFT) else 1.9
+	var running := _running if toggle_sprint else Input.is_physical_key_pressed(KEY_SHIFT)
+	var speed := 2.8 if running else 1.9
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
 	if not is_on_floor():

@@ -60,6 +60,7 @@ func setup(inter: Interactor, dialogue_runner: DialogueRunner, task_manager: Tas
 	_place(_prompt, 0.5, 0.5, -360, 34, 720)
 	_message = _label(19, DIM)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_place(_message, 0.5, 0.5, -360, 62, 720)
 	_held = _label(21, INK)
 	_place(_held, 0.0, 1.0, 28, -58, 560)
@@ -71,7 +72,7 @@ func setup(inter: Interactor, dialogue_runner: DialogueRunner, task_manager: Tas
 	dialogue_runner.line_shown.connect(_on_line)
 	dialogue_runner.choices_shown.connect(_on_choices)
 	dialogue_runner.finished.connect(func(_id): _clear_choices())
-	interactor.message.connect(func(text): _message.text = text; _message_left = 3.5)
+	interactor.message.connect(func(text): _message.text = text; _message_left = clampf(float(text.length()) / 18.0,3.5,12.0))
 	interactor.held_changed.connect(_on_held)
 	tasks.task_added.connect(func(_id): _on_tasks_changed())
 	tasks.objective_completed.connect(func(_t, _o): _on_tasks_changed())

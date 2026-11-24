@@ -13,6 +13,7 @@ var active := false
 var ended := ""
 var stalker: Stalker
 var threat_time := 0.0
+var reduced_flashes := false
 var police_left := -1.0
 var entry_delay := 14.0
 var police_eta := 30.0
@@ -174,7 +175,7 @@ func _flash_sirens(delta: float) -> void:
 	_siren_flip += delta
 	for i in siren_lights.size():
 		var phase := int(_siren_flip * 4.0) % 2
-		siren_lights[i].light_energy = (4.0 if (phase == i) else 0.2) if on else 0.0
+		siren_lights[i].light_energy = (1.0 if reduced_flashes else (4.0 if (phase == i) else 0.2)) if on else 0.0
 
 ## Put the shop back to the moment the checkpoint was written. Used for retry and for loading.
 func clear_actors() -> void:

@@ -18,6 +18,9 @@ const TOAST_SECONDS := 4.5
 var model: PhoneModel
 var clock: StoryClock
 var open := false
+var silent := false
+var transcript_enabled := false
+var _transcript: RichTextLabel
 var current_thread := "Dina"
 var _toast: HBoxContainer
 var _toast_text: Label
@@ -49,6 +52,7 @@ func setup(phone: PhoneModel, story_clock: StoryClock) -> void:
 	layer = 11
 	_build_toast()
 	_build_badge()
+	_build_transcript()
 	_build_screen()
 	_buzz = AudioStreamPlayer.new()
 	_buzz.stream = Tone.stream(880.0, 160, 0.2, 0.22)
@@ -127,7 +131,7 @@ func _build_badge() -> void:
 	_badge = _outlined("", 20, Color(0.92, 0.91, 0.87, 0.8))
 	_pin(_badge, 1.0, 1.0, -28 - 300, -24, 300)
 	_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hint = _outlined("<  >  switch        Up / Down  scroll        Tab  put away", 18, Color(0.92, 0.91, 0.87, 0.6))
+	_hint = _outlined("< > switch   Up/Down scroll   R reply   M silent   V transcript   Tab close", 18, Color(0.92, 0.91, 0.87, 0.6))
 	_pin(_hint, 1.0, 1.0, -28 - 700, -24, 700)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hint.visible = false
@@ -311,6 +315,8 @@ func _sync_rig() -> void:
 		return
 	_rig.visible = visible and _raise > 0.001
 	_screen_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _rig.visible else SubViewport.UPDATE_DISABLED
+	if _transcript != null:
+		_transcript.visible = visible and open and transcript_enabled
 
 # --- input and message flow --------------------------------------------------------------------
 
@@ -319,6 +325,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed(GameInput.PHONE, false, true):  # exact match: Alt+Tab to another window is not the phone
 		toggle()
+	elif open and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode in [KEY_R,KEY_M,KEY_V]:
+		match event.physical_keycode:
+			KEY_R: _reply()
+			KEY_M:
+				silent = not silent
+				_render()
+			KEY_V:
+				transcript_enabled = not transcript_enabled
+				_render()
+		get_viewport().set_input_as_handled()
 	elif open and event.is_action_pressed(GameInput.PHONE_NEXT):
 		_switch(1)
 	elif open and event.is_action_pressed(GameInput.PHONE_PREV):
@@ -330,6 +346,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_scroll_by(-SCROLL_STEP if event.button_index == MOUSE_BUTTON_WHEEL_UP else SCROLL_STEP)
 
 func _scroll_by(pixels: int) -> void:
+	if transcript_enabled and _transcript != null:
+		_transcript.get_v_scroll_bar().value += pixels * 2
+		return
 	_scroll.scroll_vertical = maxi(0, _scroll.scroll_vertical + pixels)
 	_update_arrows()
 
@@ -347,6 +366,7 @@ func toggle() -> void:
 		model.mark_read(current_thread)
 		_render()
 	_refresh_badge()
+	_sync_rig()
 
 func _switch(step: int) -> void:
 	var names: Array = model.threads.keys()
@@ -396,7 +416,8 @@ func _show_queued_message() -> void:
 	_toast_tween = _toast.create_tween()
 	_toast_tween.tween_property(_toast, "modulate:a", 1.0, 0.25)
 	_toast_left = TOAST_SECONDS
-	_buzz.play()
+	if not silent:
+		_buzz.play()
 	_arm_message_arrival()
 
 func _refresh_badge() -> void:
@@ -408,7 +429,8 @@ func _refresh_badge() -> void:
 
 ## Fill the LCD: contact name, then the thread as small bordered bubbles, latest at the bottom.
 func _render() -> void:
-	_header.text = "<  %s  >" % current_thread
+	_header.text = "<  %s  >" % current_thread + (" M" if silent else "")
+	_refresh_transcript()
 	for child in _log.get_children():
 		_log.remove_child(child)
 		child.queue_free()
@@ -452,3 +474,38 @@ func _process(delta: float) -> void:
 			_toast_tween = _toast.create_tween()
 			_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.35)
 			_toast_tween.tween_callback(func(): _toast.visible = false)
+
+func _build_transcript() -> void:
+	_transcript = RichTextLabel.new()
+	_transcript.position = Vector2(32,100)
+	_transcript.size = Vector2(530,490)
+	_transcript.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_transcript.add_theme_font_override("normal_font",FONT_FILE)
+	_transcript.add_theme_font_size_override("normal_font_size",24)
+	_transcript.add_theme_color_override("default_color",Color(.94,.93,.87))
+	_transcript.add_theme_stylebox_override("normal",_box(Color(.045,.055,.045,.96),Color(.5,.55,.45),1,14,14))
+	add_child(_transcript)
+	_transcript.hide()
+
+func _refresh_transcript() -> void:
+	if _transcript == null:
+		return
+	_transcript.visible = visible and open and transcript_enabled
+	var lines := PackedStringArray([current_thread.to_upper() + (" / SILENT" if silent else ""), ""])
+	for entry in model.threads[current_thread]:
+		lines.append("%s  %s" % [entry.time,"Jamie" if entry.me else current_thread])
+		lines.append(str(entry.text))
+		lines.append("")
+	_transcript.text = "\n".join(lines)
+
+func _reply() -> void:
+	var entries: Array = model.threads[current_thread]
+	for i in range(entries.size()-1,-1,-1):
+		var entry: Dictionary = entries[i]
+		if entry.me:
+			continue
+		var response := "Got it. Thanks." if current_thread == "Dina" else "Still at work. I'll text when I'm home."
+		if entry.id in ["dina_truth","dina_8","dina_9","dina_6"]:
+			response = "I'm getting somewhere safe."
+		model.deliver("reply_" + str(entry.id),current_thread,response,clock.text(),true)
+		return
