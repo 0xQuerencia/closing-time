@@ -26,7 +26,7 @@ func _ready() -> void:
 	_refresh()
 	narration.text = "I was twenty when I started working nights at Marlow's.\nIt was supposed to be a favor, just one extra shift."
 
-func _process(_delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	if player == null or leaving:
 		return
 	selected = ""
@@ -57,7 +57,7 @@ func _use(id: String) -> void:
 		if progress.advance():
 			leaving = true
 			get_tree().set_meta("closing_time_opening_preview", progress.snapshot())
-			get_tree().change_scene_to_file("res://scenes/world/market_root.tscn")
+			get_tree().change_scene_to_file("res://scenes/route9/route9.tscn")
 		return
 	if progress.record(id):
 		narration.text = targets[id].body
