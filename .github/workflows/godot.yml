@@ -32,6 +32,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Existing engine checks
         run: bash scripts/validate_project.sh
+      - name: Check original geometry and rigs
+        run: |
+          godot --headless --path . --script tests/original_props_tests.gd
+          godot --headless --path . --script tests/original_characters_tests.gd
       - name: Export browser package
         run: bash scripts/build_web.sh
       - uses: actions/upload-artifact@v4
@@ -39,6 +43,10 @@ jobs:
           name: closing-time-web
           path: build/closing-time-web.zip
           if-no-files-found: error
+      - name: Print failed validation logs
+        if: failure()
+        run: |
+          for f in local/validation-*.log; do echo "=== $f ==="; tail -n 80 "$f"; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,0 +1,484 @@
+{
+  "mara_greet": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Mara",
+        "text": "Oh, you're new. The young fellow who worked here knew my tea without asking."
+      }
+    }
+  },
+  "mara_talk": {
+    "start": "q",
+    "nodes": {
+      "0": {
+        "speaker": "Mara",
+        "text": "Evan. Haven't seen him since August. I hope he's all right."
+      },
+      "1": {
+        "speaker": "Mara",
+        "text": "Well, I hope they pay you properly for it, hon."
+      },
+      "q": {
+        "choices": [
+          {
+            "text": "What happened to him?",
+            "next": "0",
+            "set": {
+              "mara_memory": true
+            }
+          },
+          {
+            "text": "I'm just covering tonight.",
+            "next": "1"
+          }
+        ]
+      }
+    }
+  },
+  "mara_wait": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Mara",
+        "text": "Take your time, hon."
+      }
+    }
+  },
+  "mara_excuse": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Mara",
+        "text": "Sorry, hon. Just getting past."
+      }
+    }
+  },
+  "mara_thanks": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Mara",
+        "text": "Night, hon. Get home safe.",
+        "next": "b"
+      },
+      "b": {
+        "speaker": "Jamie",
+        "text": "You too."
+      }
+    }
+  },
+  "ben_greet": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Ben",
+        "text": "Evening. Coffee still on?",
+        "next": "1"
+      },
+      "1": {
+        "speaker": "Jamie",
+        "text": "Should be."
+      }
+    }
+  },
+  "ben_talk": {
+    "start": "q",
+    "nodes": {
+      "0": {
+        "speaker": "Ben",
+        "text": "Evan? Last I saw him, he said he was staying late for a meeting. Good kid."
+      },
+      "1": {
+        "speaker": "Ben",
+        "text": "Poured till ten. Then they wanted it redone."
+      },
+      "q": {
+        "choices": [
+          {
+            "text": "Did you know the guy who worked here before?",
+            "next": "0",
+            "set": {
+              "ben_memory": true
+            }
+          },
+          {
+            "text": "Long day?",
+            "next": "1",
+            "set": {
+              "ben_long_day": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "ben_reader": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Ben",
+        "text": "Again?",
+        "next": "b"
+      },
+      "b": {
+        "speaker": "Jamie",
+        "text": "Give me a second."
+      }
+    }
+  },
+  "ben_wait": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Ben",
+        "text": "Take your time. Never noticed it before."
+      }
+    }
+  },
+  "ben_excuse": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Ben",
+        "text": "Pardon me."
+      }
+    }
+  },
+  "ben_thanks": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Ben",
+        "text": "Cheers. Hope the rest of your night's quieter.",
+        "next": "b"
+      },
+      "b": {
+        "speaker": "Jamie",
+        "text": "Doubtful."
+      }
+    }
+  },
+  "leon1_greet": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Leon",
+        "text": "You got a new person every week now?",
+        "next": "1"
+      },
+      "1": {
+        "speaker": "Jamie",
+        "text": "I'm covering for Dina."
+      }
+    }
+  },
+  "leon1_talk": {
+    "start": "q",
+    "nodes": {
+      "0": {
+        "speaker": "Leon",
+        "text": "There a box of old employee stuff in back? I'll ask your manager."
+      },
+      "1": {
+        "speaker": "Leon",
+        "text": "Long time ago. Just left a few things behind."
+      },
+      "q": {
+        "choices": [
+          {
+            "text": "Can I help you find anything?",
+            "next": "0"
+          },
+          {
+            "text": "Did you work here?",
+            "next": "1"
+          }
+        ]
+      }
+    }
+  },
+  "leon1_wait": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Leon",
+        "text": "I'll wait."
+      }
+    }
+  },
+  "leon1_excuse": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Leon",
+        "text": "Excuse me."
+      }
+    }
+  },
+  "leon1_thanks": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Leon",
+        "text": "If you come across a training binder, don't throw it away.",
+        "next": "1"
+      },
+      "1": {
+        "speaker": "Jamie",
+        "text": "I'll let Dina know.",
+        "next": "2"
+      },
+      "2": {
+        "speaker": "Leon",
+        "text": "Right."
+      }
+    }
+  },
+  "leon2_greet": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Leon",
+        "text": "I forgot something.",
+        "next": "1"
+      },
+      "1": {
+        "speaker": "Jamie",
+        "text": "We're closing soon."
+      }
+    }
+  },
+  "leon2_talk": {
+    "start": "q",
+    "nodes": {
+      "0": {
+        "speaker": "Leon",
+        "text": "I used to work here. I know where everything is."
+      },
+      "1": {
+        "speaker": "Leon",
+        "text": "That won't be necessary."
+      },
+      "2": {
+        "speaker": "Leon",
+        "text": "Just a binder. It's got nothing to do with you."
+      },
+      "q": {
+        "choices": [
+          {
+            "text": "I can't let you in the staff area.",
+            "next": "0"
+          },
+          {
+            "text": "You can call Dina tomorrow.",
+            "next": "1"
+          },
+          {
+            "text": "What are you looking for?",
+            "next": "2"
+          }
+        ]
+      }
+    }
+  },
+  "leon2_wait": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Leon",
+        "text": "I can wait."
+      }
+    }
+  },
+  "leon2_excuse": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Leon",
+        "text": "Excuse me."
+      }
+    }
+  },
+  "leon2_thanks": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Leon",
+        "text": "I'll be outside if you change your mind.",
+        "next": "1"
+      },
+      "1": {
+        "speaker": "Jamie",
+        "text": "Have a good night."
+      }
+    }
+  },
+  "police_call": {
+    "start": "a",
+    "nodes": {
+      "a": {
+        "speaker": "Dispatcher",
+        "text": "Emergency. What's the address?",
+        "next": "b"
+      },
+      "b": {
+        "speaker": "Jamie",
+        "text": "Marlow's Market, Route 9. Someone broke in the back. He's inside.",
+        "next": "c"
+      },
+      "c": {
+        "speaker": "Dispatcher",
+        "text": "Are you in a safe place? Stay where you are.",
+        "next": "d"
+      },
+      "d": {
+        "speaker": "Jamie",
+        "text": "Office. I'm locking it.",
+        "next": "e"
+      },
+      "e": {
+        "speaker": "Dispatcher",
+        "text": "Units are on the way. Stay quiet and stay on."
+      }
+    }
+  },
+  "leon_caught": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Leon",
+        "text": "You should have left it alone."
+      }
+    }
+  },
+  "production_handover": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Dina",
+        "text": "Thanks for covering. I know it's short notice.",
+        "next": "1"
+      },
+      "1": {
+        "speaker": "Jamie",
+        "text": "No problem. I could use the hours.",
+        "next": "2"
+      },
+      "2": {
+        "speaker": "Dina",
+        "text": "Register's already counted. If the cooler says twelve and you see eleven, write eleven.",
+        "next": "3"
+      },
+      "3": {
+        "speaker": "Jamie",
+        "text": "Even if it's wrong on the sheet?",
+        "next": "4"
+      },
+      "4": {
+        "speaker": "Dina",
+        "text": "Especially then. Don't fix the sheet for them.",
+        "next": "5"
+      },
+      "5": {
+        "speaker": "Dina",
+        "text": "Rear latch sticks. Lift before turning the key. I'll be on my phone if you need me.",
+        "next": "6"
+      },
+      "6": {
+        "speaker": "Jamie",
+        "text": "All right. Get home safe."
+      }
+    }
+  },
+  "nora_greet": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Nora",
+        "text": "Hey, where'd you move the batteries? I have to get home before my roommate locks me out."
+      }
+    }
+  },
+  "nora_talk": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Nora",
+        "text": "It's fine. I'll just get these tonight."
+      }
+    }
+  },
+  "nora_wait": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Nora",
+        "text": "Sorry, I'm not trying to rush you."
+      }
+    }
+  },
+  "nora_excuse": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Nora",
+        "text": "Oops, excuse me."
+      }
+    }
+  },
+  "nora_thanks": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Nora",
+        "text": "Thanks. Try not to get soaked on the way home."
+      }
+    }
+  },
+  "ruth_greet": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Ruth",
+        "text": "Just these, please. Long night."
+      }
+    }
+  },
+  "ruth_talk": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Ruth",
+        "text": "Your manager looks exhausted. Tell her to take a day off."
+      }
+    }
+  },
+  "ruth_wait": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Ruth",
+        "text": "No hurry. I've had enough rushing for one night."
+      }
+    }
+  },
+  "ruth_excuse": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Ruth",
+        "text": "Sorry, can I squeeze past?"
+      }
+    }
+  },
+  "ruth_thanks": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Ruth",
+        "text": "Thank you. Take care getting home."
+      }
+    }
+  }
+}

@@ -15,6 +15,7 @@ static func snapshot(game: Gameplay, checkpoint: String) -> Dictionary:
 			fired.append(key)
 	return {
 		"version": VERSION,
+		"production": d.production.snapshot() if d.production != null else {},
 		"checkpoint": checkpoint,
 		"step": StoryDirector.Step.SECURITY_DONE if checkpoint == "closing_time" else StoryDirector.Step.IDLE,
 		"flags": d.flags.duplicate(true),
