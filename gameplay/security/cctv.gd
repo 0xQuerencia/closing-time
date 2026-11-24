@@ -126,7 +126,7 @@ func _build_screen() -> void:
 	screen_material = ShaderMaterial.new()
 	screen_material.shader = load("res://gameplay/security/cctv_screen.gdshader")
 	screen_material.set_shader_parameter("feed", (feeds[0].viewport as SubViewport).get_texture())
-	var root := game.world.find_child("OfficeMonitor",true,false)
+	var root: Node = game.world.find_child("OfficeMonitor",true,false)
 	var monitor := root.find_child("OriginalCRTGlass",true,false) as MeshInstance3D if root != null else null
 	if monitor == null:
 		push_error("Original office monitor screen missing")
