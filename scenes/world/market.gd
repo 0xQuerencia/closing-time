@@ -14,12 +14,13 @@ const TITLE_AIM := Vector3(-6.0, 2.2, 6.0)
 
 func _ready() -> void:
 	capture_mode = "--capture" in OS.get_cmdline_user_args()
-	for part in ["shell", "retail", "backrooms", "exterior"]:
+	for part in ["shell", "retail", "backrooms"]:
 		var scene := load("res://assets/models/%s.glb" % part) as PackedScene
 		if scene:
 			var instance := scene.instantiate()
 			add_child(instance)
 			RetroMaterials.apply_nearest_filter(instance)
+	add_child(OriginalExterior.new())
 	build_original_props()
 	build_collisions()
 	build_glass()
