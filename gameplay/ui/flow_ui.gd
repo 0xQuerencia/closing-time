@@ -367,7 +367,7 @@ func show_title() -> void:
 	_clear_buttons()
 	_present("title", "CLOSING TIME", "A MARLOW'S MARKET STORY", "WASD move   E use   F look   Q put down   Tab phone   C list   G guide   Esc pause")
 	var first := _button("start", "New Game", func(): _begin(false))
-	if SaveGame.exists():
+	if SaveGame.exists() or (game.persist_saves and not OpeningCheckpoint.read().is_empty()):
 		_button("continue", "Continue", func(): _begin(true))
 	_button("guide", "How to play", func(): show_guide("title"))
 	_button("settings", "Settings", show_settings)
@@ -376,9 +376,16 @@ func show_title() -> void:
 
 func _begin(continuing: bool) -> void:
 	hide_all()
-	if not continuing and game.persist_saves:
-		get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn")
-		return
+	if game.persist_saves:
+		if not continuing:
+			OpeningCheckpoint.erase()
+			SaveGame.erase()
+			get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn")
+			return
+		var opening := OpeningCheckpoint.read()
+		if not opening.is_empty():
+			OpeningCheckpoint.resume(get_tree(),opening)
+			return
 	if continuing:
 		continue_requested.emit()
 	else:
@@ -404,7 +411,14 @@ func show_ending(kind: String) -> void:
 		first = _button("retry", "Try again", func(): hide_all(); retry_requested.emit())
 		_button("title", "Main menu", func(): restart_requested.emit())
 	else:
-		first = _button("again", "Play again", func(): restart_requested.emit())
+		if game.director.production != null and kind in ["escaped","rescued","evidence_preserved"]:
+			if game.persist_saves:
+				OpeningCheckpoint.erase()
+				SaveGame.erase()
+			first = _button("epilogue", "Two weeks later", func(): _open_epilogue(kind))
+			_button("again", "Play again", func(): restart_requested.emit())
+		else:
+			first = _button("again", "Play again", func(): restart_requested.emit())
 	_button("quit", "Quit", func(): quit_requested.emit())
 	first.grab_focus()
 
@@ -443,3 +457,8 @@ func press(button_id: String) -> bool:
 
 func has_button(button_id: String) -> bool:
 	return _buttons.get_node_or_null("Btn_" + button_id) != null
+
+func _open_epilogue(kind: String) -> void:
+	get_tree().paused = false
+	get_tree().set_meta("closing_time_epilogue",kind)
+	get_tree().change_scene_to_file("res://scenes/apartment/apartment.tscn")
