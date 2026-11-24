@@ -1,6 +1,7 @@
 extends Node3D
 
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
+const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
 const LENGTH := 460.0
 var progress := Progress.new()
 var travelled := 0.0
@@ -27,6 +28,7 @@ func _ready() -> void:
 	OpeningCheckpoint.write(progress.snapshot())
 	_build_road()
 	_build_car()
+	add_child(preload("res://scenes/world/retro_effects.gd").new())
 	_build_ui()
 	_build_audio()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -157,6 +159,11 @@ func _build_road() -> void:
 		var mid := Vector3((center+next)*.5,-.03,-t-4.0)
 		var asphalt := _box(self,mid,Vector3(7.0,.12,8.55),Color("#42474a"))
 		asphalt.rotation.y = yaw
+		var road_surface := asphalt.material_override as StandardMaterial3D
+		if road_surface.albedo_texture == null:
+			road_surface.albedo_texture = load("res://assets/models/exterior_asphalt.png") as Texture2D
+			road_surface.albedo_color = Color("#a8a8a8")
+			road_surface.uv1_scale = Vector3(2,2,1)
 		var dash := _box(self,mid+Vector3(0,.071,0),Vector3(.085,.012,3.2),Color("#c1a35c"))
 		dash.rotation.y = yaw
 		for side in [-1.0,1.0]:
@@ -165,12 +172,15 @@ func _build_road() -> void:
 	_box(self,Vector3(0,-.28,-230),Vector3(100,.4,540),Color("#41483a"))
 	_sign("OLD ROUTE 9\nTHROUGH TRAFFIC: BYPASS",130.0)
 	_sign("MARLOW'S MARKET\nOPEN UNTIL MIDNIGHT",385.0)
-	var shop := Vector3(_center(456)+12.0,1.6,-456)
-	_box(self,shop,Vector3(14,3.2,8),Color("#877d67"))
-	_box(self,shop+Vector3(0,1.8,0),Vector3(14.7,.45,8.5),Color("#3d4541"))
-	_box(self,shop+Vector3(-7.02,0,0),Vector3(.05,1.7,5.5),Color("#a9a88c"))
+	# Use the exact authored market shell visible in the next scene, not a cube proxy.
+	var shop := Vector3(_center(456)+17.0,0,-456)
+	var storefront := preload("res://assets/models/shell.glb").instantiate() as Node3D
+	storefront.rotation.y = -PI / 2.0
+	storefront.position = shop
+	add_child(storefront)
+	RetroMaterials.apply_nearest_filter(storefront)
 	var lamp := OmniLight3D.new()
-	lamp.position = shop+Vector3(-8,1,0)
+	lamp.position = shop+Vector3(-8,2.4,0)
 	lamp.light_color = Color("#e6ca9a")
 	lamp.light_energy = 2.2
 	lamp.omni_range = 18

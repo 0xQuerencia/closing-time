@@ -43,3 +43,7 @@ Historical imported assets listed above remain in the repository and may still b
 - Both active CRTs and keyboards use the original prop factory. The office CRT displays the live security shader on an original quad.
 - Marlow Terminal is an original bitmap typeface, with 111 authored glyphs in `tools/fonts/glyphs.json` and a deterministic PNG/BMFont generator. It replaces the four imported UI fonts.
 - The export presets now exclude the known imported assets. The historical notices above are preserved for repository provenance. The resulting package still requires a verified contents audit; authored artwork with previously rasterized external typography has not yet been regenerated.
+
+## Art-reference playtest (not the original-only release)
+
+The opt-in Web Art Reference preset restores the previously used Blender exterior, credited office/electronics props and two legacy shoppers. It does not download new asset packs. Jamie and Leon remain the owner's original PSX-char meshes. The ordinary Web and Linux presets retain their original-only exclusions. The reference preset includes these credits and adjacent notices; original-only release must not be labeled complete until replacement meshes are authored and visually approved.

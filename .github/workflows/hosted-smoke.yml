@@ -1,0 +1,54 @@
+name: Hosted game smoke
+on:
+  push:
+    branches: [production/vercel-preview]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save playwright@1.58.2
+      - run: npx playwright install --with-deps chromium
+      - name: Verify public files
+        run: |
+          set -e
+          base=https://closing-time-snowy.vercel.app
+          for file in index.html index.js index.wasm index.pck; do
+            curl -fsSL -D "$file.headers" "$base/$file" -o "$file"
+            head -20 "$file.headers"
+            wc -c "$file"
+          done
+          test "$(od -An -tx1 -N4 index.wasm | tr -d ' \n')" = 0061736d
+          test "$(head -c4 index.pck)" = GDPC
+      - name: Launch real hosted build
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            try{
+              const p=await b.newPage({viewport:{width:640,height:360}});
+              p.on('console',m=>console.log('BROWSER',m.type(),m.text()));
+              p.on('pageerror',e=>console.error('PAGEERROR',e.message));
+              p.on('requestfailed',r=>console.error('REQUESTFAILED',r.url(),r.failure()));
+              p.on('response',r=>console.log('HTTP',r.status(),r.url()));
+              await p.goto('https://closing-time-snowy.vercel.app/',{waitUntil:'domcontentloaded'});
+              await p.waitForFunction(()=>!document.querySelector('#status') || document.querySelector('#status-notice')?.textContent?.trim(),{},{timeout:120000});
+              const failure=await p.locator('#status-notice').textContent({timeout:1000}).catch(()=>null);
+              if(failure?.trim())throw Error(failure);
+              await p.screenshot({path:'hosted-menu.png',timeout:120000});
+              console.log('HOSTED GAME STARTED');
+            }finally{await b.close();}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hosted-menu
+          path: hosted-menu.png

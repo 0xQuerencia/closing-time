@@ -127,11 +127,8 @@ func _build_screen() -> void:
 	screen_material.shader = load("res://gameplay/security/cctv_screen.gdshader")
 	screen_material.set_shader_parameter("feed", (feeds[0].viewport as SubViewport).get_texture())
 	var root: Node = game.world.find_child("OfficeMonitor",true,false)
-	var monitor := root.find_child("OriginalCRTGlass",true,false) as MeshInstance3D if root != null else null
-	if monitor == null:
-		push_error("Original office monitor screen missing")
-		return
-	monitor.material_override = screen_material
+	if not preload("res://scenes/world/art_reference.gd").set_screen(root,screen_material):
+		push_error("Office monitor screen missing")
 
 func _build_terminal() -> void:
 	terminal = SecurityTerminal.new()

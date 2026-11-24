@@ -83,7 +83,7 @@ const HAND_RIGS := [
 	{"hand": "RightHand", "upper": "RightUpperArm", "lower": "RightLowerArm", "offset": Vector3(0, 0.05, 0), "tilt": Vector3(PI / 2, 0, 0),
 	"upper_axis": Vector3.BACK, "lower_axis": Vector3.BACK, "upper_angle": 0.0, "lower_angle": -1.1}]
 func _build_body() -> void:
-	var model := OriginalCast.instantiate(str(profile.get("id","ben")))
+	var model := preload("res://scenes/world/art_reference.gd").customer(str(profile.get("id","ben")))
 	if model == null:
 		push_error("Original customer model failed to load")
 		return
