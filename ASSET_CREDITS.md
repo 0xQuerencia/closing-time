@@ -43,3 +43,8 @@ Historical imported assets listed above remain in the repository and may still b
 - Both active CRTs and keyboards use the original prop factory. The office CRT displays the live security shader on an original quad.
 - Marlow Terminal is an original bitmap typeface, with 111 authored glyphs in `tools/fonts/glyphs.json` and a deterministic PNG/BMFont generator. It replaces the four imported UI fonts.
 - The export presets now exclude the known imported assets. The historical notices above are preserved for repository provenance. The resulting package still requires a verified contents audit; authored artwork with previously rasterized external typography has not yet been regenerated.
+
+### Market handover
+
+- The project-authored Birch Spring bottles and cooler racks are generated in `gameplay/story/production_shift.gd`. The shared bottle mesh uses vertex colors and ten sides. Its stock layout also supplies the inspectable counts. The counter and entrance signs use Marlow Terminal glyphs with geometry in `scenes/world/interior_dressing.gd` and `scenes/world/exterior_dressing.gd`.
+- The same exterior script builds the two-tier conifers from seed 9 in one mesh batch. The front bell is synthesized by `Tone` in `gameplay/audio/soundscape.gd`. The cooler cue fades the existing original refrigeration loop.

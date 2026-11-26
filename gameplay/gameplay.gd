@@ -25,7 +25,6 @@ var next_profile := 0
 var customers_served := 0
 var auto_customers := true
 var production_spawn: Transform3D
-var production_look: Vector3
 
 func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> void:
 	world = world_root
@@ -84,8 +83,8 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 	flow.continue_requested.connect(continue_game)
 	flow.restart_requested.connect(restart_game)
 	flow.quit_requested.connect(func(): get_tree().quit())
-	production_spawn = player.global_transform
-	production_look = player.camera.rotation
+	var arrival := world.get_tree().get_first_node_in_group("MarketArrival") as Marker3D
+	production_spawn = arrival.global_transform
 	if get_tree().has_meta("closing_time_opening_preview"):
 		var incoming: Dictionary = get_tree().get_meta("closing_time_opening_preview")
 		get_tree().remove_meta("closing_time_opening_preview")
@@ -95,7 +94,7 @@ func setup(world_root: Node3D, player_body: CharacterBody3D, auto := true) -> vo
 
 func begin_production(snapshot: Dictionary) -> void:
 	player.global_transform = production_spawn
-	player.camera.rotation = production_look
+	player.camera.rotation = Vector3.ZERO
 	player.enabled = true
 	flow.hide_all()
 	profiles = CustomerProfiles.production(markers)

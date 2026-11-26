@@ -15,6 +15,7 @@ var outdoors := 0.0  # 0 deep inside .. 1 standing in the rain, smoothed
 var steps_taken := 0
 var _rain: AudioStreamPlayer
 var _steps: AudioStreamPlayer3D
+var _entry_bell: AudioStreamPlayer3D
 var _stride := 0.0
 var _last_feet := Vector3.ZERO
 var _filter: AudioEffectLowPassFilter
@@ -37,8 +38,21 @@ func setup(owner_game: Gameplay) -> Soundscape:
 	_steps.max_distance = 8.0
 	_steps.position = Vector3(0, 0.05, 0)
 	player.add_child(_steps)
+	_entry_bell = Tone.player(Tone.stream(1160.0, 470, .44, .23), FRONT_OPENING + Vector3(0, 1.17, -.18), 4.5)
+	_entry_bell.volume_db = -10.0
+	_entry_bell.max_distance = 19.0
+	add_child(_entry_bell)
+	game.security.front_door.contact_broken.connect(_play_entry_bell)
 	_last_feet = player.global_position
 	return self
+
+func _play_entry_bell() -> void:
+	var shift := game.director.production
+	if shift == null or shift.progress.current_id() != "handover":
+		return
+	_entry_bell.play()
+	if player.global_position.distance_to(_entry_bell.global_position) < 15.0:
+		game.interactor.message.emit("[The front door bell rings.]")
 
 func _ensure_buses() -> void:
 	if AudioServer.get_bus_index(ROOM_BUS) < 0:
@@ -169,7 +183,7 @@ func _rain_loop() -> AudioStreamWAV:
 	return wav
 
 func _exit_tree() -> void:
-	for p in [_rain, _steps]:
+	for p in [_rain, _steps, _entry_bell]:
 		if is_instance_valid(p):
 			p.stop()
 			p.stream = null

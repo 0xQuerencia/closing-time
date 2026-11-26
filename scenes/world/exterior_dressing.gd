@@ -13,6 +13,7 @@ func _ready() -> void:
 	_build_bin()
 	_build_sky()
 	_dress_store_sign()
+	_build_entrance_sign()
 
 func _mat(color: Color, rough := 0.8, metallic := 0.0, emit := 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -131,6 +132,16 @@ func _build_bin() -> void:
 	_box(Vector3(0.52, 0.86, 0.52), pos, _mat(Color(0.2, 0.19, 0.14), 0.85), true)
 	_box(Vector3(0.58, 0.08, 0.58), pos + Vector3(0, 0.47, 0), _mat(Color(0.15, 0.14, 0.1), 0.8))
 
+func _build_entrance_sign() -> void:
+	var at := Vector3(1.7, 2.85, 6.13)
+	_box(Vector3(.88,.23,.07), at, _mat(Color("#3c4235"), .9, 0.0, .18))
+	_label("ENTRANCE", at + Vector3(0,0,.041), 36, .0034, Color("#ece0b8"))
+	var housing := _mat(Color("#555349"))
+	var lens := _mat(Color("#e9ce9e"), .75, 0.0, .72)
+	for x in [-6.0,-2.0,1.7]:
+		_box(Vector3(.62,.07,.24), Vector3(x,3.07,7.0), housing)
+		_box(Vector3(.54,.018,.17), Vector3(x,3.027,7.0), lens)
+
 func _build_sky() -> void:
 	# A faint horizon glow so the treeline reads as a silhouette.
 	var sky := GradientTexture2D.new()
@@ -154,22 +165,32 @@ func _build_sky() -> void:
 	add_child(backdrop)
 	var tree := StandardMaterial3D.new()
 	tree.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	tree.albedo_color = Color(0.004, 0.007, 0.009)
-	tree.disable_fog = true
+	tree.albedo_color = Color("#121c20")
+	var crown := CylinderMesh.new()
+	crown.top_radius = .06
+	crown.bottom_radius = 1.0
+	crown.height = 1.0
+	crown.radial_segments = 5
+	crown.rings = 0
+	var stand := MultiMesh.new()
+	stand.transform_format = MultiMesh.TRANSFORM_3D
+	stand.mesh = crown
+	stand.instance_count = 100
+	var silhouettes := MultiMeshInstance3D.new()
+	silhouettes.multimesh = stand
+	silhouettes.material_override = tree
+	silhouettes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(silhouettes)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9
-	for i in 70:
-		var cone := MeshInstance3D.new()
-		var mesh := CylinderMesh.new()
-		var h := rng.randf_range(12.0, 22.0)
-		mesh.top_radius = 0.0
-		mesh.bottom_radius = h * 0.2
-		mesh.height = h
-		cone.mesh = mesh
-		cone.material_override = tree
-		cone.position = Vector3(-95.0 + i * 2.8 + rng.randf_range(-1.0, 1.0), h * 0.5 - 2.0, rng.randf_range(-62.0, -48.0))
-		cone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(cone)
+	for i in 50:
+		var height := rng.randf_range(7.5, 14.0)
+		var x := -53.0 + i * 2.15 + rng.randf_range(-.75,.75)
+		var z := rng.randf_range(-43.0, -26.0)
+		var lower := Basis.IDENTITY.scaled(Vector3(height * .20, height * .70, height * .20))
+		var upper := Basis.IDENTITY.scaled(Vector3(height * .14, height * .57, height * .14))
+		stand.set_instance_transform(i * 2, Transform3D(lower,Vector3(x,height * .36,z)))
+		stand.set_instance_transform(i * 2 + 1, Transform3D(upper,Vector3(x,height * .72,z)))
 
 ## Cream fascia board with red italic lettering and a red stripe, lit by two wall lamps.
 func _dress_store_sign() -> void:

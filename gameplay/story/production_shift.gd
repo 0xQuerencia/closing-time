@@ -1,6 +1,10 @@
 class_name ProductionShift
 extends Node
 
+const COOLER_ROWS := {"cooler_row_a": [true, true, true, true],
+	"cooler_row_b": [true, false, true, true], "cooler_row_c": [true, true, true, true]}
+const MARLOW_FONT := preload("res://assets/fonts/original/marlow.fnt")
+
 var director: StoryDirector
 var game: Gameplay
 var progress := ChapterProgress.new()
@@ -36,16 +40,17 @@ func _enter_chapter() -> void:
 	_refresh_spots()
 	match progress.current_id():
 		"handover":
+			game.security.front_door.close_after_use = true
 			_spawn_staff("dina","Dina",Vector3(-5.0,.05,3.15),"production_handover")
 			game.clock.elapsed = 5
 			game.clock.changed.emit(game.clock.text())
-			_task("handover", "Start the shift", [["dina_handover","Talk to Dina or read her handover at the counter"],["cooler_counted","Inspect three cooler rows and submit the count"],["mara_served","Serve Mara"]])
-			director._text("dina_handover_sms","Dina","I'm by the counter. I'll show you the closing checklist before I head out.",23,5)
+			_task("handover", "Start the shift", [["dina_handover","Go through the lit front entrance and find Dina at checkout"],["mara_served","Serve Mara at checkout"],["cooler_counted","Check rows A, B and C at the back cooler, then sign the stock card"]])
+			director._text("dina_handover_sms","Dina","I'm by the counter, left as you come in. I'll show you the closing checklist before I head out.",23,5)
 		"routine":
 			director._set_step(StoryDirector.Step.WORK)
 			director._text("routine_sms","Kay","You still owe me breakfast. Don't forget to eat something.",23,24)
 			_task("routine", "Evening work", [["ben_served","Serve Ben"],["nora_served","Serve Nora"],["delivery_checked","Check the cartons and reconcile the invoice"],["restock_done","Finish stocking shelves"]])
-			_spawn_staff("gus","Gus",Vector3(5.9,.05,2.4),"gus_delivery")
+			_spawn_staff("gus","Gus",Vector3(4.25,.05,2.5),"gus_delivery")
 			_sync_chores()
 			director._spawn("ben",StoryDirector.Step.BEN)
 		"closing":
@@ -126,16 +131,26 @@ func _sync_chores() -> void:
 
 func _on_dialogue_finished(id: String) -> void:
 	if id == "production_handover" and progress.current_id() == "handover":
+		var dina: Customer = staff.get("dina")
+		if is_instance_valid(dina):
+			dina._set_phase(Customer.Phase.LEAVE)
+			game.security.office_door.snap(true)
+			await dina._walk([CustomerProfiles.AISLE_MOUTH,Vector3(.9,0,2.9),Vector3(2.4,0,2.9),Vector3(2.4,0,0),Vector3(2.4,0,-1.6),Vector3(2.4,0,-4.3),Vector3(4.25,0,-4.3),Vector3(5,0,-4.3)])
+			if not game.dialogue.is_active():
+				game.dialogue.start("production_office")
+	if id == "production_office" and progress.current_id() == "handover":
 		_record("dina_handover")
-		_depart_staff("dina",[CustomerProfiles.AISLE_MOUTH,CustomerProfiles.DOOR_INSIDE,game.markers.FrontDoor,game.markers.NPCExit])
+		await _depart_staff("dina",[Vector3(4.25,0,-4.3),Vector3(2.4,0,-4.3),Vector3(2.4,0,-1.6),Vector3(2.4,0,0),Vector3(2.4,0,2.9),Vector3(.9,0,2.9),Vector3(1.7,0,4.6),game.markers.FrontDoor,game.markers.NPCExit])
+		game.security.office_door.request_close()
 		if not ready_for_customers:
 			ready_for_customers = true
 			director._spawn("mara",StoryDirector.Step.MARA)
 	if id == "inventory_count" and game.dialogue.flags.get("inventory_correct",false):
-		_record("cooler_counted")
+		if _record("cooler_counted"):
+			game.world.ambient_dread.cooler_count_confirmed()
 	if id == "delivery_count" and game.dialogue.flags.get("delivery_correct",false):
 		_record("delivery_checked")
-		_depart_staff("gus",[Vector3(4.25,0,2.5),Vector3(4.25,0,4.6),CustomerProfiles.DOOR_INSIDE,game.markers.FrontDoor,game.markers.NPCExit])
+		_depart_staff("gus",[Vector3(4.25,0,0),Vector3(2.4,0,0),Vector3(2.4,0,2.9),Vector3(1.7,0,4.6),game.markers.FrontDoor,game.markers.NPCExit])
 	if id == "mara_talk" and game.dialogue.flags.get("mara_memory",false):
 		_record("mara_memory")
 	if id == "ben_talk" and game.dialogue.flags.get("ben_memory",false):
@@ -168,11 +183,15 @@ func outcome_for(kind: String) -> String:
 func _build_spots() -> void:
 	# Paperwork is placed on existing shelves/counters, not in the player's collision path.
 	_add_spot("dina_handover","handover","Handover sheet",Vector3(-7.8,1.02,4.22),Color("#c7b994"))
-	_add_spot("cooler_counted","handover","Cooler inventory card",Vector3(-5.9,1.30,-4.59),Color("#b9bca5"),true)
+	_add_spot("cooler_counted","handover","Stock card",Vector3(-5.9,1.30,-4.57),Color("#d3c398"),true)
 	_add_spot("delivery_checked","routine","Delivery invoice",Vector3(5.60,.92,1.32),Color("#cfbf9b"))
-	_add_spot("cooler_row_a","handover","Cooler row A",Vector3(-7.1,1.3,-4.58),Color("#b9bca5"),true)
-	_add_spot("cooler_row_b","handover","Cooler row B",Vector3(-3.96,1.3,-4.58),Color("#b9bca5"),true)
-	_add_spot("cooler_row_c","handover","Cooler row C",Vector3(-.82,1.3,-4.58),Color("#b9bca5"),true)
+	var row_centers := [-7.1, -3.96, -.82]
+	var bottle_mesh := _water_bottle_mesh()
+	for index in row_centers.size():
+		var row: String = ["A", "B", "C"][index]
+		var id := "cooler_row_" + row.to_lower()
+		_add_spot(id, "handover", "Row " + row, Vector3(row_centers[index],1.23,-4.64), Color("#c6d0bd"),true)
+		_build_cooler_row(Vector3(row_centers[index],1.31,-4.81), COOLER_ROWS[id], bottle_mesh)
 	_add_spot("delivery_a","routine","Carton A label",Vector3(5.42,.75,1.05),Color("#bfa67d"))
 	_add_spot("delivery_b","routine","Carton B label",Vector3(6.45,.75,1.42),Color("#bfa67d"))
 	_add_spot("cash_pickup","closing","Prepare cash envelope",Vector3(-7.65,1.01,4.42),Color("#bfa67d"))
@@ -200,12 +219,76 @@ func _build_spots() -> void:
 		_add_spot(id,clue.chapter,clue.title,positions[id][0],Color("#c5b999"),positions[id][1])
 	_refresh_spots()
 
+func _build_cooler_row(position: Vector3, facing: Array, bottle_mesh: ArrayMesh) -> void:
+	var row := Node3D.new()
+	row.name = "BirchSpringStock"
+	row.position = position
+	add_child(row)
+	var rack := MeshInstance3D.new()
+	var rail := BoxMesh.new()
+	rail.size = Vector3(.59, .037, .18)
+	var enamel := StandardMaterial3D.new()
+	enamel.albedo_color = Color("#777d72")
+	enamel.roughness = .8
+	rail.material = enamel
+	rack.mesh = rail
+	row.add_child(rack)
+	var bottles := MultiMesh.new()
+	bottles.transform_format = MultiMesh.TRANSFORM_3D
+	bottles.mesh = bottle_mesh
+	bottles.instance_count = facing.count(true)
+	var bottle_stock := MultiMeshInstance3D.new()
+	bottle_stock.multimesh = bottles
+	bottle_stock.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	row.add_child(bottle_stock)
+	var instance := 0
+	for slot in facing.size():
+		if facing[slot]:
+			bottles.set_instance_transform(instance, Transform3D(Basis.IDENTITY, Vector3((slot - 1.5) * .13, .0185, 0)))
+			instance += 1
+
+## Birch Spring 500 ml. Ten flat sides, a paper sleeve and a dark screw cap.
+func _water_bottle_mesh() -> ArrayMesh:
+	var profile := [Vector2(.034,0), Vector2(.037,.025), Vector2(.037,.06), Vector2(.037,.123),
+		Vector2(.037,.16), Vector2(.015,.19), Vector2(.017,.195), Vector2(.017,.214), Vector2(0,.214)]
+	var plastic := Color("#9cb1ad")
+	var inks := [plastic, plastic, Color("#28594a"), plastic, plastic,
+		Color("#d7d3b9"), Color("#d7d3b9"), Color("#d7d3b9")]
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	for ring in inks.size():
+		surface.set_color(inks[ring])
+		for side in 10:
+			var a := TAU * side / 10.0
+			var b := TAU * (side + 1) / 10.0
+			var lower: Vector2 = profile[ring]
+			var upper: Vector2 = profile[ring + 1]
+			var lo_a := Vector3(cos(a) * lower.x, lower.y, sin(a) * lower.x)
+			var lo_b := Vector3(cos(b) * lower.x, lower.y, sin(b) * lower.x)
+			var hi_a := Vector3(cos(a) * upper.x, upper.y, sin(a) * upper.x)
+			var hi_b := Vector3(cos(b) * upper.x, upper.y, sin(b) * upper.x)
+			for vertex in [lo_a, lo_b, hi_a]:
+				surface.add_vertex(vertex)
+			if upper.x > 0:
+				for vertex in [lo_b, hi_b, hi_a]:
+					surface.add_vertex(vertex)
+	surface.generate_normals()
+	var finish := StandardMaterial3D.new()
+	finish.vertex_color_use_as_albedo = true
+	finish.vertex_color_is_srgb = true
+	finish.roughness = .65
+	surface.set_material(finish)
+	return surface.commit()
+
 func _add_spot(id: String, chapter: String, title: String, pos: Vector3, color: Color, vertical := false) -> void:
 	var spot := Interactable.new()
 	spot.display_name = title
 	spot.verb = "Read" if progress.evidence.has(id) else "Check"
-	spot.description = str(progress.evidence[id].text) if progress.evidence.has(id) else title
+	spot.description = ""
 	var size := Vector3(.20,.28,.045) if vertical else Vector3(.22,.035,.18)
+	if COOLER_ROWS.has(id):
+		size = Vector3(.58,.105,.02)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = size + Vector3(.035,.04,.035)
@@ -222,11 +305,14 @@ func _add_spot(id: String, chapter: String, title: String, pos: Vector3, color: 
 	spot.add_child(mesh)
 	var text_label := Label3D.new()
 	text_label.text = title.to_upper()
+	if id == "cooler_counted":
+		text_label.text = "NOV 24  PM\nBIRCH SPRING\n12  SIGNED"
 	text_label.font_size = 24
+	text_label.font = MARLOW_FONT
 	text_label.pixel_size = .0007
 	text_label.modulate = Color("#312b21")
 	text_label.outline_size = 0
-	text_label.position = Vector3(0,.0,.025) if vertical else Vector3(0,.019,0)
+	text_label.position = Vector3(0,.0,size.z * .5 + .002) if vertical else Vector3(0,.019,0)
 	if not vertical:
 		text_label.rotation.x = -PI/2
 	spot.add_child(text_label)
@@ -259,7 +345,7 @@ func _use(id: String) -> void:
 			if not progress.events.has(id) and not game.dialogue.is_active():
 				game.dialogue.start("production_handover")
 		"cooler_row_a", "cooler_row_b", "cooler_row_c":
-			var count: int = {"cooler_row_a":4,"cooler_row_b":3,"cooler_row_c":4}[id]
+			var count: int = COOLER_ROWS[id].count(true)
 			stage_flags[id] = true
 			game.interactor.message.emit("Row %s: %d bottles." % [id.right(1).to_upper(),count])
 		"cooler_counted":

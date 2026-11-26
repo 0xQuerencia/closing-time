@@ -335,7 +335,8 @@ func build_lighting() -> void:
 	add_child(world)
 	for x in [-6.0,-2.0,1.4]:
 		for z in [-3.8,.1,3.6]:
-			lamp(Vector3(x,2.85,z),Color(1,.95,.83),0.85,5.3,x == -2.0)
+			var checkout_pool: bool = x == -6.0 and z == 3.6
+			lamp(Vector3(x,2.85,z),Color(1,.94,.80) if checkout_pool else Color(.91,.96,.83),1.14 if checkout_pool else .91,5.3,x == -2.0)
 	for z in [-4,1.5]:
 		lamp(Vector3(6.9,2.84,z),Color(1,.91,.77),0.72,4.0,true)
 	# Give the active stockroom aisle enough practical light to read carton labels.
@@ -355,17 +356,10 @@ func build_lighting() -> void:
 	add_child(utility_fixture)
 	lamp(Vector3(4.25,2.95,-2.7),Color(1,.9,.74),.55,4.2,true)
 	lamp(Vector3(4.2,2.6,3.3),Color(.68,.76,.69),.45,3.6)
-	for x in [-6,-2,1.4]:
-		lamp(Vector3(x,2.65,7.0),Color(1,.87,.68),1.3,5.4,true)
-	lamp(Vector3(-9,5.1,15),Color(1,.68,.32),2.6,13,true)
-	lamp(Vector3(12,5.1,23),Color(.57,.7,.85),2.0,13,true)
-	var reflection := ReflectionProbe.new()
-	reflection.position = Vector3(0,1.6,11)
-	reflection.size = Vector3(25,7,18)
-	reflection.box_projection = true
-	reflection.intensity = 0.7
-	reflection.max_distance = 35
-	add_child(reflection)
+	for x in [-6,-2,1.7]:
+		lamp(Vector3(x,2.65,7.0),Color(1,.82,.58),1.7 if x == 1.7 else .85,5.2,true)
+	lamp(Vector3(-10,5.35,14.5),Color(1,.68,.32),2.6,13,true)
+	lamp(Vector3(11,5.35,22.5),Color(.53,.69,.92),2.15,13,true)
 	for x in [-4,3]:
 		lamp(Vector3(x,4.08,7.65),Color(1,.94,.82),1.4,6.0)
 	for i in range(3):
@@ -409,6 +403,12 @@ func build_markers() -> void:
 		marker.position = points[key]
 		marker.add_to_group(key)
 		markers.add_child(marker)
+	var arrival := Marker3D.new()
+	arrival.name = "MarketArrival"
+	arrival.position = Vector3(1.85, -.1, 12.55)
+	arrival.rotation.y = .04
+	arrival.add_to_group("MarketArrival")
+	markers.add_child(arrival)
 
 func build_hint() -> void:
 	var canvas := CanvasLayer.new()

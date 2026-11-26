@@ -18,6 +18,7 @@ var angle := 0.0
 var size := Vector3(1.0, 2.1, 0.07)
 var double := false
 var customers_open_it := false
+var close_after_use := false
 var lock_gate := Callable()  # returns a reason String when locking is not allowed yet
 var handle: DoorHandle
 var leaves: Array[Dictionary] = []  # {pivot, body, dir}
@@ -145,7 +146,7 @@ func toggle(actor: Node = null) -> bool:
 		_held_open = false
 		_set_target(false)
 		return true
-	_held_open = true
+	_held_open = not close_after_use
 	return request_open(actor)
 
 func set_locked(value: bool, quiet := false) -> void:
@@ -229,7 +230,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if is_open and not _held_open and not near:
 		_close_timer += delta
-		if _close_timer > 1.2 and not _player_in_doorway():
+		var clearance := 2.3 if close_after_use else 0.7
+		if _close_timer > 1.2 and not _player_in_doorway(clearance):
 			_set_target(false)
 
 func _customer_near(radius: float) -> bool:
@@ -240,12 +242,12 @@ func _customer_near(radius: float) -> bool:
 			return true
 	return false
 
-func _player_in_doorway() -> bool:
+func _player_in_doorway(clearance: float) -> bool:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	if player == null:
 		return false
 	var local := to_local(player.global_position)
-	return absf(local.z) < 0.7 and absf(local.x) < size.x * (2.0 if double else 1.0) * 0.5 + 0.2
+	return absf(local.z) < clearance and absf(local.x) < size.x * (2.0 if double else 1.0) * 0.5 + 0.2
 
 # --- interaction --------------------------------------------------------------------------------
 

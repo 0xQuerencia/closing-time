@@ -27,6 +27,11 @@ func _run() -> void:
 	check(look._flicker_light.light_energy < baseline * 0.4, "six-second sag reaches low point smoothly")
 	look._process(look.SAG_SECONDS * 0.5)
 	check(is_equal_approx(look._flicker_light.light_energy, baseline), "sag returns to original level")
+	world.gameplay.flow.settings.reduced_flashes = true
+	world.gameplay.flow.apply_settings()
+	look._flicker_left = look.SAG_SECONDS
+	look._process(look.SAG_SECONDS * 0.5)
+	check(is_equal_approx(look._flicker_light.light_energy, baseline), "reduced light changes hold the ballast steady")
 	check(sound._room_tone_base.size() == 2, "both actual refrigeration sources captured")
 	sound._start_quiet_cycle()
 	sound._update_compressor(3.0)

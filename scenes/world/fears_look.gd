@@ -1,7 +1,7 @@
 class_name FearsLook
 extends Node
 ## Dim, dirty, uneasy: cold fog, lower fill light, grime on every surface and one failing tube.
-const GRIME_STRENGTH := 0.5
+var reduced_flashes := false
 var _flicker_light: Light3D
 var _flicker_base := 1.0
 var _flicker_left := 0.0
@@ -25,32 +25,27 @@ func _grade_environment(world: Node) -> void:
 		var env := (node as WorldEnvironment).environment
 		if env == null:
 			continue
-		env.ambient_light_energy = 0.224
+		env.ambient_light_energy = 0.26
 		env.tonemap_exposure = 1.0
 		env.fog_enabled = true
-		env.fog_light_color = Color(0.05, 0.065, 0.08)
-		env.fog_density = 0.009
+		env.fog_light_color = Color(0.08, 0.105, 0.13)
+		env.fog_density = 0.016
+		env.fog_height = 1.0
+		env.fog_height_density = 0.035
 		env.fog_sky_affect = 0.0
 		env.adjustment_enabled = true
 		env.adjustment_contrast = 1.05
 		env.adjustment_saturation = 0.92
 
 func _dim_lights(world: Node) -> void:
-	var tubes: Array[Light3D] = []
 	for node in world.find_children("*", "Light3D", false, false):
 		var light := node as Light3D
-		if light.position.y > 2.0 and light.position.y < 3.0:
-			light.light_energy *= 0.84
-			light.light_color = light.light_color.lerp(Color(0.86, 0.95, 0.9), 0.35)
-			tubes.append(light)
-	# One weak middle-aisle ballast leaves an ordinary, imperfect shadow pocket.
-	# Choose by fixture position rather than import/order-dependent array index.
-	for light in tubes:
-		if light.position.distance_to(Vector3(-2.0, 2.85, 0.1)) < 0.1:
-			light.light_energy *= 0.52
+		if light.is_in_group("store_lights") and light.position.distance_to(Vector3(-2.0, 2.85, 0.1)) < 0.1:
+			light.light_energy *= 0.46
 			light.light_color = light.light_color.lerp(Color(0.76, 0.84, 0.72), 0.28)
 			_flicker_light = light
 			_flicker_base = light.light_energy
+			break
 
 func _process(delta: float) -> void:
 	if _flicker_light == null:
@@ -60,6 +55,10 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	if _power != null and not _power.powered("lights"):
 		_flicker_light.light_energy = 0.0
+		return
+	if reduced_flashes:
+		_flicker_left = 0.0
+		_flicker_light.light_energy = _flicker_base
 		return
 	var slow_fade := smoothstep(150.0, 390.0, _elapsed)
 	var current_base := lerpf(_flicker_base, _flicker_base * 0.12, slow_fade)
