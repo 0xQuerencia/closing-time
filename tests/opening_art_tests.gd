@@ -88,13 +88,24 @@ func _drive(road: Node) -> void:
 	_key(KEY_T,true)
 	await process_frame
 	_key(KEY_T,false)
+	await process_frame
 	check(road.radio_on and road.progress.events.has("radio_tuned") and not road.wipers_on,"Radio and wiper controls")
+	check(is_equal_approx(road.wiper.rotation.z,road.WIPER_PARK),"Switched-off wiper parks at the cowl")
+	var needle_at_rest: float = road.speed_needle.rotation.z
+	_key(KEY_T,true)
+	await process_frame
+	_key(KEY_T,false)
 	_key(KEY_W,true)
 	_key(KEY_D,true)
+	var furthest_sweep: float = road.WIPER_PARK
 	for i in 120:
 		await process_frame
+		furthest_sweep = minf(furthest_sweep,road.wiper.rotation.z)
 	_key(KEY_D,false)
 	check(road.speed > 7.0 and road.lateral > 1.0 and steering.rotation.z < -.3,"Accelerator and steering move the wagon")
+	check(furthest_sweep < -1.0 and is_equal_approx(road.wiper.rotation.z,road.WIPER_PARK),
+		"Live wiper sweeps the glass and rests between passes")
+	check(absf(road.speed_needle.rotation.z-needle_at_rest) > .5,"Real instrument needle responds to acceleration")
 	_key(KEY_A,true)
 	for i in 42:
 		await process_frame

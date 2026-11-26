@@ -17,10 +17,14 @@ static func tile(index: int) -> Rect2:
 	return Rect2(Vector2(index % 4, floori(index / 4.0)) * .25 + Vector2.ONE / 256.0, Vector2.ONE * (.25 - 2.0 / 256.0))
 
 func triangle(a: Vector3, b: Vector3, c: Vector3, uv_a: Vector2, uv_b: Vector2, uv_c: Vector2, tint := Color.WHITE) -> void:
+	triangle_colors(a,b,c,uv_a,uv_b,uv_c,tint,tint,tint)
+
+func triangle_colors(a: Vector3, b: Vector3, c: Vector3, uv_a: Vector2, uv_b: Vector2, uv_c: Vector2,
+		tint_a: Color, tint_b: Color, tint_c: Color) -> void:
 	var normal := (b - a).cross(c - a).normalized()
-	_vertex(a, normal, uv_a, tint)
-	_vertex(c, normal, uv_c, tint)
-	_vertex(b, normal, uv_b, tint)
+	_vertex(a, normal, uv_a, tint_a)
+	_vertex(c, normal, uv_c, tint_c)
+	_vertex(b, normal, uv_b, tint_b)
 
 func _vertex(point: Vector3, normal: Vector3, uv: Vector2, tint: Color) -> void:
 	surface.set_normal(normal)
