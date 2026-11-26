@@ -604,6 +604,7 @@ func build_room_tone() -> void:
 		source.play()
 
 func finish_run(code: int) -> void:
+	_stop_processing_tree(get_tree().root)
 	for child in get_children():
 		if child is ReflectionProbe:
 			child.queue_free()
@@ -613,7 +614,19 @@ func finish_run(code: int) -> void:
 	if is_instance_valid(ambient_dread):
 		ambient_dread.queue_free()
 	_stop_audio_tree(self)
+	if is_instance_valid(gameplay):
+		_stop_audio_tree(gameplay)
+	# Stopping a player only queues its playback for the audio thread to retire.
+	# Keep the scene and resources alive through several mix frames before shutdown.
+	for frame in 3:
+		await get_tree().process_frame
 	get_tree().quit(code)
+
+func _stop_processing_tree(node: Node) -> void:
+	node.set_process(false)
+	node.set_physics_process(false)
+	for child in node.get_children():
+		_stop_processing_tree(child)
 
 func _stop_audio_tree(node: Node) -> void:
 	if node is AudioStreamPlayer:
@@ -628,8 +641,11 @@ func _stop_audio_tree(node: Node) -> void:
 		var player := node as AudioStreamPlayer3D
 		player.stop()
 		player.stream = null
-	for child in node.get_children():
+	for child in node.get_children().duplicate():
 		_stop_audio_tree(child)
+		if child is AudioStreamPlayer or child is AudioStreamPlayer2D or child is AudioStreamPlayer3D:
+			node.remove_child(child)
+			child.free()
 
 func _exit_tree() -> void:
 	for child in get_children():
