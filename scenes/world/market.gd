@@ -3,6 +3,8 @@ extends Node3D
 const Player = preload("res://scenes/world/inspection_player.gd")
 const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
+const CoolerAisle = preload("res://scenes/world/cooler_aisle.gd")
+var cooler: CoolerAisle
 var player: CharacterBody3D
 var capture_mode := false
 var samples: Array[float] = []
@@ -32,6 +34,9 @@ func _ready() -> void:
 	add_child(InteriorDressing.new())
 	add_child(ExteriorDressing.new())
 	add_child(FearsLook.new())
+	cooler = CoolerAisle.new()
+	add_child(cooler)
+	_add_cooler_condensation(-2.39)
 	ambient_dread = AmbientDread.new()
 	add_child(ambient_dread)
 	player = CharacterBody3D.new()
@@ -193,6 +198,7 @@ func add_gameplay(auto_customers: bool) -> void:
 	gameplay = Gameplay.new()
 	add_child(gameplay)
 	gameplay.setup(self, player, auto_customers)
+	cooler.bind_power(gameplay.security.power)
 	ambient_dread.bind_gameplay(gameplay)
 
 func build_original_props() -> void:
@@ -267,18 +273,12 @@ func build_glass() -> void:
 		shape.shape = box
 		body.add_child(shape)
 		add_child(body)
-	for i in range(6):
-		var x := -7.1 + i * 1.57
-		glass_panel(Vector3(x,1.2,-4.7),Vector3(1.37,2.06,.012),Color(.32,.43,.4,.05))
-		if i == 3:
-			_add_cooler_condensation(x)
-
 func _add_cooler_condensation(x: float) -> void:
 	var overlay := MeshInstance3D.new()
 	var quad := QuadMesh.new()
-	quad.size = Vector2(1.32, 1.98)
+	quad.size = Vector2(1.35, 1.82)
 	overlay.mesh = quad
-	overlay.position = Vector3(x, 1.2, -4.688)
+	overlay.position = Vector3(x, 1.259, -4.712)
 	var film := ShaderMaterial.new()
 	film.shader = load("res://scenes/world/fridge_condensation.gdshader")
 	overlay.material_override = film
@@ -362,8 +362,8 @@ func build_lighting() -> void:
 	lamp(Vector3(11,5.35,22.5),Color(.53,.69,.92),2.15,13,true)
 	for x in [-4,3]:
 		lamp(Vector3(x,4.08,7.65),Color(1,.94,.82),1.4,6.0)
-	for i in range(3):
-		lamp(Vector3(-6.4+i*3.14,1.6,-4.47),Color(.7,.85,.86),.35,2.5)
+	for x in [-6.45, -1.66]:
+		lamp(Vector3(x,1.9,-4.88),Color(.78,.9,.95),.40,3.45)
 
 func text_label(value: String, pos: Vector3, size: int, pixel: float, color: Color, angle: float = 0, unshaded: bool = false) -> void:
 	var label := Label3D.new()
@@ -384,7 +384,6 @@ func build_signage() -> void:
 	text_label("GROCERIES   •   COFFEE   •   COLD DRINKS",Vector3(-2.8,2.51,6.05),36,.006,Color(.85,.8,.65))
 	text_label("OPEN DAILY\n6 AM – MIDNIGHT",Vector3(-.35,1.6,6.025),32,.004,Color(.85,.8,.64))
 	text_label("THANK YOU\nFOR SHOPPING LOCAL",Vector3(-4.05,1.47,6.025),27,.004,Color(.85,.8,.64),PI)
-	text_label("COLD DRINKS",Vector3(-3.2,2.53,-5.061),42,.0035,Color(.8,.79,.68))
 	for i in range(3):
 		text_label(["01   SNACKS","02   PANTRY","03   EVERYDAY"][i],Vector3(-6+i*3,2.04,1.538),26,.0024,Color(.78,.74,.61))
 	text_label("STAFF ONLY",Vector3(3.39,2.38,0),28,.004,Color(.3,.22,.12),-PI/2)
