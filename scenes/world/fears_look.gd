@@ -90,7 +90,7 @@ func _add_grime(world: Node) -> void:
 	var cache := {}
 	for node in world.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
-		if mi.mesh == null or mi.get_parent() is Customer or mi.name.begins_with("Product"):
+		if mi.mesh == null or mi.is_in_group("authored_materials") or mi.get_parent() is Customer or mi.name.begins_with("Product"):
 			continue
 		for surface in mi.mesh.get_surface_count():
 			var base := mi.get_surface_override_material(surface)
