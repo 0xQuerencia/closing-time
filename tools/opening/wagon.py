@@ -45,7 +45,13 @@ def exterior():
         for sign in SIDES:
             side_face(body,[(sign*xa,ya-.052,za),(sign*xb,yb-.052,zb),
                             (sign*(xb-.045),yb,zb),(sign*(xa-.045),ya,za)],sign,"edge")
-        body.face([(-xa+.045,ya,za),(-xb+.045,yb,zb),(xb-.045,yb,zb),(xa-.045,ya,za)],"paint")
+        if za < -1.10 or za >= 1.92:
+            body.face([(-xa+.045,ya,za),(-xb+.045,yb,zb),(xb-.045,yb,zb),(xa-.045,ya,za)],"paint")
+        else:
+            # Close the door tops with narrow rails and leave the actual cabin open.
+            for lo,hi in ((-1,-.91),(.91,1)):
+                body.face([(lo*(xa-.045),ya,za),(lo*(xb-.045),yb,zb),
+                           (hi*(xb-.045),yb,zb),(hi*(xa-.045),ya,za)],"paint")
     for side in SIDES:
         for low,high in [(-2.26,-1.85),(-1.07,.97),(1.75,2.16)]:
             spans = [low]+[z for z,_,_ in SECTIONS if low < z < high]+[high]
@@ -174,15 +180,8 @@ def wheels():
 
 def interior():
     fittings = Mesh("Vinyl dash, upholstery and door cards")
-    # Low cowl, bevels and a shallow brow over the printed instrument cluster.
-    fittings.face([(-.807,.901,-.458),(.807,.901,-.458),(.818,.868,-1.043),(-.818,.868,-1.043)],"vinyl")
-    fittings.face([(-.807,.669,-.483),(.807,.669,-.483),(.807,.901,-.458),(-.807,.901,-.458)],"vinyl")
-    fittings.box((-.378,.894,-.506),(.453,.151,.134),"trim")
-    fittings.box((-.376,.974,-.483),(.463,.041,.166),"vinyl")
-    fittings.box((.224,.815,-.472),(.275,.160,.030),"trim")
-    fittings.box((.578,.791,-.454),(.318,.126,.032),"vinyl")
-    fittings.box((.575,.820,-.432),(.13,.018,.012),"trim")
-    fittings.box((-.38,.863,-.415),(.099,.087,.144),"trim")
+    dashboard(fittings)
+    fittings.box((0,.31,.29),(1.55,.08,2.62),"rubber")
     for side in SIDES:
         fittings.box((side*.795,.727,.373),(.081,.194,2.99),"vinyl")
         fittings.box((side*.746,.749,.010),(.067,.045,.53),"trim")
@@ -195,13 +194,56 @@ def interior():
     fittings.box((.075,.669,-.21),(.038,.202,.041),"trim")
     fittings.box((.075,.772,-.211),(.071,.063,.061),"rubber")
     markings = Mesh("Lit instrument printing", 3)
-    markings.front(-.584,.829,-.173,.959,-.436,"gauges")
-    markings.front(.099,.75,.347,.889,-.454,"console")
+    markings.front(-.604,.864,-.135,1.018,-.473,"gauges")
+    markings.front(-.030,.730,.239,.803,-.370,"console")
     steer = steering()
     needle = Mesh("Speed needle", 3)
-    needle.box((.030,0,0),(.064,.009,.004),"amber")
+    needle.box((.031,0,0),(.068,.0045,.003),"amber")
     needle.box((0,0,.004),(.022,.021,.005),"trim")
     return fittings, markings, steer, needle
+
+
+def dashboard(fittings):
+    def band(x0, x1, high, low, material):
+        ya,za = high
+        yb,zb = low
+        fittings.face([(x0,yb,zb),(x1,yb,zb),(x1,ya,za),(x0,ya,za)],material)
+
+    band(-.81,.81,(.877,-1.048),(.911,-.512),"vinyl")
+    lip = [(.911,-.512),(.909,-.430),(.888,-.393),(.850,-.385)]
+    for x0,x1 in ((-.81,-.626),(-.114,.81)):
+        for high,low in zip(lip,lip[1:]):
+            band(x0,x1,high,low,"vinyl")
+    band(-.81,.81,lip[-1],(.726,-.396),"vinyl")
+    band(-.81,.81,(.726,-.396),(.588,-.467),"trim")
+
+    def bevel(x0,y0,x1,y1,z,cut):
+        return [(x0+cut,y0,z),(x1-cut,y0,z),(x1,y0+cut,z),(x1,y1-cut,z),
+                (x1-cut,y1,z),(x0+cut,y1,z),(x0,y1-cut,z),(x0,y0+cut,z)]
+
+    # Padded instrument hood wraps around an open, bevelled recess.
+    back = bevel(-.621,.850,-.121,.962,-.649,.027)
+    shoulder = bevel(-.644,.827,-.098,1.068,-.415,.027)
+    brow = bevel(-.632,.838,-.108,1.051,-.357,.021)
+    inside = bevel(-.604,.864,-.135,1.018,-.475,.014)
+    for i in range(len(brow)):
+        j = (i+1)%len(brow)
+        fittings.face([back[i],back[j],shoulder[j],shoulder[i]],"vinyl")
+        fittings.face([shoulder[i],shoulder[j],brow[j],brow[i]],"vinyl")
+        fittings.face([brow[i],brow[j],inside[j],inside[i]],"trim")
+    fittings.box((-.38,.817,-.414),(.113,.086,.146),"trim")
+
+    # Recessed heater grille, separate radio face and glovebox clearance seam.
+    fittings.box((.105,.839,-.398),(.284,.070,.023),"rubber")
+    for y in (.819,.832,.845,.858):
+        fittings.box((.105,y,-.380),(.257,.004,.014),"trim")
+    fittings.box((.105,.765,-.396),(.289,.087,.049),"trim")
+    fittings.box((.513,.790,-.391),(.474,.130,.032),"rubber")
+    fittings.box((.513,.790,-.378),(.462,.118,.016),"vinyl")
+    fittings.box((.518,.823,-.368),(.061,.017,.010),"trim")
+    for x in (-.45,.42):
+        for i in range(3):
+            fittings.box((x,.889+i*.0018,-.923+i*.029),(.269,.004,.008),"rubber")
 
 
 def steering():
@@ -215,7 +257,7 @@ def steering():
             art.face([at(i,j),at(i+1,j),at(i+1,j+1),at(i,j+1)],"vinyl")
     for x in (-.083,.083):
         art.box((x,0,0),(.14,.037,.035),"trim")
-    art.box((0,.002,.017),(.080,.059,.047),"rubber")
+    art.box((0,.002,.017),(.080,.059,.047),"vinyl")
     return art
 
 
@@ -241,8 +283,8 @@ def main():
         scene.node(part.name,scene.mesh(part))
     scene.node("DashboardAndUpholstery",scene.mesh(cabin_art))
     scene.node(markings.name,scene.mesh(markings))
-    scene.node("SteeringWheel",scene.mesh(steer),position=(-.38,.91,-.35))
-    scene.node("SpeedNeedle",scene.mesh(needle),position=(-.466,.892,-.431))
+    scene.node("SteeringWheel",scene.mesh(steer),position=(-.38,.871,-.338))
+    scene.node("SpeedNeedle",scene.mesh(needle),position=(-.470,.940,-.468))
     wheel_id = scene.mesh(wheel)
     for side in SIDES:
         for i,z in enumerate(AXLES):

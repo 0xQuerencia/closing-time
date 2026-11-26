@@ -10,7 +10,7 @@ PALETTES = {
     "paint": (153, 133, 99), "edge": (173, 153, 114), "sill": (117, 103, 82),
     "rubber": (48, 47, 44), "trim": (63, 66, 65), "alloy": (143, 141, 126),
     "glass": (51, 69, 75), "head": (211, 197, 152), "tail": (133, 48, 40),
-    "amber": (179, 110, 50), "plate": (163, 153, 113), "vinyl": (90, 82, 67),
+    "amber": (179, 110, 50), "plate": (163, 153, 113), "vinyl": (60, 64, 65),
     "fabric": (104, 92, 73), "gauges": (41, 44, 39), "console": (53, 54, 49),
     "grille": (69, 71, 66),
 }
@@ -18,25 +18,26 @@ REGIONS = {key: (i % 4 * 128 + 3, i // 4 * 128 + 3, 122, 122) for i, key in enum
 
 
 def _cluster(draw):
-    marking = (197, 181, 122)
-    font = ImageFont.load_default(size=10)
-    for x, numbers in [(38, ("0", "15", "30", "45", "60")), (94, ("E", "F"))]:
-        y = 66
-        r = 31 if x == 38 else 17
-        draw.ellipse((x-r,y-r,x+r,y+r), fill=(31,35,32), outline=(93,92,74), width=2)
-        for tick in range(0, 11 if x == 38 else 7):
-            a = radians(146 + tick * (24 if x == 38 else 40))
-            draw.line((x+(r-8)*cos(a),y+(r-8)*sin(a),x+(r-3)*cos(a),y+(r-3)*sin(a)),
-                      fill=marking, width=2)
-        for i, value in enumerate(numbers):
-            a = radians(149+i*60) if x == 38 else radians(145+i*240)
-            draw.text((x+(r-14)*cos(a),y+(r-14)*sin(a)), value, fill=marking, font=font, anchor="mm")
-        if x != 38:
-            draw.line((x,y,x+7,y-7),fill=(182,84,44),width=2)
-    draw.text((18,104),"MPH",fill=marking,font=font)
-    draw.rectangle((75,100,112,115),fill=(27,36,32),outline=(94,87,58))
-    draw.text((78,101),"147286",fill=(148,152,117),font=ImageFont.load_default(size=8))
-    draw.line((19,22,113,22),fill=(69,70,58),width=2)
+    marking = (182, 171, 134)
+    font = ImageFont.load_default(size=9)
+    draw.rectangle((4,4,124,124),fill=(29,32,29))
+    for x,y,rx,ry,numbers in [(38,65,21,54,("0", "15", "30", "45", "60")), (97,58,13,35,("E", "F"))]:
+        draw.ellipse((x-rx,y-ry,x+rx,y+ry), fill=(23,27,25), outline=(85,83,67), width=1)
+        steps = 12 if x == 38 else 6
+        for tick in range(steps+1):
+            a = radians(149 + tick*240/steps)
+            inset = 5 if tick % 3 == 0 else 3
+            draw.line((x+(rx-inset)*cos(a),y+(ry-inset*2)*sin(a),x+(rx-2)*cos(a),y+(ry-4)*sin(a)),
+                      fill=marking, width=1)
+        for i,value in enumerate(numbers):
+            a = radians(149+i*240/(len(numbers)-1))
+            draw.text((x+(rx-8)*cos(a),y+(ry-20)*sin(a)),value,fill=marking,font=font,anchor="mm")
+    draw.text((39,94),"MPH",fill=(151,147,118),font=font,anchor="mm")
+    draw.line((97,58,99,36),fill=(162,91,45),width=2)
+    draw.rectangle((65,99,109,116),fill=(20,28,25),outline=(83,78,60))
+    draw.text((69,102),"147286",fill=(145,147,117),font=font)
+    draw.rectangle((65,43,73,48),fill=(56,69,45))
+    draw.rectangle((65,57,73,62),fill=(89,51,35))
 
 
 def build_atlas():
@@ -62,7 +63,9 @@ def build_atlas():
             for x,y in [(38,94),(89,111),(17,53)]:
                 d.line((x,y,x+6,y+1),fill=(71,62,52))
                 d.point((x,y+2),fill=(198,178,137))
-        if key in ("vinyl", "fabric", "rubber", "grille"):
+        if key == "vinyl":
+            tile.paste(color,(0,0,128,128))
+        if key in ("fabric", "rubber", "grille"):
             for y in range(5,128,4 if key != "grille" else 13):
                 d.line((0,y,127,y),fill=tuple(ch-10 for ch in color),width=1 if key != "grille" else 5)
             if key == "fabric":
@@ -91,11 +94,9 @@ def build_atlas():
         if key == "gauges":
             _cluster(d)
         if key == "console":
-            for y in range(12,51,10):
-                d.line((8,y,120,y),fill=(29,33,32),width=4)
-            d.rectangle((18,63,111,84),fill=(27,35,31),outline=(77,76,57))
-            d.text((41,65),"87.9 FM",fill=(162,155,100),font=ImageFont.load_default(size=13))
-            for x in (23,50,76,103):
-                d.ellipse((x-7,98,x+7,113),fill=(37,40,35),outline=(83,81,68),width=2)
+            d.rectangle((23,22,105,63),fill=(25,35,30),outline=(70,75,62))
+            d.text((64,42),"87.9 FM",fill=(138,150,109),font=ImageFont.load_default(size=15),anchor="mm")
+            for x in (26,44,62,80,98):
+                d.rectangle((x-5,83,x+5,103),fill=(37,40,36),outline=(75,76,67))
         atlas.paste(tile, (i % 4 * 128, i // 4 * 128))
     return atlas

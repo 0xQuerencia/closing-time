@@ -22,21 +22,26 @@ static func add_cabin_light(wagon: Node3D) -> void:
 	var light := OmniLight3D.new()
 	light.name = "Dashboard light"
 	light.position = Vector3(-.08,1.13,-.19)
-	light.light_color = Color("#c0a278")
-	light.light_energy = .54
+	light.light_color = Color("#c8c1b2")
+	light.light_energy = .65
 	light.light_cull_mask = CABIN_MASK
 	light.omni_range = 1.30
 	wagon.add_child(light)
 
 static func add_wiper(parent: Node3D) -> Node3D:
+	var mount := Node3D.new()
+	mount.name = "Wiper mount"
+	mount.position = Vector3(.26,.834,-1.070)
+	mount.rotation.x = atan2(.517,.737)
+	parent.add_child(mount)
 	var wiper := Node3D.new()
 	wiper.name = "Wiper"
-	wiper.position = Vector3(.30,.93,-.9)
-	parent.add_child(wiper)
+	mount.add_child(wiper)
 	var art := MeshArt.new()
-	art.box(Vector3(-.15,.075,0),Vector3(.35,.018,.018),
-		MeshArt.tile(3),Transform3D(Basis(Vector3.FORWARD,.45),Vector3(-.04,-.06,0)))
-	art.box(Vector3(-.31,.164,0),Vector3(.39,.023,.025),MeshArt.tile(3))
-	var finish := MeshArt.material(preload("res://assets/models/opening/route9_wagon_atlas.png"))
+	art.box(Vector3(-.218,0,0),Vector3(.436,.010,.009))
+	art.box(Vector3(-.437,.012,.003),Vector3(.336,.009,.013))
+	art.box(Vector3(-.422,.005,0),Vector3(.034,.020,.018))
+	var finish := MeshArt.material(null,.77)
+	finish.albedo_color = Color("#242725")
 	art.attach(wiper,"Wiper arm and blade",finish)
 	return wiper

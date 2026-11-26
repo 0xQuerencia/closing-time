@@ -4,12 +4,15 @@ const Progress = preload("res://gameplay/story/chapter_progress.gd")
 const LENGTH := 460.0
 const WagonArt = preload("res://scenes/opening/wagon_art.gd")
 const RoadArt = preload("res://scenes/route9/route9_art.gd")
+const WIPER_PARK := -.055
+const WIPER_SWEEP := -1.18
 var progress := Progress.new()
 var travelled := 0.0
 var speed := 0.0
 var lateral := 0.0
 var radio_on := false
 var wipers_on := true
+var wiper_clock := 0.0
 var finishing := false
 var car: Node3D
 var wheel: Node3D
@@ -50,7 +53,9 @@ func _process(delta: float) -> void:
 	car.rotation.y = atan2(-(next-center),2.0)
 	wheel.rotation.z = lerpf(wheel.rotation.z, -steer*.55, minf(1.0,delta*5.0))
 	speed_needle.rotation.z = deg_to_rad(211.0 - speed * 2.237 * 4.0)
-	wiper.rotation.z = sin(Time.get_ticks_msec()*.004)*.65 if wipers_on else -.7
+	wiper_clock = fposmod(wiper_clock+delta,3.2) if wipers_on else 0.0
+	var sweep := .5-.5*cos(TAU*minf(wiper_clock/1.38,1.0))
+	wiper.rotation.z = lerpf(WIPER_PARK,WIPER_SWEEP,sweep)
 	engine.pitch_scale = .72 + speed/25.0
 	if travelled >= 80.0:
 		skip.show()
@@ -122,14 +127,17 @@ func _build_car() -> void:
 	wagon.get_node("Windshield").material_override = windshield
 	WagonArt.add_cabin_light(wagon)
 	wiper = WagonArt.add_wiper(car)
-	for x in [-.55,.55]:
+	wiper.rotation.z = WIPER_PARK
+	for x: float in [-.555,.555]:
 		var light := SpotLight3D.new()
-		light.position = Vector3(x,.56,-2.34)
-		light.rotation.x = -.082
+		light.name = "Left low beam" if x < 0.0 else "Right low beam"
+		light.position = Vector3(x,.535,-2.34)
+		light.rotation = Vector3(-.081 if x < 0.0 else -.061,-x*.14,0.0)
 		light.light_color = Color("#f2d9a6")
-		light.light_energy = 3.55
-		light.spot_range = 57
-		light.spot_angle = 29
+		light.light_energy = 3.85
+		light.spot_range = 52.0 if x < 0.0 else 57.0
+		light.spot_angle = 17.0
+		light.spot_angle_attenuation = 2.4
 		car.add_child(light)
 
 func _build_ui() -> void:

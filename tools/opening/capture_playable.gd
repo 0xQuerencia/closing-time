@@ -52,6 +52,15 @@ func _capture() -> void:
 	_drive_pose(road,106)
 	driver.rotation.x = 0
 	await _shot("04-night-road",driver,Vector3(road._center(124),0,-124))
+	var overlook := Camera3D.new()
+	road.add_child(overlook)
+	overlook.fov = 65.0
+	overlook.position = Vector3(road._center(96)+4.7,2.4,-96)
+	var curve := Vector3(road._center(126)-1.1,.16,-126)
+	overlook.look_at(curve)
+	overlook.make_current()
+	await _shot("Route-9-roadside",overlook,curve)
+	driver.make_current()
 	_drive_pose(road,421)
 	var frontage := road.find_child("Marlow's roadside frontage",true,false) as Node3D
 	if frontage != null:
@@ -75,11 +84,19 @@ func _capture() -> void:
 		_fail("Market arrival moved")
 	_budget("market_lot",market.get_node("OriginalExterior"))
 	_budget("market_dressing",market.get_node("ExteriorDressing"))
-	await _shot("05-arrival-spawn",market.player.camera,Vector3(1.70,1.42,6.08))
 	var framing := Camera3D.new()
 	market.add_child(framing)
 	framing.current = true
 	framing.keep_aspect = Camera3D.KEEP_WIDTH
+	framing.fov = 70
+	framing.position = Vector3(-2.05,1.49,21.80)
+	framing.look_at(Vector3(-.35,1.69,7.50))
+	RenderingServer.viewport_set_disable_2d(root.get_viewport_rid(),true)
+	await _shot("Marlows-market-arrival",framing,Vector3(-4.9,.72,13.0))
+	RenderingServer.viewport_set_disable_2d(root.get_viewport_rid(),false)
+	market.player.camera.make_current()
+	await _shot("05-arrival-spawn",market.player.camera,Vector3(1.70,1.42,6.08))
+	framing.make_current()
 	framing.fov = 58
 	framing.position = Vector3(-1.79,1.29,18.42)
 	framing.look_at(Vector3(-4.9,.65,13.0))
@@ -140,11 +157,14 @@ func _shot(label: String, camera: Camera3D, focus: Vector3) -> void:
 	await RenderingServer.frame_post_draw
 	var image := root.get_texture().get_image()
 	var result := image.save_png(output.path_join(label+".png"))
-	print("FRAME ",label," draw_calls=",Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+	var draws := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	print("FRAME ",label," draw_calls=",draws,
 		" primitives=",Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		" resolution=",image.get_size()," result=",result)
 	if result != OK:
 		_fail("Could not save "+label)
+	if label in ["03-cockpit","04-night-road","Route-9-roadside"] and draws > 70.0:
+		_fail("%s exceeds the 70-draw-call road budget" % label)
 
 func _budget(label: String, scene: Node) -> void:
 	var meshes := {}

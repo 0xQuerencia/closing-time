@@ -5,9 +5,11 @@ const MeshArt = preload("res://scenes/opening/opening_mesh.gd")
 const NEEDLES := [Color("#334138"),Color("#3e4b3d"),Color("#485143")]
 const BARK := Color("#5a5145")
 const DARK := Color("#2b352e")
+const BEND_LEAVES := [Color("#3f493a"),Color("#343e35"),Color("#444936")]
+const BEND_BARK := Color("#514b40")
 var variations: Array[ArrayMesh] = []
 
-func _init() -> void:
+func _init(bend := false) -> void:
 	var finish := MeshArt.material(null)
 	finish.vertex_color_use_as_albedo = true
 	finish.vertex_color_is_srgb = true
@@ -15,6 +17,10 @@ func _init() -> void:
 		var art := MeshArt.new()
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 582 + kind * 119
+		if bend:
+			_bend_tree(art,rng,kind)
+			variations.append(art.mesh(finish))
+			continue
 		var trunk_top := Vector3(-.035,.81,.012) if kind == 2 else Vector3(.025,.95,0)
 		_tier(art,rng,Vector3.ZERO,trunk_top,.027,.011,BARK,4)
 		match kind:
@@ -81,3 +87,63 @@ func _crown(art: RefCounted, rng: RandomNumberGenerator, at: Vector3, radius: fl
 		var b := TAU*(i+1)/5
 		art.triangle(pole,at+Vector3(cos(a),0,sin(a))*radius,at+Vector3(cos(b),0,sin(b))*radius,
 			Vector2.ZERO,Vector2.ZERO,Vector2.ZERO,color.darkened(.19))
+
+func _bend_tree(art: RefCounted, rng: RandomNumberGenerator, kind: int) -> void:
+	var elbow := Vector3(.031,.48,-.031)
+	var fork := Vector3(.005,.72,.020) if kind == 0 else Vector3(-.073,.75,.025)
+	var tip := Vector3(-.063,.99,.067) if kind == 2 else fork + Vector3(-.06,.17,0)
+	_limb(art,Vector3(0,-.030,0),elbow,.035,.020)
+	_limb(art,elbow,fork,.023,.012)
+	_limb(art,fork,tip,.013,.003)
+	var low_fork := Vector3(.101,.608,-.072)
+	var high_fork := Vector3(-.162,.793,-.048)
+	var low_tip := Vector3(.238,.799,-.103)
+	var high_tip := Vector3(-.257,.919,-.009)
+	if kind == 2:
+		_limb(art,elbow,low_fork,.017,.010)
+		_limb(art,low_fork,low_tip,.011,.003)
+		_limb(art,fork,high_fork,.013,.008)
+		_limb(art,high_fork,high_tip,.009,.0025)
+		_limb(art,low_fork,Vector3(.108,.788,-.146),.008,.002)
+		_limb(art,low_tip,Vector3(.254,.873,-.103),.004,.0015)
+		_limb(art,high_fork,Vector3(-.160,.961,-.064),.006,.0015)
+		_limb(art,fork,Vector3(.124,.879,.103),.011,.005)
+		_limb(art,Vector3(.124,.879,.103),Vector3(.107,.982,.141),.005,.0015)
+		return
+	_limb(art,elbow,low_tip,.017,.004)
+	_limb(art,fork,high_tip,.013,.003)
+	if kind == 0:
+		_lobe(art,rng,Vector3(-.097,.804,.023),Vector3(.212,.202,.175),BEND_LEAVES[0])
+		_lobe(art,rng,Vector3(.167,.718,-.096),Vector3(.201,.188,.164),BEND_LEAVES[1])
+		_lobe(art,rng,Vector3(-.226,.746,-.091),Vector3(.128,.153,.143),BEND_LEAVES[2])
+	else:
+		_lobe(art,rng,Vector3(-.145,.782,-.032),Vector3(.209,.204,.162),BEND_LEAVES[1])
+		_lobe(art,rng,Vector3(.151,.674,.024),Vector3(.195,.135,.190),BEND_LEAVES[0])
+		_lobe(art,rng,Vector3(-.060,.617,-.104),Vector3(.185,.138,.146),BEND_LEAVES[2])
+
+func _limb(art: RefCounted, from: Vector3, to: Vector3, root: float, tip: float) -> void:
+	var axis := (to-from).normalized()
+	var right := axis.cross(Vector3.FORWARD).normalized()
+	var front := right.cross(axis)
+	var ring := [right,front,-right,-front]
+	for i in ring.size():
+		var a: Vector3 = ring[i]
+		var b: Vector3 = ring[(i+1)%ring.size()]
+		art.quad(from+b*root,from+a*root,to+a*tip,to+b*tip,Rect2(),BEND_BARK.darkened(.07*i))
+
+func _lobe(art: RefCounted, rng: RandomNumberGenerator, at: Vector3, size: Vector3, shade: Color) -> void:
+	var rim: Array[Vector3] = []
+	var shoulders: Array[Vector3] = []
+	var phase := rng.randf_range(0.0,TAU)
+	for i in 5:
+		var angle := phase+TAU*(float(i)+rng.randf_range(-.16,.16))/5.0
+		var reach := rng.randf_range(.80,1.20)
+		rim.append(at+size*Vector3(cos(angle)*reach,rng.randf_range(-.47,-.15),sin(angle)*reach))
+		shoulders.append(at+size*Vector3(cos(angle+.16)*reach*.73,rng.randf_range(.31,.72),sin(angle+.16)*reach*.73))
+	var top := at+size*Vector3(-.16,1.0,.14)
+	var under := at+size*Vector3(.12,-.71,-.12)
+	for i in 5:
+		var j := (i+1)%5
+		art.quad(rim[j],rim[i],shoulders[i],shoulders[j],Rect2(),shade.darkened(.06*(i%3)))
+		art.triangle(shoulders[j],shoulders[i],top,Vector2.ZERO,Vector2.ZERO,Vector2.ZERO,shade.lightened(.033*(i%2)))
+		art.triangle(under,rim[i],rim[j],Vector2.ZERO,Vector2.ZERO,Vector2.ZERO,shade.darkened(.19))
