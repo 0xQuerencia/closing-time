@@ -620,6 +620,10 @@ func finish_run(code: int) -> void:
 	# Keep the scene and resources alive through several mix frames before shutdown.
 	for frame in 3:
 		await get_tree().process_frame
+	# Headless accelerated tests can drain process frames faster than the mixer runs.
+	# Give stopped playbacks real time to retire before releasing their streams.
+	var mix_retirement_wait := clampf(AudioServer.get_output_latency() * 2.0, 0.1, 0.5)
+	await get_tree().create_timer(mix_retirement_wait, true, false, true).timeout
 	get_tree().quit(code)
 
 func _stop_processing_tree(node: Node) -> void:
