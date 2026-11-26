@@ -2,6 +2,8 @@ extends Node3D
 
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
 const LENGTH := 460.0
+const WagonArt = preload("res://scenes/opening/wagon_art.gd")
+const RoadArt = preload("res://scenes/route9/route9_art.gd")
 var progress := Progress.new()
 var travelled := 0.0
 var speed := 0.0
@@ -12,9 +14,10 @@ var finishing := false
 var car: Node3D
 var wheel: Node3D
 var wiper: Node3D
+var speed_needle: Node3D
+var windshield: ShaderMaterial
 var status: Label
 var caption_label: Label
-var materials: Dictionary = {}
 var rain: AudioStreamPlayer
 var engine: AudioStreamPlayer
 var skip: Button
@@ -46,6 +49,7 @@ func _process(delta: float) -> void:
 	car.position = Vector3(center + lateral,0,-travelled)
 	car.rotation.y = atan2(-(next-center),2.0)
 	wheel.rotation.z = lerpf(wheel.rotation.z, -steer*.55, minf(1.0,delta*5.0))
+	speed_needle.rotation.z = deg_to_rad(211.0 - speed * 2.237 * 4.0)
 	wiper.rotation.z = sin(Time.get_ticks_msec()*.004)*.65 if wipers_on else -.7
 	engine.pitch_scale = .72 + speed/25.0
 	if travelled >= 80.0:
@@ -73,6 +77,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				OpeningCheckpoint.write(progress.snapshot())
 		KEY_T:
 			wipers_on = not wipers_on
+			windshield.set_shader_parameter("wipers_active",wipers_on)
 		KEY_E:
 			if travelled >= 120.0 and travelled < 155.0:
 				progress.record("bypass_sign")
@@ -95,98 +100,11 @@ func _arrive() -> void:
 func _center(t: float) -> float:
 	return sin(t*.012)*7.0 + sin(t*.025)*2.0
 
-func _mat(color: Color) -> StandardMaterial3D:
-	var key := color.to_html()
-	if not materials.has(key):
-		var m := StandardMaterial3D.new()
-		m.albedo_color = color
-		m.roughness = .9
-		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		materials[key] = m
-	return materials[key]
-
-func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> MeshInstance3D:
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	var node := MeshInstance3D.new()
-	node.mesh = mesh
-	node.material_override = _mat(color)
-	node.position = pos
-	parent.add_child(node)
-	return node
-
 func _build_road() -> void:
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("#20282e")
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#89949b")
-	env.ambient_light_energy = .45
-	env.fog_enabled = true
-	env.fog_light_color = Color("#20282e")
-	env.fog_density = .021
-	var world := WorldEnvironment.new()
-	world.environment = env
-	add_child(world)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20061124
-	var tree_mesh := CylinderMesh.new()
-	tree_mesh.top_radius = .05
-	tree_mesh.bottom_radius = 1.8
-	tree_mesh.height = 5.5
-	tree_mesh.radial_segments = 5
-	tree_mesh.rings = 0
-	var trees := MultiMesh.new()
-	trees.transform_format = MultiMesh.TRANSFORM_3D
-	trees.mesh = tree_mesh
-	trees.instance_count = 240
-	var grove := MultiMeshInstance3D.new()
-	grove.multimesh = trees
-	grove.material_override = _mat(Color("#26352e"))
-	add_child(grove)
-	for i in range(240):
-		var t := rng.randf_range(-30.0,LENGTH+50)
-		var side := -1.0 if i%2 == 0 else 1.0
-		var h := rng.randf_range(.65,1.65)
-		trees.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(h,h,h)),Vector3(_center(t)+side*rng.randf_range(9.0,35.0),2.5*h,-t)))
-	for i in range(65):
-		var t := float(i)*8.0-20.0
-		var center := _center(t)
-		var next := _center(t+8.0)
-		var yaw := atan2(-(next-center),8.0)
-		var mid := Vector3((center+next)*.5,-.03,-t-4.0)
-		var asphalt := _box(self,mid,Vector3(7.0,.12,8.55),Color("#42474a"))
-		asphalt.rotation.y = yaw
-		var dash := _box(self,mid+Vector3(0,.071,0),Vector3(.085,.012,3.2),Color("#c1a35c"))
-		dash.rotation.y = yaw
-		for side in [-1.0,1.0]:
-			var edge := _box(self,mid+Vector3(side*3.35,.068,0),Vector3(.09,.012,8.5),Color("#adafa4"))
-			edge.rotation.y = yaw
-	_box(self,Vector3(0,-.28,-230),Vector3(100,.4,540),Color("#41483a"))
-	_sign("OLD ROUTE 9\nTHROUGH TRAFFIC: BYPASS",130.0)
-	_sign("MARLOW'S MARKET\nOPEN UNTIL MIDNIGHT",385.0)
-	var shop := Vector3(_center(456)+12.0,1.6,-456)
-	_box(self,shop,Vector3(14,3.2,8),Color("#877d67"))
-	_box(self,shop+Vector3(0,1.8,0),Vector3(14.7,.45,8.5),Color("#3d4541"))
-	_box(self,shop+Vector3(-7.02,0,0),Vector3(.05,1.7,5.5),Color("#a9a88c"))
-	var lamp := OmniLight3D.new()
-	lamp.position = shop+Vector3(-8,1,0)
-	lamp.light_color = Color("#e6ca9a")
-	lamp.light_energy = 2.2
-	lamp.omni_range = 18
-	add_child(lamp)
-
-func _sign(body: String,t: float) -> void:
-	var at := Vector3(_center(t)+4.9,1.9,-t)
-	_box(self,at-Vector3(0,.7,0),Vector3(.08,2.4,.08),Color("#777a70"))
-	_box(self,at,Vector3(1.9,.78,.09),Color("#525e47"))
-	var label := Label3D.new()
-	label.text = body
-	label.font_size = 38
-	label.pixel_size = .0032
-	label.position = at+Vector3(0,0,.055)
-	label.modulate = Color("#e2dfcd")
-	add_child(label)
+	var road := RoadArt.new()
+	road.name = "Route 9 roadside"
+	add_child(road)
+	road.build(_center)
 
 func _build_car() -> void:
 	car = Node3D.new()
@@ -196,42 +114,22 @@ func _build_car() -> void:
 	camera.fov = 75
 	camera.current = true
 	car.add_child(camera)
-	var dash := Color("#363b39")
-	_box(car,Vector3(0,.72,-.65),Vector3(1.65,.25,.42),dash)
-	_box(car,Vector3(0,.44,-.86),Vector3(1.65,.48,.2),dash)
-	_box(car,Vector3(0,1.72,-.8),Vector3(1.65,.10,.12),dash)
-	for x in [-.82,.82]:
-		var pillar := _box(car,Vector3(x,1.3,-.84),Vector3(.09,.87,.12),dash)
-		pillar.rotation.x = -.15
-	_box(car,Vector3(0,1.64,-.22),Vector3(1.72,.09,1.35),dash)
-	_box(car,Vector3(-.38,.84,-.50),Vector3(.39,.12,.12),Color("#242a26"))
-	wheel = Node3D.new()
-	wheel.position = Vector3(-.38,.91,-.35)
-	car.add_child(wheel)
-	var torus := TorusMesh.new()
-	torus.inner_radius = .11
-	torus.outer_radius = .145
-	torus.rings = 12
-	torus.ring_segments = 8
-	var steering := MeshInstance3D.new()
-	steering.mesh = torus
-	steering.rotation.x = PI/2.0
-	steering.material_override = _mat(Color("#232725"))
-	wheel.add_child(steering)
-	_box(wheel,Vector3.ZERO,Vector3(.24,.045,.035),dash)
-	_box(car,Vector3(.25,.79,-.49),Vector3(.25,.09,.025),Color("#292e2a"))
-	wiper = Node3D.new()
-	wiper.position = Vector3(.30,.93,-.9)
-	car.add_child(wiper)
-	_box(wiper,Vector3(-.30,.16,0),Vector3(.64,.022,.025),Color("#252a29"))
+	var wagon := WagonArt.install(car)
+	wheel = wagon.get_node("SteeringWheel")
+	speed_needle = wagon.get_node("SpeedNeedle")
+	windshield = ShaderMaterial.new()
+	windshield.shader = preload("res://scenes/route9/windshield.gdshader")
+	wagon.get_node("Windshield").material_override = windshield
+	WagonArt.add_cabin_light(wagon)
+	wiper = WagonArt.add_wiper(car)
 	for x in [-.55,.55]:
 		var light := SpotLight3D.new()
-		light.position = Vector3(x,.6,-1.1)
-		light.rotation.x = -.055
+		light.position = Vector3(x,.56,-2.34)
+		light.rotation.x = -.082
 		light.light_color = Color("#f2d9a6")
-		light.light_energy = 3.2
-		light.spot_range = 48
-		light.spot_angle = 32
+		light.light_energy = 3.55
+		light.spot_range = 57
+		light.spot_angle = 29
 		car.add_child(light)
 
 func _build_ui() -> void:

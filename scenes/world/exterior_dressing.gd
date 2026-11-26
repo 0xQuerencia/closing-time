@@ -2,6 +2,9 @@ class_name ExteriorDressing
 extends Node3D
 ## Night-lot dressing: wet asphalt, roadside sign, ice machine, bin, moon and treeline.
 ## Added on top of the generated exterior; it does not alter the Blender-built shell.
+const MeshArt = preload("res://scenes/opening/opening_mesh.gd")
+const TreeArt = preload("res://scenes/opening/roadside_trees.gd")
+const StoreArt = preload("res://scenes/opening/storefront_art.gd")
 const SIGN_RED := Color(0.62, 0.07, 0.06)
 const BOARD_CREAM := Color(0.8, 0.74, 0.6)
 
@@ -13,6 +16,7 @@ func _ready() -> void:
 	_build_bin()
 	_build_sky()
 	_dress_store_sign()
+	_build_storefront_trim()
 	_build_entrance_sign()
 
 func _mat(color: Color, rough := 0.8, metallic := 0.0, emit := 0.0) -> StandardMaterial3D:
@@ -80,35 +84,35 @@ func _build_puddles() -> void:
 	puddle.metallic_specular = 1.0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4417
-	for i in 14:
-		var quad := MeshInstance3D.new()
-		var mesh := QuadMesh.new()
-		mesh.size = Vector2(rng.randf_range(2.2, 5.5), rng.randf_range(1.4, 3.2))
-		quad.mesh = mesh
-		quad.material_override = puddle
-		quad.rotation = Vector3(-PI / 2.0, rng.randf_range(-0.5, 0.5), 0)
-		quad.position = Vector3(rng.randf_range(-10.0, 10.0), -0.112, rng.randf_range(9.5, 21.0))
-		quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(quad)
-	# Warm window glow smeared across the wet asphalt, like the reference stills.
-	var glow := GradientTexture2D.new()
-	glow.fill = GradientTexture2D.FILL_RADIAL
-	glow.fill_from = Vector2(0.5, 0.0)
-	glow.fill_to = Vector2(0.5, 1.0)
-	glow.gradient = Gradient.new()
-	glow.gradient.colors = PackedColorArray([Color(1.0, 0.88, 0.6, 0.11), Color(1.0, 0.88, 0.6, 0.0)])
+	var pools: Array[Transform3D] = []
+	for i in 10:
+		var pose := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(rng.randf_range(1.6,4.6),1.0,rng.randf_range(1.1,2.8)))
+		pools.append(Transform3D(pose,Vector3(rng.randf_range(-10.0,10.0),-.118,rng.randf_range(10.4,21.0))))
+	_batch_water("Scattered standing water",puddle,pools)
+
 	var glow_mat := ShaderMaterial.new()
 	glow_mat.shader = preload("res://scenes/world/wet_reflection.gdshader")
-	for x in [-7.7, -5.3, -2.9, -0.4, 3.0]:
-		var streak := MeshInstance3D.new()
-		var mesh := QuadMesh.new()
-		mesh.size = Vector2(2.4, 5.0)
-		streak.mesh = mesh
-		streak.material_override = glow_mat
-		streak.rotation = Vector3(-PI / 2.0, 0, 0)
-		streak.position = Vector3(x, -0.105, 10.4)
-		streak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(streak)
+	var streaks: Array[Transform3D] = []
+	for x in [-7.7,-5.3,-2.9,-.4,1.7,3.0]:
+		var pose := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(rng.randf_range(.94,1.68),1.0,rng.randf_range(3.2,5.25)))
+		streaks.append(Transform3D(pose,Vector3(x,-.109,rng.randf_range(10.58,10.98))))
+	_batch_water("Window light on broken wet asphalt",glow_mat,streaks)
+
+func _batch_water(label: String, finish: Material, poses: Array[Transform3D]) -> void:
+	var tile := QuadMesh.new()
+	tile.size = Vector2.ONE
+	tile.material = finish
+	var group := MultiMesh.new()
+	group.transform_format = MultiMesh.TRANSFORM_3D
+	group.mesh = tile
+	group.instance_count = poses.size()
+	for i in poses.size():
+		group.set_instance_transform(i,poses[i])
+	var batch := MultiMeshInstance3D.new()
+	batch.name = label
+	batch.multimesh = group
+	batch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(batch)
 
 func _build_pole_sign() -> void:
 	var steel := _mat(Color(0.05, 0.055, 0.06), 0.6, 0.6)
@@ -163,62 +167,39 @@ func _build_sky() -> void:
 	backdrop.position = Vector3(0, 18.0, -90.0)
 	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(backdrop)
-	var tree := StandardMaterial3D.new()
-	tree.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	tree.albedo_color = Color("#121c20")
-	var crown := CylinderMesh.new()
-	crown.top_radius = .06
-	crown.bottom_radius = 1.0
-	crown.height = 1.0
-	crown.radial_segments = 5
-	crown.rings = 0
-	var stand := MultiMesh.new()
-	stand.transform_format = MultiMesh.TRANSFORM_3D
-	stand.mesh = crown
-	stand.instance_count = 100
-	var silhouettes := MultiMeshInstance3D.new()
-	silhouettes.multimesh = stand
-	silhouettes.material_override = tree
-	silhouettes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(silhouettes)
+	var trees := TreeArt.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9
-	for i in 50:
-		var height := rng.randf_range(7.5, 14.0)
-		var x := -53.0 + i * 2.15 + rng.randf_range(-.75,.75)
-		var z := rng.randf_range(-43.0, -26.0)
-		var lower := Basis.IDENTITY.scaled(Vector3(height * .20, height * .70, height * .20))
-		var upper := Basis.IDENTITY.scaled(Vector3(height * .14, height * .57, height * .14))
-		stand.set_instance_transform(i * 2, Transform3D(lower,Vector3(x,height * .36,z)))
-		stand.set_instance_transform(i * 2 + 1, Transform3D(upper,Vector3(x,height * .72,z)))
+	var poses: Array = [[],[],[]]
+	for row in 2:
+		for i in 27:
+			var x := -53.0+i*4.1+rng.randf_range(-1.4,1.4)
+			var z := -24.0-rng.randf_range(0,8)-row*12.0
+			var at := Vector3(x,-.245,z)
+			poses[rng.randi_range(0,2)].append(trees.pose(rng,at,rng.randf_range(6.0,13.0)))
+	for kind in 3:
+		trees.batch(self,poses[kind],kind,"Store woodline %d" % kind)
 
-## Cream fascia board with red italic lettering and a red stripe, lit by two wall lamps.
 func _dress_store_sign() -> void:
-	for node in get_parent().find_children("*", "Label3D", false, false):
+	for node in get_parent().find_children("*","Label3D",false,false):
 		var label := node as Label3D
-		if label.text != "MARLOW'S  MARKET":
-			continue
-		label.modulate = SIGN_RED
-		label.position.z += 0.05
-		var variation := FontVariation.new()
-		var base := preload("res://assets/fonts/original/marlow.fnt")
-		variation.base_font = base
-		variation.variation_transform = Transform2D(Vector2(1, 0), Vector2(-0.2, 1), Vector2.ZERO)
-		label.font = variation
-		var text_px := variation.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.font_size)
-		var width := text_px.x * label.pixel_size + 0.9
-		var center := label.position - Vector3(0, 0, 0.05)
-		var board := _box(Vector3(width, 1.05, 0.06), center + Vector3(0, 0.0, 0.0), _mat(BOARD_CREAM.darkened(0.12), 0.8, 0.0, 0.22))
-		board.name = "SignBoard"
-		_box(Vector3(width, 0.08, 0.07), center + Vector3(0, -0.4, 0.0), _mat(SIGN_RED, 0.7, 0.0, 0.25))
-		for dx in [-width * 0.33, width * 0.33]:
-			var lamp_pos: Vector3 = center + Vector3(dx, 0.78, 0.22)
-			_box(Vector3(0.34, 0.07, 0.14), lamp_pos, _mat(Color(0.05, 0.05, 0.05), 0.6, 0.5))
-			var spot := SpotLight3D.new()
-			spot.position = lamp_pos
-			spot.rotation.x = -1.15
-			spot.spot_range = 4.5
-			spot.spot_angle = 50.0
-			spot.light_energy = 1.8
-			spot.light_color = Color(1.0, 0.92, 0.75)
-			add_child(spot)
+		if label.text == "MARLOW'S  MARKET":
+			StoreArt.fascia(self,label,false)
+			return
+
+func _build_storefront_trim() -> void:
+	var frame := MeshArt.new()
+	var metal := MeshArt.material(StoreArt.PLASTER)
+	metal.albedo_color = Color("#444a40")
+	for x in [-8.90,-6.50,-4.10,-1.70,.88,2.39,3.55]:
+		frame.box(Vector3(x,1.66,6.138),Vector3(.063,2.102,.084))
+	for pair in [[-4.04,9.87],[3.0,1.13]]:
+		frame.box(Vector3(pair[0],.619,6.147),Vector3(pair[1],.052,.198))
+		frame.box(Vector3(pair[0],2.693,6.145),Vector3(pair[1],.036,.123))
+	frame.attach(self,"Sills and shopfront glazing stops",metal)
+	var apron := MeshArt.new()
+	var concrete := MeshArt.material(StoreArt.PLASTER)
+	concrete.albedo_color = Color("#827765")
+	for pair in [[-4.14,9.78],[5.71,6.62]]:
+		apron.box(Vector3(pair[0],.058,6.153),Vector3(pair[1],.105,.105))
+	apron.attach(self,"Scuffed masonry kick plate",concrete)
