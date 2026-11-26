@@ -25,6 +25,7 @@ func run_threat(market: Node3D) -> void:
 	await _test_route_caught_and_retry()
 	await _test_route_escape()
 	await _test_route_secured()
+	await _test_interrupted_actor_movement()
 	await _test_adoption()
 	await _test_office_unlocked_is_fatal()
 	await _test_rescue_timeout()
@@ -366,6 +367,24 @@ func _test_office_unlocked_is_fatal() -> void:
 	check(threat.ended == "caught", "and gets you before the police do (ended=%s)" % threat.ended)
 	await _after_ending()
 	threat.clear_actors()
+
+func _test_interrupted_actor_movement() -> void:
+	await _to_closing()
+	var actor := sec.spawn_stalker()
+	actor.global_position = Vector3(4.25, 0, -0.9)
+	actor.inside = true
+	actor.state = Stalker.State.LEAVING
+	var route: Array[Vector3] = [Vector3(-5.6, 0, 2.9)]
+	var cancelled := actor.movement_cancelled
+	actor._walk(route)
+	await _settle(3)
+	var before := actor.global_position
+	actor.queue_free()
+	await cancelled
+	await _settle(2)
+	var freed := not is_instance_valid(actor)
+	check(freed, "an interrupted threat actor is freed after movement cancellation")
+	check(before.distance_to(Vector3(-5.6, 0, 2.9)) > 0.5, "the cancellation setup interrupts movement before its destination")
 
 func _test_adoption() -> void:
 	await _to_closing()

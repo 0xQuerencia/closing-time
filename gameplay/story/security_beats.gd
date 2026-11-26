@@ -116,10 +116,10 @@ func leon_enters() -> void:
 	director._record("leon_rear_entry")
 	if director.spawn_enabled:
 		await leon.enter_building()
-		if not is_instance_valid(leon) or not is_inside_tree():
+		if not is_instance_valid(leon) or not is_inside_tree() or not leon.is_inside_tree():
 			return
 		await leon.wait_in_vestibule(60.0)
-		if not is_instance_valid(leon) or not is_inside_tree():
+		if not is_instance_valid(leon) or not is_inside_tree() or not leon.is_inside_tree():
 			return
 		if is_instance_valid(leon) and leon.spooked and not director._fired.has("walk"):
 			director._record("leon_spooked")
@@ -139,7 +139,7 @@ func camera_walk() -> void:
 			sec.intruder = null
 			leon = sec.spawn_intruder()
 			await leon.enter_building()
-			if not is_instance_valid(leon) or not is_inside_tree():
+			if not is_instance_valid(leon) or not is_inside_tree() or not leon.is_inside_tree():
 				return
 			director._record("walk_leon_inside")
 		if walk_waits_for_player:
@@ -151,7 +151,7 @@ func camera_walk() -> void:
 				waited += 0.5
 		director._record("walk_started")
 		await leon.walk_to_camera(Cctv.CAMS[1].pos - Vector3(0, 1.6, 0))
-		if not is_instance_valid(leon) or not is_inside_tree():
+		if not is_instance_valid(leon) or not is_inside_tree() or not leon.is_inside_tree():
 			return
 		director._record("walk_arrived")
 	sec.cctv.kill_feed(1)

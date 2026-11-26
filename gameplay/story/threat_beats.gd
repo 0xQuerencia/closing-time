@@ -191,6 +191,7 @@ func clear_actors() -> void:
 	threat_time = 0.0
 	if _siren_tone != null:
 		_siren_tone.stop()
+		_siren_tone.stream = null
 		if _siren_finished_handler.is_valid() and _siren_tone.finished.is_connected(_siren_finished_handler):
 			_siren_tone.finished.disconnect(_siren_finished_handler)
 		_siren_finished_handler = Callable()

@@ -92,3 +92,6 @@ func leave_building() -> void:
 	left_building.emit()
 	await _wait(1.0)
 	queue_free()
+
+func _exit_tree() -> void:
+	super._exit_tree()
