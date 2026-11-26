@@ -12,6 +12,7 @@ func _ready() -> void:
 	_build_notices()
 	_build_closed_sign()
 	_build_counter_laminate()
+	_build_checkout_sign()
 
 func _mat(color: Color, rough := 0.85, metallic := 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -111,3 +112,13 @@ func _build_closed_sign() -> void:
 func _build_counter_laminate() -> void:
 	var sheet := _box(Vector3(0.28, 0.002, 0.2), Vector3(-7.15, 0.96, 3.98), _mat(Color(0.8, 0.76, 0.66), 0.9))
 	sheet.rotation.y = 0.12
+
+func _build_checkout_sign() -> void:
+	var at := Vector3(-5.15, 2.42, 4.23)
+	var metal := _mat(Color("#625c48"))
+	_box(Vector3(.86, .22, .045), at, metal, PI / 4.0)
+	for x in [-.23,.23]:
+		_box(Vector3(.016, .64, .016), at + Vector3(x, .41, -x), metal)
+	var label := _text("CHECKOUT", at + Vector3(.018,0,.018), 38, .0031, Color("#f6e7b8"), PI / 4.0)
+	label.font = preload("res://assets/fonts/original/marlow.fnt")
+	label.shaded = false

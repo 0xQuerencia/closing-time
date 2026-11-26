@@ -382,12 +382,41 @@
       },
       "5": {
         "speaker": "Dina",
-        "text": "Rear latch sticks. Lift before turning the key. I'll be on my phone if you need me.",
+        "text": "I'll show you where the closing book and phone are. Come on.",
         "next": "6"
       },
       "6": {
         "speaker": "Jamie",
-        "text": "All right. Get home safe."
+        "text": "All right."
+      }
+    }
+  },
+  "production_office": {
+    "start": "0",
+    "nodes": {
+      "0": {
+        "speaker": "Dina",
+        "text": "Closing book goes in this drawer. Cash envelope too, after you count it.",
+        "next": "1"
+      },
+      "1": {
+        "speaker": "Dina",
+        "text": "Phone's on the desk. Call me if anything feels wrong. Don't stay to prove a point.",
+        "next": "2"
+      },
+      "2": {
+        "speaker": "Jamie",
+        "text": "And the rear latch?",
+        "next": "3"
+      },
+      "3": {
+        "speaker": "Dina",
+        "text": "Lift before you turn the key. I'll be on my phone if you need me.",
+        "next": "4"
+      },
+      "4": {
+        "speaker": "Jamie",
+        "text": "Got it. Get home safe."
       }
     }
   },
@@ -491,7 +520,7 @@
     "nodes": {
       "q": {
         "speaker": "Jamie",
-        "text": "Inventory sheet: total bottles in rows A–C?",
+        "text": "Stock card. Expected twelve bottles. How many are here?",
         "choices": [
           {
             "text": "12 bottles",
@@ -512,7 +541,7 @@
       },
       "right": {
         "speaker": "Jamie",
-        "text": "I'll write down what is actually here."
+        "text": "Eleven. Someone's already signed for twelve."
       }
     }
   },

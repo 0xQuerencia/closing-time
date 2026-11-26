@@ -55,10 +55,16 @@ static func play_at(parent: Node, kind: String, at: Vector3, db := -10.0, pitch 
 	p.pitch_scale = pitch * randf_range(0.95, 1.05)
 	p.unit_size = 3.0
 	p.max_distance = 20.0
-	p.finished.connect(p.queue_free)
+	p.finished.connect(_finish_one_shot.bind(p), CONNECT_ONE_SHOT)
 	parent.add_child(p)
 	p.global_position = at
 	p.play()
+
+static func _finish_one_shot(player: AudioStreamPlayer3D) -> void:
+	if is_instance_valid(player):
+		player.stop()
+		player.stream = null
+		player.queue_free()
 
 static func _build(kind: String, seed_value: int) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()

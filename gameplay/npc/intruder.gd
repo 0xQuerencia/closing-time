@@ -28,9 +28,15 @@ func enter_building() -> void:
 	if rear_door.locked:
 		rear_door.set_locked(false)  # he has the spare key from the hook
 	await _wait(0.9)
+	if not is_inside_tree():
+		return
 	rear_door.request_open(self)
 	await _wait(1.0)
+	if not is_inside_tree():
+		return
 	await _walk([THRESHOLD, Vector3(4.25, 0, -5.55), VESTIBULE])
+	if not is_inside_tree():
+		return
 	rear_door.request_close()  # pulled shut behind him
 	inside = true
 	arrived_inside.emit()
@@ -41,6 +47,8 @@ func wait_in_vestibule(seconds: float) -> void:
 	var left := seconds
 	while left > 0.0 and not spooked:
 		await get_tree().physics_frame
+		if not is_inside_tree():
+			return
 		left -= get_physics_process_delta_time()
 		if _player_flat_distance() < SPOOK_DISTANCE and not game.security.cctv.viewing:  # sitting at the monitor, you are not near him
 			spooked = true
@@ -53,10 +61,16 @@ func _player_flat_distance() -> float:
 ## Down the hall toward the camera, a long look into it, then back out.
 func walk_to_camera(camera_point: Vector3) -> void:
 	await _walk(CORRIDOR_WALK)
+	if not is_inside_tree():
+		return
 	await _face(camera_point)
+	if not is_inside_tree():
+		return
 	_play_animation("Idle")
 	_stare = camera_point + Vector3(0, 1.6, 0)  # stands still and looks straight up into the lens
 	await _wait(2.6)
+	if not is_inside_tree():
+		return
 	_stare = null
 
 ## He is not here to talk to anyone: his head only goes where the scene sends it.
@@ -68,9 +82,16 @@ func leave_building() -> void:
 	var back: Array[Vector3] = [Vector3(4.25, 0, -5.4), THRESHOLD, OUTSIDE]
 	rear_door.request_open(self)
 	await _wait(0.9)
+	if not is_inside_tree():
+		return
 	await _walk(back)
+	if not is_inside_tree():
+		return
 	rear_door.request_close()
 	inside = false
 	left_building.emit()
 	await _wait(1.0)
 	queue_free()
+
+func _exit_tree() -> void:
+	super._exit_tree()

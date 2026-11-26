@@ -17,30 +17,105 @@ func run_production(market: Node3D) -> void:
 		opening.advance()
 	game.director.delay_scale = .15
 	game.begin_production(opening.snapshot())
-	player.enabled = false
-	player.global_position = CLERK
 	var shift := game.director.production
 	if shift == null:
 		check(false,"production initialized")
 		await _finish()
 		return
+	await _check_market_arrival(shift)
+	await _check_handover(shift)
+	if not await _chapter("routine"):
+		check(false,"handover advances to routine")
+		await _finish()
+		return
+	check(true,"handover advances to routine")
+	await _check_rest_of_shift(shift)
+	await _finish()
+
+func _check_market_arrival(shift: ProductionShift) -> void:
+	await _settle()
+	check(player.global_position.z > 12.0 and shift.progress.events.has("market_arrived"),"Route 9 progress starts on the lot")
+	await _capture_handover("01-arrival")
+	var cues: Array[String] = []
+	var record_cue := func(message: String): cues.append(message)
+	game.interactor.message.connect(record_cue)
+	var door := game.security.front_door
+	player.require_mouse_capture = false
+	var walk := InputEventKey.new()
+	walk.physical_keycode = KEY_W
+	walk.pressed = true
+	Input.parse_input_event(walk)
+	check(await wait_until(func(): return player.global_position.z < 8.06,6), "player reaches the curb ramp from the arrival spawn")
+	walk.pressed = false
+	Input.parse_input_event(walk)
+	await aim(player.global_position, door.handle.global_position)
+	check(game.interactor.interact(),"front door opens from the sidewalk using the player ray")
+	check(await wait_until(door.is_fully_open, 4), "front leaves clear the entry path")
+	check(cues.has("[The front door bell rings.]"),"opening the front door presents the bell caption")
+	player.rotation.y = 0.0
+	walk.pressed = true
+	Input.parse_input_event(walk)
+	check(await wait_until(func(): return player.global_position.z < 5.5,5), "player walks through the open front doorway")
+	check(await wait_until(func(): return player.global_position.z < 3.6,5), "player clears the entrance")
+	walk.pressed = false
+	Input.parse_input_event(walk)
+	player.enabled = false
+	check(await wait_until(door.is_closed,4),"the front door closes behind the player")
+	game.interactor.message.disconnect(record_cue)
+
+func _check_handover(shift: ProductionShift) -> void:
+	var stock: Array[int] = []
+	var stock_triangles := 0
+	for node in shift.find_children("*", "MultiMeshInstance3D", true, false):
+		var batch: MultiMesh = node.multimesh
+		stock.append(batch.instance_count)
+		stock_triangles += (batch.mesh.get_faces().size() / 3) * batch.instance_count
+	check(stock == [4, 3, 4] and stock_triangles == 1650,"three bottle batches contain 4, 3 and 4 bottles (1,650 triangles)")
+	var dina: Customer = shift.staff.dina
+	await aim(CLERK, dina.talk.global_position)
+	await _capture_handover("02-dina")
+	check(game.interactor.interact(),"Dina starts the handover from the player ray")
+	check(await wait_until(func(): return shift.progress.events.has("dina_handover"),10),"Dina completes the handover")
+	check(await _sale("mara"),"Mara paid and left")
+	check(shift.progress.current_id() == "handover","the sale alone leaves the inventory check open")
 	shift._use("cooler_counted")
 	check(not shift.progress.events.has("cooler_counted"),"inventory refuses unchecked count")
+	var cues: Array[String] = []
+	var record_cue := func(message: String): cues.append(message)
+	game.interactor.message.connect(record_cue)
 	for row in ["cooler_row_a","cooler_row_b","cooler_row_c"]:
-		shift._use(row)
-	shift._use("cooler_counted")
+		await _aim_at_stock(shift, row)
+		if row == "cooler_row_b":
+			await _capture_handover("03-cooler-row-b")
+		check(game.interactor.inspect(),"inspect " + row + " through the player ray")
+	check(cues == ["Row A: 4 bottles.","Row B: 3 bottles.","Row C: 4 bottles."],"the three stocked rows report 4, 3 and 4")
+	await _aim_at_stock(shift, "cooler_counted")
+	check(game.interactor.interact(),"stock card accepts interaction after three rows")
 	check(game.dialogue.choose(0),"wrong count is selectable")
 	await wait_until(func(): return not game.dialogue.is_active(),10)
 	check(not shift.progress.events.has("cooler_counted"),"wrong count rejected")
-	shift._use("cooler_counted")
+	check(not cues.has("[The cooler compressor winds down.]"),"wrong count leaves the compressor running")
+	check(game.interactor.interact(),"stock card remains usable after an incorrect count")
 	game.dialogue.choose(1)
 	check(await wait_until(func(): return shift.progress.events.has("cooler_counted"),10),"correct inventory accepted")
-	shift._use("dina_handover")
-	check(await _sale("mara"),"Mara paid and left")
-	check(await _chapter("routine"),"handover advances")
-	if shift.progress.current_id() != "routine":
-		await _finish()
+	check(cues.count("[The cooler compressor winds down.]") == 1,"correct count triggers one compressor caption")
+	game.interactor.message.disconnect(record_cue)
+
+func _aim_at_stock(shift: ProductionShift, id: String) -> void:
+	var marker: Interactable = shift.spots[id].node
+	await aim(Vector3(marker.global_position.x,.05,marker.global_position.z + 1.35), marker.global_position)
+	check(game.interactor.focus == marker,"real ray reaches " + id)
+
+func _capture_handover(shot: String) -> void:
+	if "--capture-handover" not in OS.get_cmdline_user_args() or DisplayServer.get_name() == "headless":
 		return
+	const FOLDER := "res://local/screenshots/handover"
+	DirAccess.make_dir_recursive_absolute(FOLDER)
+	await RenderingServer.frame_post_draw
+	var image := get_viewport().get_texture().get_image()
+	check(image.save_png(FOLDER.path_join(shot + ".png")) == OK,"capture " + shot)
+
+func _check_rest_of_shift(shift: ProductionShift) -> void:
 	for row in ["delivery_a","delivery_b"]:
 		shift._use(row)
 	check(await wait_until(func(): return not game.dialogue.is_active(),10),"available for invoice")
@@ -55,7 +130,6 @@ func run_production(market: Node3D) -> void:
 	check(await _sale("nora"),"Nora paid and left")
 	check(await _chapter("closing"),"routine advances")
 	if shift.progress.current_id() != "closing":
-		await _finish()
 		return
 	shift._use("cash_drop_done")
 	check(not shift.progress.events.has("cash_drop_done"),"cash drawer requires carried envelope")
@@ -73,7 +147,6 @@ func run_production(market: Node3D) -> void:
 	check(await _sale("leon2"),"Leon second sale")
 	check(await _chapter("outage"),"closing advances")
 	if shift.progress.current_id() != "outage":
-		await _finish()
 		return
 	game.phone.mark_read("Dina")
 	check(shift.progress.has_substantive_evidence(),"binder and phone testimony preserved")
@@ -92,7 +165,39 @@ func run_production(market: Node3D) -> void:
 	player.global_position = Vector3(1.7,.05,8.3)
 	check(await wait_until(func(): return shift.progress.outcome != "",10),"front exit resolves ending")
 	check(shift.progress.outcome == "evidence_preserved","evidence ending unlocked")
-	await _finish()
+	check(shift.progress.current_id() == "escape", "evidence outcome is stored in the finale chapter")
+	await _check_production_outcomes(shift)
+	await _check_checkpoint_restore(shift)
+
+func _check_production_outcomes(shift: ProductionShift) -> void:
+	for row in [["escape", "escaped"], ["secured", "rescued"]]:
+		shift.progress.outcome = ""
+		shift.progress.discoveries.clear()
+		check(shift.outcome_for(row[0]) == row[1], "production maps %s to %s without evidence" % [row[0], row[1]])
+		check(shift.progress.outcome == row[1], "chapter stores %s outcome" % row[1])
+		shift.progress.outcome = ""
+	shift.progress.discoveries = {"training_binder": true, "dina_statement": true}
+	check(shift.outcome_for("escape") == "evidence_preserved", "escaped player can preserve corroborated evidence")
+	shift.progress.outcome = ""
+	check(shift.outcome_for("secured") == "evidence_preserved", "rescued player can preserve corroborated evidence")
+	shift.progress.outcome = ""
+	check(shift.outcome_for("caught") == "caught", "caught maps to caught even with evidence")
+	shift.progress.outcome = ""
+	shift.progress.discoveries.clear()
+	check(shift.outcome_for("unknown") == "unknown" and shift.progress.outcome.is_empty(), "unknown threat outcomes cannot be recorded")
+
+func _check_checkpoint_restore(shift: ProductionShift) -> void:
+	var saved := game.checkpoint_data.duplicate(true)
+	check(saved.checkpoint == "closing_time" and saved.production.chapter == "escape", "finale checkpoint contains finale chapter state")
+	shift.progress.discoveries.clear()
+	shift.progress.outcome = ""
+	check(game.load_checkpoint(saved), "closing-time checkpoint restores production and threat")
+	check(game.director.production.progress.current_id() == "escape" and game.director.threat.active, "restore resumes at the finale with threat active")
+	check(game.director.production.progress.discoveries.has("training_binder") and game.director.production.progress.discoveries.has("dina_statement"), "restore retains binder and Dina corroboration")
+	game.director.threat.end("caught")
+	check(game.director.production.progress.outcome == "caught", "caught signal records production outcome")
+	game.flow.retry_requested.emit()
+	check(game.director.production.progress.outcome.is_empty() and game.director.threat.active, "retry restores checkpoint without retaining the ending")
 
 func _chapter(id: String) -> bool:
 	return await wait_until(func(): return game.director.production.progress.current_id() == id,20)

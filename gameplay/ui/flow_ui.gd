@@ -177,6 +177,8 @@ func apply_settings() -> void:
 	player.head_bob = settings.bob
 	player.toggle_sprint = settings.toggle_sprint
 	game.director.threat.reduced_flashes = settings.reduced_flashes
+	var store_lighting := game.world.get_node("FearsLook") as FearsLook
+	store_lighting.reduced_flashes = settings.reduced_flashes
 	for pair in [["Master","master_volume"],["Weather","weather_volume"]]:
 		var bus := AudioServer.get_bus_index(pair[0])
 		if bus >= 0:
@@ -493,7 +495,7 @@ func show_accessibility() -> void:
 		settings.toggle_sprint = not settings.toggle_sprint
 		apply_settings()
 		show_accessibility())
-	_button("reduced_flashes","Reduced siren flashes: %s" % ("on" if settings.reduced_flashes else "off"),func():
+	_button("reduced_flashes","Reduced light changes: %s" % ("on" if settings.reduced_flashes else "off"),func():
 		settings.reduced_flashes = not settings.reduced_flashes
 		apply_settings()
 		show_accessibility())

@@ -34,8 +34,9 @@ func _box(parent: Node3D,at: Vector3,size: Vector3,material: Material,label := "
 	return node
 
 func _build_lot() -> void:
-	var asphalt := _mat(Color("#747675"),.82,"res://assets/models/exterior_asphalt.png")
+	var asphalt := _mat(Color("#687377"),.42,"res://assets/models/exterior_asphalt.png")
 	asphalt.uv1_scale = Vector3(9,9,9)
+	asphalt.metallic_specular = .55
 	var concrete := _mat(Color("#85837a"),.94,"res://assets/models/exterior_plaster.png")
 	concrete.uv1_scale = Vector3(4,4,4)
 	var ground := _mat(Color("#343c32"))

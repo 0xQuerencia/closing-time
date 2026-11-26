@@ -129,6 +129,12 @@ func _breath_stream() -> AudioStreamWAV:
 	return _wav(out, rate)
 
 func _process(delta: float) -> void:
+	if _game != null and is_instance_valid(_game) and is_instance_valid(_game.director) and _game.director.production != null:
+		var progress := _game.director.production.progress
+		if progress.current_id() == "handover":
+			if progress.events.has("cooler_counted") and _quiet_age >= 0.0:
+				_update_compressor(delta)
+			return
 	_update_compressor(delta)
 	_update_body_audio()
 	_next_radio -= delta
@@ -179,6 +185,11 @@ func _update_compressor(delta: float) -> void:
 
 func _start_quiet_cycle() -> void:
 	_quiet_age = 0.0
+
+func cooler_count_confirmed() -> void:
+	if _power != null and _power.main_on:
+		_start_quiet_cycle()
+		_game.interactor.message.emit("[The cooler compressor winds down.]")
 
 func _play_radio_fault() -> void:
 	if _radio == null:

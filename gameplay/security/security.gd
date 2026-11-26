@@ -258,8 +258,11 @@ func _build_stoop() -> void:
 func pulse_rear_door() -> void:
 	rear_door.set_locked(false)
 	rear_door.request_open()
-	await get_tree().create_timer(1.6).timeout
-	rear_door.request_close()
+	var timer := get_tree().create_timer(1.6)
+	var handler := func():
+		if is_inside_tree() and is_instance_valid(rear_door):
+			rear_door.request_close()
+	timer.timeout.connect(handler, CONNECT_ONE_SHOT)
 
 func spawn_intruder() -> Intruder:
 	if is_instance_valid(intruder):

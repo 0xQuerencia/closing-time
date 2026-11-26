@@ -4,6 +4,7 @@ extends CharacterBody3D
 enum Phase { ARRIVE, BROWSE, QUEUE, TRANSACTION, LEAVE, GONE }
 signal phase_changed(phase: Phase)
 signal finished(customer: Customer)
+signal movement_cancelled
 const SPEED := 1.4
 const ACCELERATION := 1.8
 const BRAKING := 2.8
@@ -36,6 +37,7 @@ var _gesture: StringName
 var _gesture_left := 0.0
 var _stride := 0.0
 var _feet: AudioStreamPlayer3D
+var _movement_generation := 0
 const GLANCE_SPOTS := [Vector3(-5.6, 1.0, 4.3), Vector3(-4.2, 1.0, 4.4), Vector3(-6.5, 1.4, 1.2), Vector3(1.7, 1.4, 5.0)]
 const BACK_OF_STORE := Vector3(4.2, 1.5, -3.0)
 const IDLE_CLIPS := [&"Idle", &"IdleShift", &"IdleWait", &"CounterIdle"]
@@ -165,25 +167,40 @@ func run() -> void:
 	var route: Dictionary = profile.route
 	_set_phase(Phase.ARRIVE)
 	await _walk(route.arrive)
+	if not is_inside_tree():
+		return
 	_set_phase(Phase.BROWSE)
 	await _walk(route.browse)
+	if not is_inside_tree():
+		return
 	await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
+	if not is_inside_tree():
+		return
 	await _wait(float(profile.get("browse_pause", 1.4)))
+	if not is_inside_tree():
+		return
 	if profile.get("second_look", false):
 		# A normal shopper taking a second look at the aisle behind him.
 		await _face(global_position + Vector3(0, 0, 1.0))
+		if not is_inside_tree(): return
 		await _wait(0.85)
+		if not is_inside_tree(): return
 		await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
+		if not is_inside_tree(): return
 	var basket: Array[Product] = []
 	for item_id in profile.items:
 		basket.append(game.spawn_product(item_id, null))
 	held_product = basket[0]
 	held_product.attach_to(_hand, Vector3.ZERO)
 	await _wait(0.6)
+	if not is_inside_tree(): return
 	_set_phase(Phase.QUEUE)
 	await _walk(route.queue)
+	if not is_inside_tree(): return
 	await _face(Vector3(route.queue.back().x, 0, 4.5))
+	if not is_inside_tree(): return
 	await _wait(0.4)
+	if not is_inside_tree(): return
 	_set_phase(Phase.TRANSACTION)
 	var checkout := game.checkout
 	while not checkout.open_sale(self):
@@ -200,6 +217,7 @@ func run() -> void:
 	var nagged := false
 	while checkout.state != Checkout.State.PAID:
 		await get_tree().physics_frame
+		if not is_inside_tree(): return
 		waited += get_physics_process_delta_time()
 		_idle_time += get_physics_process_delta_time()
 		_animate()
@@ -215,11 +233,14 @@ func run() -> void:
 			bought.queue_free()
 	checkout.payment_failed.disconnect(_on_reader_failed)
 	await _say(profile.id + "_thanks")
+	if not is_inside_tree(): return
 	checkout.close_sale()
 	_set_phase(Phase.LEAVE)
 	await _walk(route.leave)
+	if not is_inside_tree(): return
 	if route.has("car"):  # walks off to a parked car and drives away
 		await _walk(route.car)
+		if not is_inside_tree(): return
 	_set_phase(Phase.GONE)
 	finished.emit(self)
 	queue_free()
@@ -246,25 +267,37 @@ func _wait(seconds: float) -> void:
 	var left := seconds
 	while left > 0.0:
 		await get_tree().physics_frame
+		if not is_inside_tree():
+			return
 		left -= get_physics_process_delta_time()
 		_idle_time += get_physics_process_delta_time()
 		_animate()
 
 func _walk(points: Array) -> void:
+	var generation := _movement_generation
 	for index in range(points.size()):
-		await _walk_to(points[index], index == points.size() - 1)
+		if not _movement_active(generation):
+			return
+		await _walk_to(points[index], index == points.size() - 1, generation)
+		if not _movement_active(generation):
+			return
 	velocity = Vector3.ZERO
 	_animate()
 
-func _walk_to(target: Vector3, final_point: bool = true) -> void:
+func _movement_active(generation: int) -> bool:
+	return is_inside_tree() and generation == _movement_generation
+
+func _walk_to(target: Vector3, final_point: bool = true, generation := -1) -> void:
+	if generation < 0:
+		generation = _movement_generation
 	var start := Vector3(target.x - global_position.x, 0, target.z - global_position.z)
 	if start.length() > 0.3 and Vector2(velocity.x, velocity.z).length() < 0.25 \
 			and absf(angle_difference(rotation.y, atan2(-start.x, -start.z))) > 1.1:
-		await _face(target)  # standing still: turn on the spot first instead of sliding round
+		await _face(target, generation)  # standing still: turn on the spot first instead of sliding round
 	var best := INF
 	var stalled := 0.0
 	var blocked := 0.0
-	while is_inside_tree():
+	while _movement_active(generation):
 		var delta := get_physics_process_delta_time()
 		var flat := Vector3(target.x - global_position.x, 0, target.z - global_position.z)
 		var remaining := flat.length()
@@ -308,6 +341,16 @@ func _walk_to(target: Vector3, final_point: bool = true) -> void:
 			push_warning("%s stalled on the way to %s; skipping waypoint" % [name, target])
 			break
 		await get_tree().physics_frame
+	if not _movement_active(generation):
+		return
+
+func _exit_tree() -> void:
+	_movement_generation += 1
+	velocity = Vector3.ZERO
+	movement_cancelled.emit()
+	if is_instance_valid(_feet):
+		_feet.stop()
+		_feet.stream = null
 
 ## Soft shoes on tile (or the wet lot outside), one per stride actually walked.
 func _step_sound(delta: float, db: float) -> bool:
@@ -333,7 +376,9 @@ func _player_in_way(dir: Vector3) -> bool:
 	to_player.y = 0
 	return to_player.length() < YIELD_DIST and to_player.normalized().dot(dir) > 0.5
 
-func _face(point: Vector3) -> void:
+func _face(point: Vector3, generation := -1) -> void:
+	if generation < 0:
+		generation = _movement_generation
 	var d := point - global_position
 	var yaw := atan2(-d.x, -d.z)
 	# Take a short, visible step-turn rather than snapping at the counter.
@@ -341,8 +386,12 @@ func _face(point: Vector3) -> void:
 	if absf(difference) > 0.15:
 		_play_animation("TurnLeft" if difference > 0.0 else "TurnRight")
 	while absf(angle_difference(rotation.y, yaw)) > 0.015:
+		if not _movement_active(generation):
+			return
 		rotation.y = rotate_toward(rotation.y, yaw, TURN_SPEED * get_physics_process_delta_time())
 		await get_tree().physics_frame
+		if not _movement_active(generation):
+			return
 	_animate()
 
 func _process(delta: float) -> void:
