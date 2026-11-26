@@ -165,6 +165,39 @@ func _check_rest_of_shift(shift: ProductionShift) -> void:
 	player.global_position = Vector3(1.7,.05,8.3)
 	check(await wait_until(func(): return shift.progress.outcome != "",10),"front exit resolves ending")
 	check(shift.progress.outcome == "evidence_preserved","evidence ending unlocked")
+	check(shift.progress.current_id() == "escape", "evidence outcome is stored in the finale chapter")
+	await _check_production_outcomes(shift)
+	await _check_checkpoint_restore(shift)
+
+func _check_production_outcomes(shift: ProductionShift) -> void:
+	for row in [["escape", "escaped"], ["secured", "rescued"]]:
+		shift.progress.outcome = ""
+		shift.progress.discoveries.clear()
+		check(shift.outcome_for(row[0]) == row[1], "production maps %s to %s without evidence" % [row[0], row[1]])
+		check(shift.progress.outcome == row[1], "chapter stores %s outcome" % row[1])
+		shift.progress.outcome = ""
+	shift.progress.discoveries = {"training_binder": true, "dina_statement": true}
+	check(shift.outcome_for("escape") == "evidence_preserved", "escaped player can preserve corroborated evidence")
+	shift.progress.outcome = ""
+	check(shift.outcome_for("secured") == "evidence_preserved", "rescued player can preserve corroborated evidence")
+	shift.progress.outcome = ""
+	check(shift.outcome_for("caught") == "caught", "caught maps to caught even with evidence")
+	shift.progress.outcome = ""
+	shift.progress.discoveries.clear()
+	check(shift.outcome_for("unknown") == "unknown" and shift.progress.outcome.is_empty(), "unknown threat outcomes cannot be recorded")
+
+func _check_checkpoint_restore(shift: ProductionShift) -> void:
+	var saved := game.checkpoint_data.duplicate(true)
+	check(saved.checkpoint == "closing_time" and saved.production.chapter == "escape", "finale checkpoint contains finale chapter state")
+	shift.progress.discoveries.clear()
+	shift.progress.outcome = ""
+	check(game.load_checkpoint(saved), "closing-time checkpoint restores production and threat")
+	check(game.director.production.progress.current_id() == "escape" and game.director.threat.active, "restore resumes at the finale with threat active")
+	check(game.director.production.progress.discoveries.has("training_binder") and game.director.production.progress.discoveries.has("dina_statement"), "restore retains binder and Dina corroboration")
+	game.director.threat.end("caught")
+	check(game.director.production.progress.outcome == "caught", "caught signal records production outcome")
+	game.flow.retry_requested.emit()
+	check(game.director.production.progress.outcome.is_empty() and game.director.threat.active, "retry restores checkpoint without retaining the ending")
 
 func _chapter(id: String) -> bool:
 	return await wait_until(func(): return game.director.production.progress.current_id() == id,20)

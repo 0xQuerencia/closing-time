@@ -613,8 +613,6 @@ func finish_run(code: int) -> void:
 	if is_instance_valid(ambient_dread):
 		ambient_dread.queue_free()
 	_stop_audio_tree(self)
-	# Let AudioServer retire stopped playbacks even when a test changed Engine.time_scale.
-	await get_tree().create_timer(0.35, true, false, true).timeout
 	get_tree().quit(code)
 
 func _stop_audio_tree(node: Node) -> void:

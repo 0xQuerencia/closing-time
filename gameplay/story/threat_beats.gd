@@ -21,6 +21,7 @@ var rescue_after := 240.0
 var siren_lights: Array[OmniLight3D] = []
 var _siren_tone: AudioStreamPlayer3D
 var _siren_flip := 0.0
+var _siren_finished_handler: Callable
 
 func setup(owner: StoryDirector) -> ThreatBeats:
 	director = owner
@@ -156,7 +157,8 @@ func _start_sirens(alarm := false) -> void:
 	if _siren_tone == null:
 		_siren_tone = Tone.player(Tone.stream(720.0, 700, 0.8, 0.3), Vector3(1.7, 2.0, 12.0), 40.0)
 		_siren_tone.max_distance = 60.0
-		_siren_tone.finished.connect(func(): if ended == "secured" or ended == "escape": _siren_tone.play())
+		_siren_finished_handler = _on_siren_finished
+		_siren_tone.finished.connect(_siren_finished_handler)
 		game.world.add_child(_siren_tone)
 		for color in [Color(1.0, 0.1, 0.1), Color(0.15, 0.25, 1.0)]:
 			var lamp := OmniLight3D.new()
@@ -167,6 +169,10 @@ func _start_sirens(alarm := false) -> void:
 			game.world.add_child(lamp)
 			siren_lights.append(lamp)
 	_siren_tone.play()
+
+func _on_siren_finished() -> void:
+	if is_inside_tree() and (ended == "secured" or ended == "escape") and is_instance_valid(_siren_tone):
+		_siren_tone.play()
 
 func _flash_sirens(delta: float) -> void:
 	if siren_lights.is_empty():
@@ -185,6 +191,9 @@ func clear_actors() -> void:
 	threat_time = 0.0
 	if _siren_tone != null:
 		_siren_tone.stop()
+		if _siren_finished_handler.is_valid() and _siren_tone.finished.is_connected(_siren_finished_handler):
+			_siren_tone.finished.disconnect(_siren_finished_handler)
+		_siren_finished_handler = Callable()
 	for lamp in siren_lights:
 		lamp.light_energy = 0.0
 	if is_instance_valid(stalker):
@@ -193,3 +202,6 @@ func clear_actors() -> void:
 	if is_instance_valid(sec.intruder):
 		sec.intruder.queue_free()
 	sec.intruder = null
+
+func _exit_tree() -> void:
+	clear_actors()

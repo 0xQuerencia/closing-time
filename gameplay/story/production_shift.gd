@@ -171,8 +171,10 @@ func _on_director_event(id: String) -> void:
 
 
 func outcome_for(kind: String) -> String:
-	var mapped: String = {"escape":"escaped","secured":"rescued","caught":"caught"}.get(kind,kind)
-	if mapped != "caught" and progress.has_substantive_evidence():
+	var mapped: String = {"escape":"escaped","secured":"rescued","caught":"caught"}.get(kind, "")
+	if mapped.is_empty():
+		return kind
+	if mapped in ["escaped", "rescued"] and progress.has_substantive_evidence():
 		mapped = "evidence_preserved"
 	if progress.current_id() == "outage" and progress.missing_required().is_empty():
 		progress.advance()

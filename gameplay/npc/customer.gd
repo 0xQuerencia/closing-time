@@ -165,25 +165,40 @@ func run() -> void:
 	var route: Dictionary = profile.route
 	_set_phase(Phase.ARRIVE)
 	await _walk(route.arrive)
+	if not is_inside_tree():
+		return
 	_set_phase(Phase.BROWSE)
 	await _walk(route.browse)
+	if not is_inside_tree():
+		return
 	await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
+	if not is_inside_tree():
+		return
 	await _wait(float(profile.get("browse_pause", 1.4)))
+	if not is_inside_tree():
+		return
 	if profile.get("second_look", false):
 		# A normal shopper taking a second look at the aisle behind him.
 		await _face(global_position + Vector3(0, 0, 1.0))
+		if not is_inside_tree(): return
 		await _wait(0.85)
+		if not is_inside_tree(): return
 		await _face(global_position + profile.get("browse_face", Vector3(-1, 0, 0)))
+		if not is_inside_tree(): return
 	var basket: Array[Product] = []
 	for item_id in profile.items:
 		basket.append(game.spawn_product(item_id, null))
 	held_product = basket[0]
 	held_product.attach_to(_hand, Vector3.ZERO)
 	await _wait(0.6)
+	if not is_inside_tree(): return
 	_set_phase(Phase.QUEUE)
 	await _walk(route.queue)
+	if not is_inside_tree(): return
 	await _face(Vector3(route.queue.back().x, 0, 4.5))
+	if not is_inside_tree(): return
 	await _wait(0.4)
+	if not is_inside_tree(): return
 	_set_phase(Phase.TRANSACTION)
 	var checkout := game.checkout
 	while not checkout.open_sale(self):
@@ -200,6 +215,7 @@ func run() -> void:
 	var nagged := false
 	while checkout.state != Checkout.State.PAID:
 		await get_tree().physics_frame
+		if not is_inside_tree(): return
 		waited += get_physics_process_delta_time()
 		_idle_time += get_physics_process_delta_time()
 		_animate()
@@ -215,11 +231,14 @@ func run() -> void:
 			bought.queue_free()
 	checkout.payment_failed.disconnect(_on_reader_failed)
 	await _say(profile.id + "_thanks")
+	if not is_inside_tree(): return
 	checkout.close_sale()
 	_set_phase(Phase.LEAVE)
 	await _walk(route.leave)
+	if not is_inside_tree(): return
 	if route.has("car"):  # walks off to a parked car and drives away
 		await _walk(route.car)
+		if not is_inside_tree(): return
 	_set_phase(Phase.GONE)
 	finished.emit(self)
 	queue_free()
@@ -246,13 +265,19 @@ func _wait(seconds: float) -> void:
 	var left := seconds
 	while left > 0.0:
 		await get_tree().physics_frame
+		if not is_inside_tree():
+			return
 		left -= get_physics_process_delta_time()
 		_idle_time += get_physics_process_delta_time()
 		_animate()
 
 func _walk(points: Array) -> void:
 	for index in range(points.size()):
+		if not is_inside_tree():
+			return
 		await _walk_to(points[index], index == points.size() - 1)
+		if not is_inside_tree():
+			return
 	velocity = Vector3.ZERO
 	_animate()
 
@@ -343,6 +368,8 @@ func _face(point: Vector3) -> void:
 	while absf(angle_difference(rotation.y, yaw)) > 0.015:
 		rotation.y = rotate_toward(rotation.y, yaw, TURN_SPEED * get_physics_process_delta_time())
 		await get_tree().physics_frame
+		if not is_inside_tree():
+			return
 	_animate()
 
 func _process(delta: float) -> void:

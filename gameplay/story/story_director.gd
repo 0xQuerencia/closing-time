@@ -20,6 +20,8 @@ var delay_scale := 1.0
 var _fired := {}
 var _away := 0.0
 var _chores_done := {}
+var _timers: Array[SceneTreeTimer] = []
+var _timer_actions: Dictionary = {}
 var beats: SecurityBeats
 var threat: ThreatBeats
 var production: ProductionShift
@@ -149,7 +151,7 @@ func _anomaly() -> void:
 	_later(8.0, func(): _text("kay_3", "Kay", "Maybe he really likes hydration.", 0, 8))
 	_later(13.0, func(): _text("dina_4", "Dina", "If the alarm trips, call the police, not me.", 0, 9))
 	if beats != null:
-		get_tree().create_timer(40.0).timeout.connect(beats.begin)  # real time: a player who ignores the clues still gets the cameras
+		_later(40.0, beats.begin)
 
 # --- chores and clues -------------------------------------------------------------------------
 
@@ -225,4 +227,21 @@ func _later(seconds: float, action: Callable) -> void:
 	if delay_scale <= 0.0:
 		action.call_deferred()
 	else:
-		get_tree().create_timer(seconds * delay_scale).timeout.connect(action)
+		var timer := get_tree().create_timer(seconds * delay_scale)
+		_timers.append(timer)
+		var handler := func():
+			_timers.erase(timer)
+			_timer_actions.erase(timer)
+			if is_inside_tree() and action.is_valid():
+				action.call()
+		_timer_actions[timer] = handler
+		timer.timeout.connect(handler, CONNECT_ONE_SHOT)
+
+func _exit_tree() -> void:
+	for timer in _timers:
+		if is_instance_valid(timer) and _timer_actions.has(timer):
+			var handler: Callable = _timer_actions[timer]
+			if timer.timeout.is_connected(handler):
+				timer.timeout.disconnect(handler)
+	_timers.clear()
+	_timer_actions.clear()

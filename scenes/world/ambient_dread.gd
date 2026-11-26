@@ -129,7 +129,7 @@ func _breath_stream() -> AudioStreamWAV:
 	return _wav(out, rate)
 
 func _process(delta: float) -> void:
-	if _game != null and _game.director.production != null:
+	if _game != null and is_instance_valid(_game) and is_instance_valid(_game.director) and _game.director.production != null:
 		var progress := _game.director.production.progress
 		if progress.current_id() == "handover":
 			if progress.events.has("cooler_counted") and _quiet_age >= 0.0:
