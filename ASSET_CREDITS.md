@@ -46,5 +46,7 @@ Historical imported assets listed above remain in the repository and may still b
 
 ### Market handover
 
-- The project-authored Birch Spring bottles and cooler racks are generated in `gameplay/story/production_shift.gd`. The shared bottle mesh uses vertex colors and ten sides. Its stock layout also supplies the inspectable counts. The counter and entrance signs use Marlow Terminal glyphs with geometry in `scenes/world/interior_dressing.gd` and `scenes/world/exterior_dressing.gd`.
+- The rear aisle pass uses original modeled cabinet bays, shelves, merchandise, clipboard, glass wear and aisle finishes in `assets/models/cooler_aisle.glb` and `assets/models/cooler_atlas.png`. Rebuild both files with `python tools/cooler/generate.py` using Pillow. The source uses geometry, painted pixels and the project's Marlow Terminal row masks. Ricky's three reference images informed composition and materials. Their pixels are absent from the assets.
+- The counted Birch Spring bottle has ten faceted sides. `gameplay/story/production_shift.gd` instances the mesh at the existing stock positions and supplies the inspectable counts. `tools/cooler/trim_retail.py` removes the old cabinet triangles from draft #23's retail GLB while retaining the surrounding retail geometry and materials.
+- The counter and entrance signs use Marlow Terminal glyphs with geometry in `scenes/world/interior_dressing.gd` and `scenes/world/exterior_dressing.gd`.
 - The same exterior script builds the two-tier conifers from seed 9 in one mesh batch. The front bell is synthesized by `Tone` in `gameplay/audio/soundscape.gd`. The cooler cue fades the existing original refrigeration loop.

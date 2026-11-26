@@ -22,7 +22,7 @@ func _on_node_added(node: Node) -> void:
 		_style.call_deferred(node)
 
 func _style(node: MeshInstance3D) -> void:
-	if not is_instance_valid(node) or node.mesh == null or node.name == "PhoneScreen":
+	if not is_instance_valid(node) or node.mesh == null or node.name == "PhoneScreen" or node.is_in_group("authored_materials"):
 		return
 	if node.material_override is BaseMaterial3D:
 		node.material_override = _filtered(node.material_override)
