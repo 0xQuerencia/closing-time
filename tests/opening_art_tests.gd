@@ -199,6 +199,18 @@ func _drive(road: Node) -> void:
 	var cards := market.find_children("Coffee placard and weekly specials card","MeshInstance3D",true,false)
 	check(cards.size() == 1 and cards[0].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
 		"Market reference window cards add no collision or shadow pass")
+	var parapet := market.find_child("Raised continuous brick sign parapet",true,false) as MeshInstance3D
+	var front := market.find_child("Raised brick window piers lintel and skirt",true,false) as MeshInstance3D
+	check(parapet != null and front != null and parapet.get_aabb().size.x > 18.0 and front.get_aabb().size.y > 2.8,
+		"Real brick geometry backs the sign and separates the window bays")
+	var entrance := market.find_child("Bronze window mullions and double-door surround",true,false) as MeshInstance3D
+	var counter := market.find_child("Cast-stone sills and projecting coffee counter",true,false) as MeshInstance3D
+	check(entrance != null and counter != null and counter.get_aabb().size.z > .40,
+		"Coffee service projects forward of the recessed window and the original door receives a real surround")
+	var water := market.find_child("Three standing-water depressions",true,false) as MeshInstance3D
+	check(water != null and water.mesh.get_surface_count() == 1 and water.mesh.get_faces().size() == 3*18*9
+		and water.get_aabb().size.y < .001 and water.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
+		"Three fixed standing-water outlines share one flat shadowless surface")
 	check(shift != null and shift.progress.current_id() == "handover"
 		and shift.progress.events.has("shift_read") and shift.progress.events.has("market_arrived")
 		and shift.progress.events.has("bypass_sign"),"Arrival forwards required and optional progress to handover")

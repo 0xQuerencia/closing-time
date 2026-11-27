@@ -72,53 +72,37 @@ func _label(text: String, pos: Vector3, size: int, pixel: float, color: Color, i
 	return label
 
 func _build_puddles() -> void:
-	var soft := GradientTexture2D.new()
-	soft.fill = GradientTexture2D.FILL_RADIAL
-	soft.fill_from = Vector2(0.5, 0.5)
-	soft.fill_to = Vector2(1.0, 0.5)
-	soft.gradient = Gradient.new()
-	soft.gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-	soft.gradient.colors = PackedColorArray([Color(0.01, 0.014, 0.02, 0.8), Color(0.01, 0.014, 0.02, 0.5), Color(0.01, 0.014, 0.02, 0.0)])
-	var puddle := _mat(Color(1, 1, 1), 0.05)
-	puddle.albedo_texture = soft
-	puddle.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	puddle.metallic_specular = 1.0
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 4417
-	var pools: Array[Transform3D] = []
-	for i in 10:
-		var pose := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(rng.randf_range(1.6,4.6),1.0,rng.randf_range(1.1,2.8)))
-		pools.append(Transform3D(pose,Vector3(rng.randf_range(-10.0,10.0),-.118,rng.randf_range(10.4,21.0))))
-	_batch_water("Scattered standing water",puddle,pools)
+	# Three drainage depressions, not a transparent veil spread over the lot.
+	# Each polygon's outline is real geometry. Only the soft boundary is blended.
+	var water := MeshArt.new()
+	_append_puddle(water,Vector2(-2.1,15.5),Vector2(2.97,2.42),1)
+	_append_puddle(water,Vector2(2.85,12.85),Vector2(1.68,1.69),3)
+	_append_puddle(water,Vector2(-6.65,12.04),Vector2(1.9,1.39),6)
+	var finish := ShaderMaterial.new()
+	finish.shader = preload("res://scenes/world/wet_reflection.gdshader")
+	water.attach(self,"Three standing-water depressions",finish)
 
-	var glow_mat := ShaderMaterial.new()
-	glow_mat.shader = preload("res://scenes/world/wet_reflection.gdshader")
-	var streaks: Array[Transform3D] = []
-	for x in [-7.7,-5.3,-2.9,-.4,1.7,3.0]:
-		var pose := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(rng.randf_range(1.18,2.03),1.0,rng.randf_range(5.75,8.15)))
-		streaks.append(Transform3D(pose,Vector3(x,-.109,rng.randf_range(12.56,13.91))))
-	_batch_water("Window light on broken wet asphalt",glow_mat,streaks)
-	var lot_fill := glow_mat.duplicate() as ShaderMaterial
-	lot_fill.set_shader_parameter("strength",.54)
-	var spread := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(11.5,1.0,9.6))
-	var lit_patch: Array[Transform3D] = [Transform3D(spread,Vector3(-.25,-.109,17.2))]
-	_batch_water("Baked shallow warm lot sheen",lot_fill,lit_patch)
-
-func _batch_water(label: String, finish: Material, poses: Array[Transform3D]) -> void:
-	var tile := QuadMesh.new()
-	tile.size = Vector2.ONE
-	tile.material = finish
-	var group := MultiMesh.new()
-	group.transform_format = MultiMesh.TRANSFORM_3D
-	group.mesh = tile
-	group.instance_count = poses.size()
-	for i in poses.size():
-		group.set_instance_transform(i,poses[i])
-	var batch := MultiMeshInstance3D.new()
-	batch.name = label
-	batch.multimesh = group
-	batch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(batch)
+func _append_puddle(water, at: Vector2, radius: Vector2, phase: int) -> void:
+	var rim: Array[Vector3] = []
+	var uv: Array[Vector2] = []
+	for i in 18:
+		var angle := TAU*float(i)/18.0
+		var r := 1.0+.11*sin(angle*3.0+float(phase))+.07*cos(angle*5.0-float(phase))
+		var unit := Vector2(cos(angle),sin(angle))*r
+		rim.append(Vector3(at.x+unit.x*radius.x,-.116,at.y+unit.y*radius.y))
+		uv.append(Vector2(.5+unit.x*.37,.5+unit.y*.37))
+	var core := Vector3(at.x,-.116,at.y)
+	var opaque := Color(1,1,1,1)
+	var edge := Color(1,1,1,0)
+	for i in 18:
+		var j := (i+1)%18
+		var near_i := core.lerp(rim[i],.83)
+		var near_j := core.lerp(rim[j],.83)
+		var uv_i := Vector2(.5,.5).lerp(uv[i],.83)
+		var uv_j := Vector2(.5,.5).lerp(uv[j],.83)
+		water.triangle(core,near_j,near_i,Vector2(.5,.5),uv_j,uv_i)
+		water.triangle_colors(near_i,near_j,rim[i],uv_i,uv_j,uv[i],opaque,opaque,edge)
+		water.triangle_colors(near_j,rim[j],rim[i],uv_j,uv[j],uv[i],opaque,edge,edge)
 
 func _build_pole_sign() -> void:
 	var steel := _mat(Color(0.05, 0.055, 0.06), 0.6, 0.6)
@@ -194,35 +178,77 @@ func _dress_store_sign() -> void:
 			return
 
 func _build_storefront_trim() -> void:
-	var frame := MeshArt.new()
-	var metal := MeshArt.material(StoreArt.PLASTER)
-	metal.albedo_color = Color("#444a40")
-	for x in [-8.90,-6.50,-4.10,-1.70,.88,2.39,3.55]:
-		frame.box(Vector3(x,1.66,6.138),Vector3(.063,2.102,.084))
-	for pair in [[-4.04,9.87],[3.0,1.13]]:
-		frame.box(Vector3(pair[0],.619,6.147),Vector3(pair[1],.052,.198))
-		frame.box(Vector3(pair[0],2.693,6.145),Vector3(pair[1],.036,.123))
-	frame.attach(self,"Sills and shopfront glazing stops",metal)
-	var apron := MeshArt.new()
+	# Deeper façade faces wrap the glass that already owns collision; the entrance
+	# still uses the original two animated leaves, transom, threshold, and jamb.
+	var walls := MeshArt.new()
+	var brick := MeshArt.material(StoreArt.BRICK)
+	brick.albedo_color = Color("#b89986")
+	walls.box(Vector3(-8.81,1.55,6.135),Vector3(.30,3.1,.29),Rect2(0,0,.3,3.1))
+	walls.box(Vector3(-6.39,1.55,6.135),Vector3(.27,3.1,.25),Rect2(0,0,.27,3.1))
+	walls.box(Vector3(.680,1.55,6.120),Vector3(.24,3.1,.27),Rect2(0,0,.24,3.1))
+	walls.box(Vector3(2.693,1.55,6.120),Vector3(.25,3.1,.26),Rect2(0,0,.25,3.1))
+	walls.box(Vector3(-4.02,.283,6.128),Vector3(9.37,.566,.25),Rect2(0,0,9.37,.566))
+	walls.box(Vector3(5.91,.283,6.128),Vector3(6.12,.566,.25),Rect2(0,0,6.12,.566))
+	walls.box(Vector3(0,2.834,6.130),Vector3(18.0,.235,.28),Rect2(0,0,18,.235))
+	walls.attach(self,"Raised brick window piers lintel and skirt",brick)
+
+	var sills := MeshArt.new()
 	var concrete := MeshArt.material(StoreArt.PLASTER)
-	concrete.albedo_color = Color("#827765")
-	for pair in [[-4.14,9.78],[5.71,6.62]]:
-		apron.box(Vector3(pair[0],.058,6.153),Vector3(pair[1],.105,.105))
-	apron.attach(self,"Scuffed masonry kick plate",concrete)
+	concrete.albedo_color = Color("#c8b8a1")
+	for pair in [[-7.60,2.03],[-2.87,6.57],[3.18,.91]]:
+		sills.box(Vector3(pair[0],.608,6.147),Vector3(pair[1],.093,.33),Rect2(0,0,pair[1],.32))
+	sills.box(Vector3(-7.58,1.135,6.281),Vector3(1.92,.075,.455),Rect2(0,0,1.9,.7))
+	sills.attach(self,"Cast-stone sills and projecting coffee counter",concrete)
+
+	var bronze := MeshArt.material(StoreArt.PLASTER)
+	bronze.albedo_color = Color("#777259")
+	var frame := MeshArt.new()
+	for x in [-8.61,-6.56,-6.22,-4.10,-1.70,.545,2.831,3.63]:
+		frame.box(Vector3(x,1.66,6.181),Vector3(.077,2.10,.128))
+	for pair in [[-7.59,2.11],[-2.84,6.78],[3.22,.88]]:
+		frame.box(Vector3(pair[0],.655,6.184),Vector3(pair[1],.041,.113))
+		frame.box(Vector3(pair[0],2.69,6.184),Vector3(pair[1],.071,.125))
+	frame.box(Vector3(-7.59,1.88,6.182),Vector3(2.11,.06,.134))
+	# Separate deep perimeter casing never crosses the open path.
+	for x in [.809,2.591]:
+		frame.box(Vector3(x,1.365,6.20),Vector3(.063,2.73,.23))
+	frame.box(Vector3(1.70,2.745,6.20),Vector3(1.84,.08,.23))
+	frame.attach(self,"Bronze window mullions and double-door surround",bronze)
+
+	var service := MeshArt.new()
+	var dark := _mat(Color("#574837"))
+	service.box(Vector3(-7.62,1.088,6.151),Vector3(1.98,.105,.208))
+	service.box(Vector3(-7.76,1.443,5.934),Vector3(.43,.54,.33))
+	service.box(Vector3(-7.76,1.688,6.062),Vector3(.32,.095,.24))
+	service.box(Vector3(-7.76,1.239,6.056),Vector3(.32,.052,.176))
+	service.attach(self,"Coffee service opening and original brewer",dark)
+
+	var cups := MeshArt.new()
+	var paper := StoreArt.warm(Color("#dec99f"),.15)
+	for i in 3:
+		var cup := Vector3(-7.26+float(i)*.113,1.201+float(i%2)*.026,6.184)
+		cups.box(cup,Vector3(.067,.121+float(i%2)*.051,.067))
+		cups.box(cup+Vector3(0,.059+float(i%2)*.027,0),Vector3(.077,.012,.077))
+	cups.attach(self,"Stacks of paper coffee cups",paper)
+
+	var entry := MeshArt.new()
+	var rubber := _mat(Color("#302d28"),.9)
+	entry.box(Vector3(1.7,.007,6.91),Vector3(1.92,.012,.72),Rect2(0,0,2,1))
+	entry.attach(self,"Recessed entrance scraper mat",rubber)
 
 # Window signage does not alter the shell, its ray setup or entrance.
 func _build_reference_window_cards() -> void:
 	var plates := MeshArt.new()
-	var coffee_spot := Vector3(-7.55,2.129,6.17)
-	var sale_spot := Vector3(-2.28,1.15,6.14)
-	plates.box(coffee_spot,Vector3(1.49,.435,.032))
-	plates.box(sale_spot,Vector3(.57,.71,.030),Rect2(0,0,1,1),
+	var coffee_spot := Vector3(-7.59,2.152,6.222)
+	var sale_spot := Vector3(-2.20,1.22,6.15)
+	plates.box(coffee_spot,Vector3(1.94,.414,.043))
+	plates.box(sale_spot,Vector3(.77,.79,.030),Rect2(0,0,1,1),
 		Transform3D(Basis(Vector3.FORWARD,.045),sale_spot-Basis(Vector3.FORWARD,.045)*sale_spot))
 	var old_card := MeshArt.material(StoreArt.PLASTER)
 	old_card.albedo_color = Color("#e6d4a7")
 	plates.attach(self,"Coffee placard and weekly specials card",old_card)
 	_label("COFFEE",coffee_spot+Vector3(-.145,0,.027),72,.0039,Color("#47392b"))
-	_label("WEEKLY\nSPECIALS",sale_spot+Vector3(0,0,.026),44,.0026,Color("#484138")).rotation.z = .045
+	_label("WEEKLY\nSPECIALS",sale_spot+Vector3(0,0,.026),47,.0033,Color("#484138")).rotation.z = .045
 	var cup := MeshArt.new()
 	var pos := coffee_spot+Vector3(.48,0,.029)
 	cup.box(pos,Vector3(.166,.097,.014))
