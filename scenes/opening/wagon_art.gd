@@ -22,11 +22,23 @@ static func add_cabin_light(wagon: Node3D) -> void:
 	var light := OmniLight3D.new()
 	light.name = "Dashboard light"
 	light.position = Vector3(-.08,1.13,-.19)
-	light.light_color = Color("#c8c1b2")
-	light.light_energy = .65
+	light.light_color = Color("#c29a72")
+	light.light_energy = .46
 	light.light_cull_mask = CABIN_MASK
 	light.omni_range = 1.30
 	wagon.add_child(light)
+
+# Fixed tinted inset, not a reflection viewport or a third live camera.
+static func add_rearview_mirror(wagon: Node3D) -> void:
+	var housing := MeshArt.new()
+	var pivot := Vector3(.072,1.386,-.683)
+	housing.box(pivot,Vector3(.414,.107,.037),Rect2(),Transform3D.IDENTITY,Color("#49382d"))
+	housing.box(pivot+Vector3(0,.062,-.014),Vector3(.043,.067,.031),Rect2(),Transform3D.IDENTITY,Color("#423831"))
+	housing.box(pivot+Vector3(0,0,.023),Vector3(.365,.071,.013),Rect2(),Transform3D.IDENTITY,Color("#38454b"))
+	var finish := MeshArt.material(null,.61)
+	finish.vertex_color_use_as_albedo = true
+	finish.vertex_color_is_srgb = true
+	housing.attach(wagon,"Fixed tinted rear-view mirror",finish)
 
 static func add_wiper(parent: Node3D) -> Node3D:
 	var mount := Node3D.new()

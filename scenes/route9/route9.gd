@@ -1,9 +1,12 @@
 extends Node3D
 
+const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
 const LENGTH := 460.0
 const WagonArt = preload("res://scenes/opening/wagon_art.gd")
 const RoadArt = preload("res://scenes/route9/route9_art.gd")
+const DRIVER_EYE := Vector3(-.38,1.19,.10)
+const DRIVER_PITCH := -.20
 const WIPER_PARK := -.055
 const WIPER_SWEEP := -1.18
 var progress := Progress.new()
@@ -32,6 +35,7 @@ func _ready() -> void:
 	OpeningCheckpoint.write(progress.snapshot())
 	_build_road()
 	_build_car()
+	RetroEffect.install(self)
 	_build_ui()
 	_build_audio()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -115,12 +119,16 @@ func _build_car() -> void:
 	car = Node3D.new()
 	add_child(car)
 	var camera := Camera3D.new()
-	camera.position = Vector3(-.38,1.24,.22)
+	camera.position = DRIVER_EYE
+	camera.rotation.x = DRIVER_PITCH
 	camera.fov = 75
 	camera.current = true
 	car.add_child(camera)
 	var wagon := WagonArt.install(car)
 	wheel = wagon.get_node("SteeringWheel")
+	wheel.position.y += .025
+	wheel.scale = Vector3(1.08,1.08,1.15)
+	WagonArt.add_rearview_mirror(wagon)
 	speed_needle = wagon.get_node("SpeedNeedle")
 	windshield = ShaderMaterial.new()
 	windshield.shader = preload("res://scenes/route9/windshield.gdshader")
@@ -132,12 +140,12 @@ func _build_car() -> void:
 		var light := SpotLight3D.new()
 		light.name = "Left low beam" if x < 0.0 else "Right low beam"
 		light.position = Vector3(x,.535,-2.34)
-		light.rotation = Vector3(-.081 if x < 0.0 else -.061,-x*.14,0.0)
-		light.light_color = Color("#f2d9a6")
-		light.light_energy = 3.85
-		light.spot_range = 52.0 if x < 0.0 else 57.0
-		light.spot_angle = 17.0
-		light.spot_angle_attenuation = 2.4
+		light.rotation = Vector3(-.130 if x < 0.0 else -.107,x*.035,0.0)
+		light.light_color = Color("#f4ca8a")
+		light.light_energy = 6.4
+		light.spot_range = 56.0 if x < 0.0 else 62.0
+		light.spot_angle = 23.0
+		light.spot_angle_attenuation = 1.32
 		car.add_child(light)
 
 func _build_ui() -> void:

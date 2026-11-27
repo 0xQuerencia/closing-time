@@ -34,11 +34,37 @@ func _run() -> void:
 	check(title_rect.position.y >= 0.0 and menu_rect.end.y <= root.get_visible_rect().size.y,
 		"Title and menu fit at 640 by 360")
 	root.size = original_size
+	var tape := current_scene.get_node("WorldTape")
+	check(tape.layer == -1 and title.layer > tape.layer, "Tape finish is behind title/settings UI")
+	title.settings.retro = false
+	title.apply_settings()
+	check(not tape.is_drawn(), "Tape Off hides the screen-reading pass")
+
 	check(title.mode == "title" and title.press("start"), "New Game uses the normal title screen")
 	await scene_changed
 	room = current_scene
-	check(room.player.position.is_equal_approx(Vector3(-1.6,.05,2.4)), "Original apartment spawn")
+	check(room.player.position.is_equal_approx(Vector3(-.55,.05,-.15)), "Closer apartment aisle spawn")
+	var furniture := room.get_node("Furniture and fittings") as MeshInstance3D
+	var material := furniture.get_active_material(0) as StandardMaterial3D
+	var rug := room.get_node("Patterned bedside rug") as MeshInstance3D
+	check(material.albedo_texture.resource_path.ends_with("apartment_night_atlas.png") and
+		(rug.get_active_material(0) as StandardMaterial3D).albedo_texture.resource_path.ends_with("apartment_night_rug.png"),
+		"Opening contains the new authored apartment materials")
+	var work_light := room.get_node("Lamp pool over shift note") as OmniLight3D
+	var window_fill := room.get_node("Night window fill") as OmniLight3D
+	check(not work_light.shadow_enabled and not window_fill.shadow_enabled and
+		work_light.light_color.r > work_light.light_color.b and window_fill.light_color.b > window_fill.light_color.r,
+		"Warm practical light and cool window fill keep independent low-cost pools")
+
 	check(is_instance_valid(room.prologue), "New Game opens the prologue")
+	var apartment_tape := room.get_node("WorldTape")
+	check(not apartment_tape.is_drawn() and room.narration.get_parent().get_parent().layer > apartment_tape.layer,
+		"Off survives into the apartment with UI on a later layer")
+	apartment_tape.set_profile(true,true)
+	check(apartment_tape.is_drawn(), "Subtle can render in the apartment")
+	apartment_tape.set_profile(true,false)
+	check(not apartment_tape.is_drawn(), "Unsupported graphics profiles skip the screen pass")
+
 	_key(KEY_ESCAPE, true)
 	await process_frame
 	_key(KEY_ESCAPE, false)
@@ -88,14 +114,24 @@ func _run() -> void:
 		quit(1 if failures else 0)
 
 func _drive(road: Node) -> void:
+
+	var road_tape := road.get_node("WorldTape")
+	check(not road_tape.is_drawn() and road.caption_label.get_parent().get_parent().layer > road_tape.layer,
+		"Off survives into Route 9 and gameplay captions remain above the world pass")
 	var roadside: Node3D = road.get_node("Route 9 roadside")
 	check(roadside.get_child_count() > 20 and roadside.find_children("*","MultiMeshInstance3D",true,false).size() > 20,
 		"Route surfaces and batched roadside trees are present in the driving scene")
+	var sections := roadside.find_children("Broken paint and cat's-eyes","MeshInstance3D",true,false)
+	var batched := true
+	for marks in sections:
+		batched = batched and marks.mesh.get_surface_count() == 1 and int(marks.get_meta("delineators",0)) == 4
+		batched = batched and marks.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	check(sections.size() >= 16 and batched, "Four new delineators share each single lane-marking surface with shadows disabled")
 	var wagon: Node3D = road.car.get_node("Route9Wagon")
 	var steering: Node3D = road.wheel
 	var camera := root.get_camera_3d()
-	check(camera.position.is_equal_approx(Vector3(-.38,1.24,.22)) and is_equal_approx(camera.fov,75.0),
-		"Driver camera retains the original mount and FOV")
+	check(camera.position.is_equal_approx(Vector3(-.38,1.19,.10)) and is_equal_approx(camera.fov,75.0) and is_equal_approx(camera.rotation.x,-.20),
+		"Driver uses the recalibrated cockpit mount with a wider unobstructed windshield")
 	check(wagon.has_node("SpeedNeedle") and wagon.has_node("SteeringWheel"),"Authored cockpit is active")
 	var tire: MeshInstance3D
 	var tire_nodes := wagon.find_children("RoadWheel*", "MeshInstance3D",false,false)
@@ -154,6 +190,15 @@ func _drive(road: Node) -> void:
 	check(parked.scene_file_path == "res://assets/models/opening/route9_wagon.glb"
 		and parked.position.is_equal_approx(Vector3(-4.9,-.12,13.0)),"Arrival reuses the exact GLB at the established lot position")
 	var shift = market.gameplay.director.production
+	var signs := market.find_children("Marlow enamel channel letters","MeshInstance3D",true,false)
+	check(signs.size() == 1 and (signs[0].get_active_material(0) as StandardMaterial3D).albedo_texture.resource_path.ends_with("marlow_channel_enamel.png"),
+		"Market arrival uses newly authored dimensional enamel signage")
+	var glyphs := market.find_children("Marlow original glyphs","MeshInstance3D",true,false)
+	check(glyphs.size() == 1 and glyphs[0].mesh.get_surface_count() == 1 and glyphs[0].mesh.get_faces().size() == 84,
+		"All fourteen project-original sign glyphs share one surface")
+	var cards := market.find_children("Coffee placard and weekly specials card","MeshInstance3D",true,false)
+	check(cards.size() == 1 and cards[0].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
+		"Market reference window cards add no collision or shadow pass")
 	check(shift != null and shift.progress.current_id() == "handover"
 		and shift.progress.events.has("shift_read") and shift.progress.events.has("market_arrived")
 		and shift.progress.events.has("bypass_sign"),"Arrival forwards required and optional progress to handover")
@@ -161,10 +206,10 @@ func _drive(road: Node) -> void:
 	check(market_save.get("checkpoint") == "shift_start" and market_save.production.chapter == "handover"
 		and market_save.production.events.has("market_arrived") and OpeningCheckpoint.read().is_empty(),
 		"Market save takes over from the opening checkpoint at handover")
-	check(market.player.position.distance_to(Vector3(1.85,-.1,12.55)) < .05,"Original market arrival spawn")
+	check(market.player.position.distance_to(Vector3(1.85,-.1,15.5)) < .05,"Market starts in the same clear lane with sightline to canopy and door")
 	market.player.require_mouse_capture = false
 	_key(KEY_W,true)
-	for i in 160:
+	for i in 258:
 		await physics_frame
 	_key(KEY_W,false)
 	check(market.player.position.z < 8.0,"Walk from the parked wagon up the curb ramp")

@@ -210,7 +210,7 @@ def dashboard(fittings):
         fittings.face([(x0,yb,zb),(x1,yb,zb),(x1,ya,za),(x0,ya,za)],material)
 
     band(-.81,.81,(.877,-1.048),(.911,-.512),"vinyl")
-    lip = [(.911,-.512),(.909,-.430),(.888,-.393),(.850,-.385)]
+    lip = [(.911,-.512),(.905,-.434),(.881,-.366),(.842,-.369)]
     for x0,x1 in ((-.81,-.626),(-.114,.81)):
         for high,low in zip(lip,lip[1:]):
             band(x0,x1,high,low,"vinyl")
@@ -233,11 +233,17 @@ def dashboard(fittings):
         fittings.face([brow[i],brow[j],inside[j],inside[i]],"trim")
     fittings.box((-.38,.817,-.414),(.113,.086,.146),"trim")
 
-    # Recessed heater grille, separate radio face and glovebox clearance seam.
-    fittings.box((.105,.839,-.398),(.284,.070,.023),"rubber")
-    for y in (.819,.832,.845,.858):
-        fittings.box((.105,y,-.380),(.257,.004,.014),"trim")
-    fittings.box((.105,.765,-.396),(.289,.087,.049),"trim")
+    # Two bevelled vents above the receiver, and a smaller matching door vent.
+    for x, width, depth in ((-.735,.124,-.361),(.015,.137,-.365),(.185,.137,-.365)):
+        fittings.box((x,.834,depth),(width+.022,.081,.030),"trim")
+        fittings.box((x,.834,depth+.014),(width,.063,.009),"rubber")
+        for y in (.815,.829,.844,.858):
+            fittings.box((x,y,depth+.021),(width-.016,.005,.009),"trim")
+        fittings.box((x,.836,depth+.027),(.008,.055,.006),"vinyl")
+    fittings.box((.105,.765,-.398),(.302,.106,.052),"rubber")
+    for x in (-.015,.233):
+        fittings.box((x,.763,-.367),(.043,.047,.029),"trim")
+        fittings.box((x,.763,-.349),(.027,.028,.009),"vinyl")
     fittings.box((.513,.790,-.391),(.474,.130,.032),"rubber")
     fittings.box((.513,.790,-.378),(.462,.118,.016),"vinyl")
     fittings.box((.518,.823,-.368),(.061,.017,.010),"trim")
@@ -247,17 +253,26 @@ def dashboard(fittings):
 
 
 def steering():
-    art = Mesh("Two-spoke steering wheel")
-    for i in range(16):
+    art = Mesh("Round padded steering wheel")
+    for i in range(18):
         for j in range(5):
             def at(ring,arc):
-                a,b = tau*ring/16, tau*arc/5
-                r = .146 + .018*cos(b)
-                return (cos(a)*r,sin(a)*r,.018*sin(b))
-            art.face([at(i,j),at(i+1,j),at(i+1,j+1),at(i,j+1)],"vinyl")
-    for x in (-.083,.083):
-        art.box((x,0,0),(.14,.037,.035),"trim")
-    art.box((0,.002,.017),(.080,.059,.047),"vinyl")
+                a,b = tau*ring/18, tau*arc/5
+                r = .167 + .020*cos(b)
+                return (cos(a)*r,sin(a)*r,.020*sin(b))
+            material = "vinyl" if i not in (4,11,12) else "trim"
+            art.face([at(i,j),at(i+1,j),at(i+1,j+1),at(i,j+1)],material)
+    for side in SIDES:
+        a = side*.049
+        b = side*.159
+        art.face([(a,-.021,.012),(b,-.055,.006),(b,-.017,.006),(a,.034,.02)],"trim")
+        art.box((side*.13,-.035,.004),(.046,.035,.027),"rubber")
+    outline = [(-.078,-.044),(.078,-.044),(.088,-.018),(.068,.046),(-.068,.046),(-.088,-.018)]
+    for i in range(len(outline)):
+        x,y = outline[i]
+        xx,yy = outline[(i+1)%len(outline)]
+        art.face([(0,0,.045),(x,y,.045),(xx,yy,.045)],"vinyl",[(.5,.5),(0,1),(1,1)])
+        art.face([(x,y,.045),(x,y,.003),(xx,yy,.003),(xx,yy,.045)],"trim")
     return art
 
 
@@ -283,7 +298,7 @@ def main():
         scene.node(part.name,scene.mesh(part))
     scene.node("DashboardAndUpholstery",scene.mesh(cabin_art))
     scene.node(markings.name,scene.mesh(markings))
-    scene.node("SteeringWheel",scene.mesh(steer),position=(-.38,.871,-.338))
+    scene.node("SteeringWheel",scene.mesh(steer),position=(-.38,.845,-.322))
     scene.node("SpeedNeedle",scene.mesh(needle),position=(-.470,.940,-.468))
     wheel_id = scene.mesh(wheel)
     for side in SIDES:

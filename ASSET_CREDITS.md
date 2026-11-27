@@ -51,3 +51,7 @@ Historical imported assets listed above remain in the repository and may still b
 - The counter and entrance signs use Marlow Terminal glyphs with geometry in `scenes/world/interior_dressing.gd` and `scenes/world/exterior_dressing.gd`.
 - The same exterior script builds the two-tier conifers from seed 9 in one mesh batch. The front bell is synthesized by `Tone` in `gameplay/audio/soundscape.gd`. The cooler cue fades the existing original refrigeration loop.
 - The four rear-hall archive frames in `assets/story/dvr/` use the built-in Godot camera, original market geometry and a project-authored Evan variation of the original cast rig. `tools/capture_dvr_archive.gd` captures the poses and applies the period camera grade with seeds 8192006–8192009.
+
+### Apartment, Route 9, and Marlow night-shift visual pass
+
+The Apartment carpet, plaid atlas, plaster, and rug and the Route 9 wet asphalt and Marlow enamel tiles are new deterministic original source textures. Run `python tools/opening/reference_textures.py` (Pillow) to regenerate them. The shaped bedding, chair/overshirt, notebook board and task lighting are authored in `scenes/apartment/apartment_art.gd`. The revised wagon model and vinyl/instrument atlas are regenerated together with `python tools/opening/wagon.py`; its geometry keeps the original animated mounting points and shares the same model with the market lot. The delineators and enamel signage are static batched meshes. The owner's three concept PNGs guided this work but none of their pixels were added to the project.

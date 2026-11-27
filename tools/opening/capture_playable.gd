@@ -16,6 +16,10 @@ func _capture() -> void:
 		quit(2)
 		return
 	headless = DisplayServer.get_name() == "headless"
+	if FileAccess.file_exists(FlowUI.SETTINGS_PATH):
+		printerr("Opening capture requires a fresh user-data directory, not saved settings")
+		quit(2)
+		return
 	DirAccess.make_dir_recursive_absolute(output)
 	root.size = Vector2i(1280,800)
 	root.title = "Closing Time opening capture"
@@ -24,12 +28,22 @@ func _capture() -> void:
 	await _scene("res://scenes/apartment/apartment.tscn")
 	var apartment := current_scene
 	apartment.player.enabled = false
-	if apartment.player.position.distance_to(Vector3(-1.6,.05,2.4)) > .001:
+	if apartment.player.position.distance_to(Vector3(-.55,.05,-.15)) > .001:
 		_fail("Apartment spawn moved")
 	_hide_canvas(apartment)
 	_budget("apartment",apartment)
 	_apartment_colliders(apartment)
 	await _shot("01-apartment-spawn",apartment.player.camera,Vector3(0,1.69,-4.38))
+	await _tape_pair(apartment,"01b-apartment-subtle",apartment.player.camera,Vector3(0,1.69,-4.38))
+	# Same real room, a point the player can walk to; keep the canonical spawn shot above.
+	var room_angle := Camera3D.new()
+	apartment.add_child(room_angle)
+	room_angle.keep_aspect = Camera3D.KEEP_WIDTH
+	room_angle.fov = 75
+	room_angle.position = Vector3(-.28,1.58,.60)
+	room_angle.look_at(Vector3(-.11,1.23,-3.84))
+	room_angle.make_current()
+	await _shot("01c-apartment-reference-angle",room_angle,Vector3(0,1.69,-4.38))
 
 	var progress = PROGRESS.new()
 	if not progress.load_content():
@@ -43,14 +57,15 @@ func _capture() -> void:
 	road.set_process(false)
 	_hide_canvas(road)
 	var driver := root.get_camera_3d()
-	if driver.position.distance_to(Vector3(-.38,1.24,.22)) > .001:
+	if driver.position.distance_to(Vector3(-.38,1.19,.10)) > .001:
 		_fail("Driver eye moved")
 	_budget("route9",road)
 	_drive_pose(road,48)
-	driver.rotation.x = -.16
+	driver.rotation.x = road.DRIVER_PITCH
 	await _shot("03-cockpit",driver,road.car.to_global(Vector3(-.38,.91,-.40)))
+	await _tape_pair(road,"03b-cockpit-subtle",driver,road.car.to_global(Vector3(-.38,.91,-.40)))
 	_drive_pose(road,106)
-	driver.rotation.x = 0
+	driver.rotation.x = road.DRIVER_PITCH
 	await _shot("04-night-road",driver,Vector3(road._center(124),0,-124))
 	var overlook := Camera3D.new()
 	road.add_child(overlook)
@@ -64,10 +79,14 @@ func _capture() -> void:
 	_drive_pose(road,421)
 	var frontage := road.find_child("Marlow's roadside frontage",true,false) as Node3D
 	if frontage != null:
-		var sign := frontage.find_children("*","Label3D",false,false)[0] as Label3D
-		if not driver.is_position_in_frustum(sign.global_position):
-			_fail("Actual Marlow's sign is outside the reveal camera")
-		print("REVEAL sign=",sign.global_position)
+		var sign := frontage.get_node_or_null("Marlow enamel channel letters") as MeshInstance3D
+		if sign == null:
+			_fail("Actual Marlow enamel sign mesh is missing")
+		else:
+			var sign_center := sign.to_global(sign.get_aabb().get_center())
+			if not driver.is_position_in_frustum(sign_center):
+				_fail("Actual Marlow's sign mesh is outside the reveal camera")
+			print("REVEAL physical sign=",sign_center)
 	await _shot("04b-marlow-reveal",driver,Vector3(road._center(449)+3.4,1.9,-449))
 
 	_complete(progress)
@@ -80,7 +99,11 @@ func _capture() -> void:
 	market.gameplay.hud.visible = false
 	market.gameplay.phone_ui.visible = false
 	market.gameplay.flow.hide_all()
-	if market.player.position.distance_to(Vector3(1.85,-.1,12.55)) > .051:
+	_market_profile_metadata("first-market-boot",market,market.player.camera)
+	var native_flow: FlowUI = market.gameplay.flow
+	if str(native_flow.settings.graphics_mode) != "balanced" or not bool(native_flow.settings.retro):
+		_fail("Fresh native opening must boot in Balanced with Tape Subtle; Quality is profiled separately")
+	if market.player.position.distance_to(Vector3(1.85,-.1,15.5)) > .051:
 		_fail("Market arrival moved")
 	_budget("market_lot",market.get_node("OriginalExterior"))
 	_budget("market_dressing",market.get_node("ExteriorDressing"))
@@ -88,14 +111,15 @@ func _capture() -> void:
 	market.add_child(framing)
 	framing.current = true
 	framing.keep_aspect = Camera3D.KEEP_WIDTH
-	framing.fov = 70
-	framing.position = Vector3(-2.05,1.49,21.80)
-	framing.look_at(Vector3(-.35,1.69,7.50))
+	framing.fov = 62
+	framing.position = Vector3(-4.05,1.35,19.2)
+	framing.look_at(Vector3(-.15,1.83,7.10))
 	RenderingServer.viewport_set_disable_2d(root.get_viewport_rid(),true)
 	await _shot("Marlows-market-arrival",framing,Vector3(-4.9,.72,13.0))
 	RenderingServer.viewport_set_disable_2d(root.get_viewport_rid(),false)
 	market.player.camera.make_current()
 	await _shot("05-arrival-spawn",market.player.camera,Vector3(1.70,1.42,6.08))
+	await _walk_market_comparison(market)
 	framing.make_current()
 	framing.fov = 58
 	framing.position = Vector3(-1.79,1.29,18.42)
@@ -105,10 +129,46 @@ func _capture() -> void:
 	framing.position = Vector3(-2.05,1.49,21.80)
 	framing.look_at(Vector3(-.35,1.69,7.50))
 	await _shot("06-storefront-and-wagon",framing,Vector3(-4.9,.72,13.0))
+	await _tape_pair(market,"06b-storefront-subtle",framing,Vector3(-4.9,.72,13.0))
 	if failed:
 		await market.finish_run(1)
 	else:
 		await market.finish_run(0)
+
+# QA moves the actual character through the parking lot. Only the mouse aim is
+# prescribed; movement is processed by the real controller, collision and floor.
+func _walk_market_comparison(market: Node3D) -> void:
+	var walker: CharacterBody3D = market.player
+	var view: Camera3D = walker.camera
+	walker.require_mouse_capture = false
+	walker.enabled = true
+	walker.rotation.y = 0.0
+	root.disable_3d = true
+	var back_ok := await _walk_key(KEY_S,func(): return walker.position.z >= 20.2)
+	var left_ok := await _walk_key(KEY_A,func(): return walker.position.x <= -3.05)
+	root.disable_3d = false
+	walker.enabled = false
+	if not back_ok or not left_ok or not walker.is_on_floor():
+		_fail("Could not physically reach the parking lot comparison angle")
+		return
+	var storefront := Vector3(-.42,1.74,7.18)
+	view.look_at(storefront)
+	view.make_current()
+	print("PLAYER REACHED market comparison=",walker.position," collision_floor=",walker.is_on_floor())
+	await _shot("05b-market-walked-view",view,Vector3(1.7,1.42,6.08))
+
+func _walk_key(key: Key, reached: Callable) -> bool:
+	var event := InputEventKey.new()
+	event.physical_keycode = key
+	event.pressed = true
+	Input.parse_input_event(event)
+	for frame in 320:
+		if reached.call():
+			break
+		await physics_frame
+	event.pressed = false
+	Input.parse_input_event(event)
+	return reached.call()
 
 func _scene(path: String) -> void:
 	var result := change_scene_to_file(path)
@@ -128,6 +188,17 @@ func _hide_canvas(scene: Node) -> void:
 	for child in scene.get_children():
 		if child is CanvasLayer:
 			child.hide()
+
+func _tape_pair(scene: Node, label: String, camera: Camera3D, focus: Vector3) -> void:
+	var tape := scene.get_node_or_null("WorldTape") as CanvasLayer
+	if tape == null:
+		_fail("No world-only tape layer for " + label)
+		return
+	tape.show()
+	tape.set_profile(true,true)
+	await _shot(label,camera,focus)
+	tape.set_profile(false,true)
+	tape.hide()
 
 func _drive_pose(road: Node3D, distance: float) -> void:
 	road.travelled = distance
@@ -152,9 +223,16 @@ func _shot(label: String, camera: Camera3D, focus: Vector3) -> void:
 		" reference=",focus)
 	if headless:
 		return
-	for i in 24:
+	for i in 4:
 		await process_frame
-	await RenderingServer.frame_post_draw
+	var metrics: Array[float] = []
+	for i in 24:
+		var before := Time.get_ticks_usec()
+		await RenderingServer.frame_post_draw
+		metrics.append((Time.get_ticks_usec()-before)/1000.0)
+	metrics.sort()
+	print("SOFTWARE FRAME TIME ",label," samples=",metrics.size()," median_ms=",metrics[floori(metrics.size()*.5)],
+		" p95_ms=",metrics[ceili(metrics.size()*.95)-1])
 	var image := root.get_texture().get_image()
 	var result := image.save_png(output.path_join(label+".png"))
 	var draws := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
@@ -165,6 +243,39 @@ func _shot(label: String, camera: Camera3D, focus: Vector3) -> void:
 		_fail("Could not save "+label)
 	if label in ["03-cockpit","04-night-road","Route-9-roadside"] and draws > 70.0:
 		_fail("%s exceeds the 70-draw-call road budget" % label)
+	if label in ["Marlows-market-arrival","05-arrival-spawn","05b-market-walked-view","02-car-exterior"]:
+		_market_profile_metadata(label,current_scene,camera)
+	if label in ["05-arrival-spawn","05b-market-walked-view"] and draws > 1800.0:
+		_fail("%s exceeds the 1800-draw-call default Market budget" % label)
+
+# Log the real sequential capture state without reapplying settings, changing
+# camera state, or touching the performance assertions above.
+func _market_profile_metadata(label: String, market: Node3D, camera: Camera3D) -> void:
+	if headless:
+		return
+	var flow: FlowUI = market.gameplay.flow
+	var settings := ConfigFile.new()
+	var prefs_exists := settings.load(FlowUI.SETTINGS_PATH) == OK
+	var lights := []
+	for n in market.find_children("*","Light3D",true,false):
+		var lamp := n as Light3D
+		if lamp.is_visible_in_tree() and lamp.shadow_enabled:
+			lights.append([str(lamp.name),str(lamp.global_position),lamp.light_energy])
+	var view := root.get_viewport_rid()
+	var subviews := []
+	for n in root.find_children("*","SubViewport",true,false):
+		var v := n as SubViewport
+		subviews.append([v.name,v.render_target_update_mode,RenderingServer.viewport_get_render_info(
+			v.get_viewport_rid(),RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)])
+	var enabled_3d := RenderingServer.viewport_get_render_info(view,RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
+	var renderer_total := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+	print("MARKET-SEQUENTIAL ",JSON.stringify({"view":label,"mode":flow.settings.graphics_mode,
+		"prefs_exists":prefs_exists,"persisted_preset":settings.get_value("view","graphics_mode","none") if prefs_exists else "none",
+		"render_mode":RenderingServer.get_current_rendering_method(),"scale":root.scaling_3d_scale,
+		"msaa":root.msaa_3d,"atlas":root.positional_shadow_atlas_size,"pressed":Input.is_physical_key_pressed(KEY_W),
+		"camera_layers":camera.cull_mask,"camera_current":camera.current,"paused":paused,"retro":flow.settings.retro,
+		"production":market.gameplay.director.production != null,"subviews":subviews,"shadow_sources":lights,
+		"viewport3d_draws":enabled_3d,"renderer_total_draws":renderer_total}))
 
 func _budget(label: String, scene: Node) -> void:
 	var meshes := {}

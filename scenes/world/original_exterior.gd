@@ -3,7 +3,7 @@ extends Node3D
 
 const WagonArt = preload("res://scenes/opening/wagon_art.gd")
 const MeshArt = preload("res://scenes/opening/opening_mesh.gd")
-const ASPHALT = preload("res://assets/materials/opening/route9_asphalt.png")
+const ASPHALT = preload("res://assets/materials/opening/route9_night_asphalt.png")
 
 var materials: Dictionary = {}
 

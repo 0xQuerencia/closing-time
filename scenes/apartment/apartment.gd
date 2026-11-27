@@ -1,6 +1,7 @@
 extends Node3D
 
 const Player = preload("res://scenes/world/inspection_player.gd")
+const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
 var progress := Progress.new()
 var player: CharacterBody3D
@@ -30,11 +31,15 @@ func _ready() -> void:
 		progress.restore(get_tree().get_meta("closing_time_opening_preview"))
 		get_tree().remove_meta("closing_time_opening_preview")
 	_build_room()
+	RetroEffect.install(self)
 	_build_ui()
 	player = CharacterBody3D.new()
 	player.set_script(Player)
-	player.position = Vector3(-1.6,.05,2.4)
+	# Start in the clear central aisle, close enough to read the room's furniture.
+	# Keep the original 75 degree gameplay lens and full movement controls.
+	player.position = Vector3(-.55,.05,-.15)
 	add_child(player)
+	player.camera.rotation.x = -.075
 	if not epilogue.is_empty():
 		_build_epilogue()
 		return
@@ -199,8 +204,8 @@ func _build_room() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("#151c24")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#a3a29a")
-	env.ambient_light_energy = .49
+	env.ambient_light_color = Color("#b6a99c")
+	env.ambient_light_energy = .56
 	var world := WorldEnvironment.new()
 	world.environment = env
 	add_child(world)

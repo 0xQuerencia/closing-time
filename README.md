@@ -6,6 +6,8 @@ you play as jamie. ring up the last customers, restock the shelves, take out the
 
 it's a grounded story about a fired employee with a spare key and a shift that gets worse the longer you stay. what you do in the outage, and what you manage to preserve, changes how the night ends.
 
+**Tape finish:** choose **Off** or **Subtle** in Settings. It affects the Apartment, Route 9 and Marlow’s world view, not captions, prompts, or menus. Press **F8** to toggle it during gameplay. Safe and Performance skip the tape pass.
+
 ## screenshots
 
 ![marlow's market from the running game](assets/art/market_loading.png)

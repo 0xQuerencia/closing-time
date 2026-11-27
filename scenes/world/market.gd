@@ -30,7 +30,7 @@ func _ready() -> void:
 	build_signage()
 	build_markers()
 	build_room_tone()
-	add_child(RetroEffect.new())
+	RetroEffect.install(self)
 	add_child(InteriorDressing.new())
 	add_child(ExteriorDressing.new())
 	add_child(FearsLook.new())
@@ -307,6 +307,13 @@ func lamp(pos: Vector3, color: Color, energy: float, distance: float, shadows: b
 	light.light_color = color
 	light.light_energy = energy
 	light.shadow_enabled = shadows
+	# Balanced keeps one shadow anchor per practical zone. Wide fills still illuminate
+	# the lot and shelves, but only Quality renders those overlapping shadow maps.
+	var door_anchor := pos.distance_to(Vector3(1.7,2.65,7.0)) < .08
+	var shelf_anchor := pos.distance_to(Vector3(-2.0,2.85,.1)) < .08
+	var office_anchor := pos.distance_to(Vector3(6.9,2.84,-4.0)) < .08
+	if shadows and not (door_anchor or shelf_anchor or office_anchor):
+		light.add_to_group("quality_fill_shadows")
 	light.shadow_bias = 0.025
 	light.light_size = 0.0
 	light.light_specular = 0.3
@@ -319,7 +326,7 @@ func build_lighting() -> void:
 	var world := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(.018,.03,.045)
+	env.background_color = Color("#283754")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(.54,.58,.61)
 	env.ambient_light_energy = 0.32
@@ -357,9 +364,9 @@ func build_lighting() -> void:
 	lamp(Vector3(4.25,2.95,-2.7),Color(1,.9,.74),.55,4.2,true)
 	lamp(Vector3(4.2,2.6,3.3),Color(.68,.76,.69),.45,3.6)
 	for x in [-6,-2,1.7]:
-		lamp(Vector3(x,2.65,7.0),Color(1,.82,.58),1.7 if x == 1.7 else .85,5.2,true)
-	lamp(Vector3(-10,5.35,14.5),Color(1,.68,.32),2.6,13,true)
-	lamp(Vector3(11,5.35,22.5),Color(.53,.69,.92),2.15,13,true)
+		lamp(Vector3(x,2.65,7.0),Color(1,.85,.62),1.83 if x == 1.7 else 1.28,6.35,true)
+	lamp(Vector3(-10,5.35,14.5),Color(1,.72,.43),3.05,17,true)
+	lamp(Vector3(11,5.35,22.5),Color(.63,.70,.95),2.35,16,true)
 	for x in [-4,3]:
 		lamp(Vector3(x,4.08,7.65),Color(1,.94,.82),1.4,6.0)
 	for x in [-6.45, -1.66]:
@@ -404,7 +411,7 @@ func build_markers() -> void:
 		markers.add_child(marker)
 	var arrival := Marker3D.new()
 	arrival.name = "MarketArrival"
-	arrival.position = Vector3(1.85, -.1, 12.55)
+	arrival.position = Vector3(1.85, -.1, 15.5)
 	arrival.rotation.y = .04
 	arrival.add_to_group("MarketArrival")
 	markers.add_child(arrival)

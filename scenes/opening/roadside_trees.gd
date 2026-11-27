@@ -17,7 +17,8 @@ func _init(bend := false) -> void:
 		var art := MeshArt.new()
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 582 + kind * 119
-		if bend:
+		if bend and kind == 2:
+			# Use pines for the two dense stand types, with bare deciduous trees as relief.
 			_bend_tree(art,rng,kind)
 			variations.append(art.mesh(finish))
 			continue
