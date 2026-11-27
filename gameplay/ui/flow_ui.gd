@@ -44,6 +44,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 512,
 		"post": false,
 		"shadows": false,
+		"vertex_lighting": true,
 	},
 	"performance": {
 		"label": "performance",
@@ -52,6 +53,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 1024,
 		"post": false,
 		"shadows": false,
+		"vertex_lighting": true,
 	},
 	"balanced": {
 		"label": "balanced",
@@ -60,6 +62,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 1536,
 		"post": true,
 		"shadows": true,
+		"vertex_lighting": false,
 	},
 	"quality": {
 		"label": "quality",
@@ -68,6 +71,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 2048,
 		"post": true,
 		"shadows": true,
+		"vertex_lighting": false,
 	},
 }
 var settings := {"retro": true, "sensitivity": 1.0, "bob": false, "graphics_mode": "balanced", "render_scale": 0.85, "master_volume": 1.0, "weather_volume": 1.0, "toggle_sprint": false, "reduced_flashes": false}
@@ -172,6 +176,7 @@ func apply_settings() -> void:
 	viewport.msaa_3d = int(preset.msaa)
 	viewport.positional_shadow_atlas_size = int(preset.shadow_atlas)
 	_apply_world_quality(bool(preset.post), bool(preset.shadows))
+	game.world.get_node("VisualDirection").set_vertex_lighting(bool(preset.vertex_lighting))
 	var player = game.player
 	player.sensitivity = settings.sensitivity
 	player.head_bob = settings.bob
