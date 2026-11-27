@@ -253,7 +253,7 @@ func _apply_world_quality(post_enabled: bool, shadows_enabled: bool) -> void:
 		var id := light.get_instance_id()
 		if not _shadow_defaults.has(id):
 			_shadow_defaults[id] = light.shadow_enabled
-		var low_cost_fill := settings.graphics_mode == "balanced" and light.is_in_group("quality_fill_shadows")
+		var low_cost_fill: bool = str(settings.graphics_mode) == "balanced" and light.is_in_group("quality_fill_shadows")
 		light.shadow_enabled = bool(_shadow_defaults[id]) and shadows_enabled and not low_cost_fill
 	for node in game.world.find_children("*", "WorldEnvironment", true, false):
 		var environment := (node as WorldEnvironment).environment
