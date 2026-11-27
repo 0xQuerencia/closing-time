@@ -38,6 +38,18 @@ func _run() -> void:
 	await scene_changed
 	room = current_scene
 	check(room.player.position.is_equal_approx(Vector3(-1.6,.05,2.4)), "Original apartment spawn")
+	var furniture := room.get_node("Furniture and fittings") as MeshInstance3D
+	var material := furniture.get_active_material(0) as StandardMaterial3D
+	var rug := room.get_node("Patterned bedside rug") as MeshInstance3D
+	check(material.albedo_texture.resource_path.ends_with("apartment_night_atlas.png") and
+		(rug.get_active_material(0) as StandardMaterial3D).albedo_texture.resource_path.ends_with("apartment_night_rug.png"),
+		"Opening contains the new authored apartment materials")
+	var work_light := room.get_node("Lamp pool over shift note") as OmniLight3D
+	var window_fill := room.get_node("Night window fill") as OmniLight3D
+	check(not work_light.shadow_enabled and not window_fill.shadow_enabled and
+		work_light.light_color.r > work_light.light_color.b and window_fill.light_color.b > window_fill.light_color.r,
+		"Warm practical light and cool window fill keep independent low-cost pools")
+
 	check(is_instance_valid(room.prologue), "New Game opens the prologue")
 	_key(KEY_ESCAPE, true)
 	await process_frame

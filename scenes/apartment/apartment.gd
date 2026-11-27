@@ -199,8 +199,8 @@ func _build_room() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("#151c24")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#a3a29a")
-	env.ambient_light_energy = .49
+	env.ambient_light_color = Color("#a7a2a0")
+	env.ambient_light_energy = .51
 	var world := WorldEnvironment.new()
 	world.environment = env
 	add_child(world)
