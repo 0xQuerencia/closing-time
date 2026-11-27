@@ -218,13 +218,21 @@ func _drive(road: Node) -> void:
 	check(market_save.get("checkpoint") == "shift_start" and market_save.production.chapter == "handover"
 		and market_save.production.events.has("market_arrived") and OpeningCheckpoint.read().is_empty(),
 		"Market save takes over from the opening checkpoint at handover")
-	check(market.player.position.distance_to(Vector3(1.85,-.1,15.5)) < .05,"Market starts in the same clear lane with sightline to canopy and door")
+	check(market.player.position.distance_to(Vector3(-3.47,-.1,18.9516)) < .05,
+		"Market starts on the real three-quarter parking approach")
+	var sign := glyphs[0] as MeshInstance3D
+	var box := sign.get_aabb()
+	check(market.player.camera.is_position_in_frustum(sign.to_global(box.position)) and
+		market.player.camera.is_position_in_frustum(sign.to_global(box.end)),
+		"Unmoved player camera sees all fourteen sign glyphs at arrival")
 	market.player.require_mouse_capture = false
-	_key(KEY_W,true)
-	for i in 258:
-		await physics_frame
-	_key(KEY_W,false)
-	check(market.player.position.z < 8.0,"Walk from the parked wagon up the curb ramp")
+	# Walk via the actual approach lane on the wagon's east, then use its curb ramp.
+	_aim(market.player,Vector3(1.70,1.5,10.25))
+	check(await _walk_forward_to_z(market.player,10.30,340),"Physically reach the curb approach from the parked wagon")
+	market.player.rotation.y = 0
+	check(await _walk_forward_to_z(market.player,7.31,140)
+		and market.player.is_on_floor() and market.player.position.y > -.025,
+		"Walk from arrival up the original curb ramp to the door")
 	var door: Node3D = market.gameplay.security.front_door
 	_aim(market.player,door.handle.global_position)
 	await physics_frame
@@ -239,6 +247,15 @@ func _drive(road: Node) -> void:
 		await physics_frame
 	_key(KEY_W,false)
 	check(market.player.position.z < 5.0,"Walk through the storefront entrance")
+
+func _walk_forward_to_z(player: CharacterBody3D, target: float, max_frames: int) -> bool:
+	_key(KEY_W,true)
+	for i in max_frames:
+		if player.position.z <= target:
+			break
+		await physics_frame
+	_key(KEY_W,false)
+	return player.position.z <= target
 
 func _skip_drive() -> void:
 	OpeningCheckpoint.resume(self, drive_checkpoint)

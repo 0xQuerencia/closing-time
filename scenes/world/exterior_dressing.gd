@@ -75,9 +75,9 @@ func _build_puddles() -> void:
 	# Three drainage depressions, not a transparent veil spread over the lot.
 	# Each polygon's outline is real geometry. Only the soft boundary is blended.
 	var water := MeshArt.new()
-	_append_puddle(water,Vector2(-2.1,15.5),Vector2(2.97,2.42),1)
-	_append_puddle(water,Vector2(2.85,12.85),Vector2(1.68,1.69),3)
-	_append_puddle(water,Vector2(-6.65,12.04),Vector2(1.9,1.39),6)
+	_append_puddle(water,Vector2(-1.38,15.23),Vector2(3.43,3.88),1)
+	_append_puddle(water,Vector2(3.15,13.0),Vector2(1.81,2.89),3)
+	_append_puddle(water,Vector2(-6.15,12.16),Vector2(1.78,2.38),6)
 	var finish := ShaderMaterial.new()
 	finish.shader = preload("res://scenes/world/wet_reflection.gdshader")
 	water.attach(self,"Three standing-water depressions",finish)
@@ -181,14 +181,14 @@ func _build_storefront_trim() -> void:
 	# Deeper façade faces wrap the glass that already owns collision; the entrance
 	# still uses the original two animated leaves, transom, threshold, and jamb.
 	var walls := MeshArt.new()
-	var brick := MeshArt.material(StoreArt.BRICK)
-	brick.albedo_color = Color("#b89986")
+	var brick := StoreArt.frontage_brick()
 	walls.box(Vector3(-8.81,1.55,6.135),Vector3(.30,3.1,.29),Rect2(0,0,.3,3.1))
 	walls.box(Vector3(-6.39,1.55,6.135),Vector3(.27,3.1,.25),Rect2(0,0,.27,3.1))
 	walls.box(Vector3(.680,1.55,6.120),Vector3(.24,3.1,.27),Rect2(0,0,.24,3.1))
 	walls.box(Vector3(2.693,1.55,6.120),Vector3(.25,3.1,.26),Rect2(0,0,.25,3.1))
 	walls.box(Vector3(-4.02,.283,6.128),Vector3(9.37,.566,.25),Rect2(0,0,9.37,.566))
 	walls.box(Vector3(5.91,.283,6.128),Vector3(6.12,.566,.25),Rect2(0,0,6.12,.566))
+	walls.box(Vector3(6.265,1.68,6.105),Vector3(5.41,2.296,.228),Rect2(0,0,5.41,2.30))
 	walls.box(Vector3(0,2.834,6.130),Vector3(18.0,.235,.28),Rect2(0,0,18,.235))
 	walls.attach(self,"Raised brick window piers lintel and skirt",brick)
 
@@ -216,15 +216,20 @@ func _build_storefront_trim() -> void:
 	frame.attach(self,"Bronze window mullions and double-door surround",bronze)
 
 	var service := MeshArt.new()
-	var dark := _mat(Color("#574837"))
+	var dark := _mat(Color("#372e26"))
 	service.box(Vector3(-7.62,1.088,6.151),Vector3(1.98,.105,.208))
 	service.box(Vector3(-7.76,1.443,5.934),Vector3(.43,.54,.33))
 	service.box(Vector3(-7.76,1.688,6.062),Vector3(.32,.095,.24))
 	service.box(Vector3(-7.76,1.239,6.056),Vector3(.32,.052,.176))
 	service.attach(self,"Coffee service opening and original brewer",dark)
 
+	var steel := MeshArt.new()
+	steel.box(Vector3(-7.76,1.657,6.195),Vector3(.349,.035,.039))
+	steel.box(Vector3(-7.76,1.427,6.142),Vector3(.056,.111,.028))
+	steel.box(Vector3(-7.76,1.324,6.177),Vector3(.145,.027,.092))
+	steel.attach(self,"Coach-lit chrome brewer face",StoreArt.warm(Color("#9c825a"),.21))
 	var cups := MeshArt.new()
-	var paper := StoreArt.warm(Color("#dec99f"),.15)
+	var paper := StoreArt.warm(Color("#dec99f"),.26)
 	for i in 3:
 		var cup := Vector3(-7.26+float(i)*.113,1.201+float(i%2)*.026,6.184)
 		cups.box(cup,Vector3(.067,.121+float(i%2)*.051,.067))
@@ -246,6 +251,9 @@ func _build_reference_window_cards() -> void:
 		Transform3D(Basis(Vector3.FORWARD,.045),sale_spot-Basis(Vector3.FORWARD,.045)*sale_spot))
 	var old_card := MeshArt.material(StoreArt.PLASTER)
 	old_card.albedo_color = Color("#e6d4a7")
+	old_card.emission_enabled = true
+	old_card.emission = Color("#c39354")
+	old_card.emission_energy_multiplier = .17
 	plates.attach(self,"Coffee placard and weekly specials card",old_card)
 	_label("COFFEE",coffee_spot+Vector3(-.145,0,.027),72,.0039,Color("#47392b"))
 	_label("WEEKLY\nSPECIALS",sale_spot+Vector3(0,0,.026),47,.0033,Color("#484138")).rotation.z = .045

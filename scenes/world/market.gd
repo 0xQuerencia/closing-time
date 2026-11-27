@@ -264,7 +264,7 @@ func glass_panel(pos: Vector3, size: Vector3, tint: Color) -> void:
 
 func build_glass() -> void:
 	for pair in [[-7.7,2.35],[-5.3,2.35],[-2.9,2.35],[-0.4,2.5],[3.0,0.94]]:
-		glass_panel(Vector3(pair[0],1.67,6),Vector3(pair[1],2.06,.014),Color(.27,.36,.34,.065))
+		glass_panel(Vector3(pair[0],1.67,6),Vector3(pair[1],2.06,.014),Color(.31,.29,.235,.042))
 		var body := StaticBody3D.new()
 		body.position = Vector3(pair[0],1.67,6)
 		var shape := CollisionShape3D.new()
@@ -369,6 +369,8 @@ func build_lighting() -> void:
 	lamp(Vector3(11,5.35,22.5),Color(.63,.70,.95),2.35,16,true)
 	for x in [-4,3]:
 		lamp(Vector3(x,4.08,7.65),Color(1,.94,.82),1.4,6.0)
+	# A warm, shadowless service practical, powered by the real store circuit.
+	lamp(Vector3(-7.55,2.52,5.28),Color(1.0,.78,.48),1.52,3.75)
 	for x in [-6.45, -1.66]:
 		lamp(Vector3(x,1.9,-4.88),Color(.78,.9,.95),.40,3.45)
 
@@ -411,8 +413,10 @@ func build_markers() -> void:
 		markers.add_child(marker)
 	var arrival := Marker3D.new()
 	arrival.name = "MarketArrival"
-	arrival.position = Vector3(1.85, -.1, 15.5)
-	arrival.rotation.y = .04
+	# The player really exits to this open point next to the wagon. The door,
+	# foreground puddles and entire name fit naturally as they get their bearings.
+	arrival.position = Vector3(-3.47, -.1, 18.9516)
+	arrival.rotation.y = -.239
 	arrival.add_to_group("MarketArrival")
 	markers.add_child(arrival)
 
