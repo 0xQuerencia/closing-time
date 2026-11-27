@@ -121,11 +121,12 @@ func _drive(road: Node) -> void:
 	var roadside: Node3D = road.get_node("Route 9 roadside")
 	check(roadside.get_child_count() > 20 and roadside.find_children("*","MultiMeshInstance3D",true,false).size() > 20,
 		"Route surfaces and batched roadside trees are present in the driving scene")
-	var posts := roadside.find_children("Batched roadside delineators","MeshInstance3D",true,false)
-	var one_surface := true
-	for post in posts:
-		one_surface = one_surface and post.mesh.get_surface_count() == 1 and post.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	check(posts.size() >= 16 and one_surface, "New road reflectors are batched without collisions or shadows")
+	var sections := roadside.find_children("Broken paint and cat's-eyes","MeshInstance3D",true,false)
+	var batched := true
+	for marks in sections:
+		batched = batched and marks.mesh.get_surface_count() == 1 and int(marks.get_meta("delineators",0)) == 4
+		batched = batched and marks.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	check(sections.size() >= 16 and batched, "Four new delineators share each single lane-marking surface with shadows disabled")
 	var wagon: Node3D = road.car.get_node("Route9Wagon")
 	var steering: Node3D = road.wheel
 	var camera := root.get_camera_3d()

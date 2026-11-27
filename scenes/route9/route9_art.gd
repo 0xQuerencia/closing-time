@@ -37,20 +37,14 @@ var rng := RandomNumberGenerator.new()
 var wet := MeshArt.material(ASPHALT,.5)
 var earth := MeshArt.material(AGGREGATE,.91)
 var road_paint := MeshArt.material(null,.69)
-var reflectors := MeshArt.material(null,.58)
-var post_finish := MeshArt.material(null,.80)
 
 func build(spline: Callable) -> void:
 	center_at = spline
 	rng.seed = 20061124
-	for finish in [wet,earth,road_paint,reflectors]:
+	for finish in [wet,earth,road_paint]:
 		finish.vertex_color_use_as_albedo = true
 		finish.vertex_color_is_srgb = true
 	wet.metallic_specular = .55
-	reflectors.emission_enabled = true
-	reflectors.emission = Color("#b86c40")
-	reflectors.emission_energy_multiplier = .095
-	post_finish.albedo_color = Color("#abac9a")
 	_environment()
 	for start in range(-32,512,32):
 		_section(float(start))
@@ -126,29 +120,29 @@ func _section(start: float) -> void:
 			var x: float = ROAD_LEFT+.24 if side < 0 else ROAD_RIGHT-.24
 			_strip(lines,t+6.93,t+7.00,x-.028,x+.028,.025,.025,CHALK,1.0)
 		_strip(lines,t+4.85,t+4.948,CENTER_LINE-.043,CENTER_LINE+.043,.027,.027,SAFFRON,1.0)
-	_delineators(section,start)
+	_delineators(lines,start)
 	_visible(asphalt.attach(section,"Wet asphalt and tire tracks",wet),155)
 	_visible(gravel.attach(section,"Shoulders, ditch and embankments",earth),155)
-	_visible(lines.attach(section,"Broken paint and cat's-eyes",road_paint),120)
+	var marks := lines.attach(section,"Broken paint and cat's-eyes",road_paint)
+	marks.set_meta("delineators",4)
+	_visible(marks,120)
 
-# Reflectors are visual only. Four small posts share two meshes in each road chunk.
-func _delineators(section: Node3D, start: float) -> void:
-	var bodies := MeshArt.new()
-	var faces := MeshArt.new()
+# Delineators keep their solid low-poly silhouettes, but their white bodies and
+# amber faces share the same vertex-color surface as the lane paint for zero added calls.
+func _delineators(lines: RefCounted, start: float) -> void:
 	for pos in [start + 7.2,start + 23.6]:
 		for side in [-1.0,1.0]:
 			var t: float = pos + (3.2 if side < 0.0 else 0.0)
 			var edge := ROAD_LEFT if side < 0.0 else ROAD_RIGHT
 			var offset: float = edge+side*.47
 			var bottom := _point(t,offset,_height(t,offset))
-			bodies.box(bottom+Vector3(0,.42,0),Vector3(.096,.86,.105))
+			lines.box(bottom+Vector3(0,.42,0),Vector3(.096,.86,.105),Rect2(),
+				Transform3D.IDENTITY,Color("#c3c3ab"))
 			var plate := bottom + Vector3(0,.695,.057)
-			faces.quad(plate+Vector3(-.049,-.051,0),plate+Vector3(.049,-.051,0),
-				plate+Vector3(.049,.051,0),plate+Vector3(-.049,.051,0),Rect2(),Color("#c96f4b"))
-			faces.quad(plate+Vector3(-.049,.051,.002),plate+Vector3(.049,.051,.002),
-				plate+Vector3(.049,.105,.002),plate+Vector3(-.049,.105,.002),Rect2(),Color("#efc38c"))
-	_visible(bodies.attach(section,"Batched roadside delineators",post_finish),106)
-	_visible(faces.attach(section,"Inset amber reflector plates",reflectors),94)
+			lines.quad(plate+Vector3(-.049,-.051,0),plate+Vector3(.049,-.051,0),
+				plate+Vector3(.049,.051,0),plate+Vector3(-.049,.051,0),Rect2(),Color("#d87953"))
+			lines.quad(plate+Vector3(-.049,.051,.002),plate+Vector3(.049,.051,.002),
+				plate+Vector3(.049,.105,.002),plate+Vector3(-.049,.105,.002),Rect2(),Color("#ffd29b"))
 
 func _chunk(label: String, start: float) -> Node3D:
 	var chunk := Node3D.new()

@@ -30,6 +30,7 @@ func _capture() -> void:
 	_budget("apartment",apartment)
 	_apartment_colliders(apartment)
 	await _shot("01-apartment-spawn",apartment.player.camera,Vector3(0,1.69,-4.38))
+	await _tape_pair(apartment,"01b-apartment-subtle",apartment.player.camera,Vector3(0,1.69,-4.38))
 
 	var progress = PROGRESS.new()
 	if not progress.load_content():
@@ -49,6 +50,7 @@ func _capture() -> void:
 	_drive_pose(road,48)
 	driver.rotation.x = -.16
 	await _shot("03-cockpit",driver,road.car.to_global(Vector3(-.38,.91,-.40)))
+	await _tape_pair(road,"03b-cockpit-subtle",driver,road.car.to_global(Vector3(-.38,.91,-.40)))
 	_drive_pose(road,106)
 	driver.rotation.x = 0
 	await _shot("04-night-road",driver,Vector3(road._center(124),0,-124))
@@ -64,10 +66,14 @@ func _capture() -> void:
 	_drive_pose(road,421)
 	var frontage := road.find_child("Marlow's roadside frontage",true,false) as Node3D
 	if frontage != null:
-		var sign := frontage.find_children("*","Label3D",false,false)[0] as Label3D
-		if not driver.is_position_in_frustum(sign.global_position):
-			_fail("Actual Marlow's sign is outside the reveal camera")
-		print("REVEAL sign=",sign.global_position)
+		var sign := frontage.get_node_or_null("Marlow enamel channel letters") as MeshInstance3D
+		if sign == null:
+			_fail("Actual Marlow enamel sign mesh is missing")
+		else:
+			var sign_center := sign.to_global(sign.get_aabb().get_center())
+			if not driver.is_position_in_frustum(sign_center):
+				_fail("Actual Marlow's sign mesh is outside the reveal camera")
+			print("REVEAL physical sign=",sign_center)
 	await _shot("04b-marlow-reveal",driver,Vector3(road._center(449)+3.4,1.9,-449))
 
 	_complete(progress)
@@ -105,6 +111,7 @@ func _capture() -> void:
 	framing.position = Vector3(-2.05,1.49,21.80)
 	framing.look_at(Vector3(-.35,1.69,7.50))
 	await _shot("06-storefront-and-wagon",framing,Vector3(-4.9,.72,13.0))
+	await _tape_pair(market,"06b-storefront-subtle",framing,Vector3(-4.9,.72,13.0))
 	if failed:
 		await market.finish_run(1)
 	else:
@@ -129,6 +136,17 @@ func _hide_canvas(scene: Node) -> void:
 		if child is CanvasLayer:
 			child.hide()
 
+func _tape_pair(scene: Node, label: String, camera: Camera3D, focus: Vector3) -> void:
+	var tape := scene.get_node_or_null("WorldTape") as CanvasLayer
+	if tape == null:
+		_fail("No world-only tape layer for " + label)
+		return
+	tape.show()
+	tape.set_profile(true,true)
+	await _shot(label,camera,focus)
+	tape.set_profile(false,true)
+	tape.hide()
+
 func _drive_pose(road: Node3D, distance: float) -> void:
 	road.travelled = distance
 	road.speed = 12.0
@@ -152,9 +170,16 @@ func _shot(label: String, camera: Camera3D, focus: Vector3) -> void:
 		" reference=",focus)
 	if headless:
 		return
-	for i in 24:
+	for i in 4:
 		await process_frame
-	await RenderingServer.frame_post_draw
+	var metrics: Array[float] = []
+	for i in 24:
+		var before := Time.get_ticks_usec()
+		await RenderingServer.frame_post_draw
+		metrics.append((Time.get_ticks_usec()-before)/1000.0)
+	metrics.sort()
+	print("SOFTWARE FRAME TIME ",label," samples=",metrics.size()," median_ms=",metrics[floori(metrics.size()*.5)],
+		" p95_ms=",metrics[ceili(metrics.size()*.95)-1])
 	var image := root.get_texture().get_image()
 	var result := image.save_png(output.path_join(label+".png"))
 	var draws := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)

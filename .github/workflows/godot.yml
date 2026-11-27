@@ -48,28 +48,37 @@ jobs:
           name: closing-time-web
           path: build/closing-time-web.zip
           if-no-files-found: error
-      - name: Build Linux playtest and capture opening frames
+      - name: Build Linux playtest
         if: github.event.pull_request.draft
+        shell: bash
         run: |
-          sudo apt-get install -y xvfb xauth libgl1-mesa-dri zip
-          mkdir -p build/linux build/opening-frames
+          mkdir -p build/linux
           godot --headless --audio-driver Dummy --path . --export-release Linux build/linux/ClosingTime.x86_64
           zip -q -j build/closing-time-linux-x64.zip build/linux/ClosingTime.x86_64
-          CLOSING_OPENING_CAPTURE_DIR="$PWD/build/opening-frames" LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
-            xvfb-run -a -s '-screen 0 1440x900x24' godot --display-driver x11 --audio-driver Dummy \
-              --path . --resolution 1280x800 --script tools/opening/capture_playable.gd
       - uses: actions/upload-artifact@v4
         if: github.event.pull_request.draft
         with:
           name: closing-time-linux-x64
           path: build/closing-time-linux-x64.zip
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - name: Capture and profile actual opening frames
         if: github.event.pull_request.draft
+        shell: bash
+        run: |
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          mkdir -p build/opening-frames
+          CLOSING_OPENING_CAPTURE_DIR="$PWD/build/opening-frames" LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
+            timeout --signal=TERM 360 xvfb-run -a -s '-screen 0 1440x900x24' \
+            godot --display-driver x11 --audio-driver Dummy \
+              --path . --resolution 1280x800 --script tools/opening/capture_playable.gd 2>&1 | tee build/opening-frames/capture.log
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && github.event.pull_request.draft }}
         with:
           name: closing-time-opening-frames
-          path: build/opening-frames/*.png
-          if-no-files-found: error
+          path: |
+            build/opening-frames/*.png
+            build/opening-frames/capture.log
+          if-no-files-found: warn
       - name: Print failed validation logs
         if: failure()
         run: |

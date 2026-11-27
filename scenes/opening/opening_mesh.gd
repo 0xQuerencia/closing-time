@@ -38,7 +38,7 @@ func quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, uv := Rect2(0, 0, 1, 1
 	triangle(a, b, c, bottom_left, uv.end, top_right, tint)
 	triangle(a, c, d, bottom_left, top_right, uv.position, tint)
 
-func box(center: Vector3, size: Vector3, uv := Rect2(0, 0, 1, 1), pose := Transform3D.IDENTITY) -> void:
+func box(center: Vector3, size: Vector3, uv := Rect2(0, 0, 1, 1), pose := Transform3D.IDENTITY, tint := Color.WHITE) -> void:
 	var half := size * .5
 	var a := pose * (center + half * Vector3(-1,-1,1))
 	var b := pose * (center + half * Vector3(1,-1,1))
@@ -48,12 +48,12 @@ func box(center: Vector3, size: Vector3, uv := Rect2(0, 0, 1, 1), pose := Transf
 	var f := pose * (center + half * Vector3(1,-1,-1))
 	var g := pose * (center + half * Vector3(1,1,-1))
 	var h := pose * (center + half * Vector3(-1,1,-1))
-	quad(a,b,c,d,uv)
-	quad(f,e,h,g,uv)
-	quad(e,a,d,h,uv)
-	quad(b,f,g,c,uv)
-	quad(d,c,g,h,uv)
-	quad(e,f,b,a,uv)
+	quad(a,b,c,d,uv,tint)
+	quad(f,e,h,g,uv,tint)
+	quad(e,a,d,h,uv,tint)
+	quad(b,f,g,c,uv,tint)
+	quad(d,c,g,h,uv,tint)
+	quad(e,f,b,a,uv,tint)
 
 func mesh(finish: Material) -> ArrayMesh:
 	surface.set_material(finish)
