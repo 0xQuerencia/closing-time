@@ -38,6 +38,7 @@ func run_production(market: Node3D) -> void:
 func _check_market_arrival(shift: ProductionShift) -> void:
 	await _settle()
 	check(player.global_position.z > 12.0 and shift.progress.events.has("market_arrived"),"Route 9 progress starts on the lot")
+	check(game.tasks.active_ids() == ["handover"], "arrival shows the handover before later chores")
 	await _capture_handover("01-arrival")
 	var cues: Array[String] = []
 	var record_cue := func(message: String): cues.append(message)
@@ -128,7 +129,7 @@ func _check_rest_of_shift(shift: ProductionShift) -> void:
 	for i in 3:
 		if game.shift.take_stock(game.interactor):
 			game.shift.stock_slot(game.shift.slots[i],game.interactor.release_held())
-	check(game.shift.filled == 3,"three stock slots filled")
+	check(game.shift.filled == 3 and shift.progress.events.has("restock_done"),"three stock slots directly complete the routine objective")
 	check(await _sale("ben"),"Ben paid and left")
 	check(await _sale("nora"),"Nora paid and left")
 	check(await _chapter("closing"),"routine advances")

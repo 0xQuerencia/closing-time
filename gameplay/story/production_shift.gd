@@ -27,13 +27,15 @@ func setup(owner: StoryDirector, snapshot: Dictionary, resume := false) -> bool:
 	game.dialogue.finished.connect(_on_dialogue_finished)
 	game.phone.read_changed.connect(_on_phone_read)
 	game.security.cctv.archive_viewed.connect(_on_archive_viewed)
+	game.shift.restocked.connect(_on_restocked)
+	game.shift.trash_placed.connect(_sync_chores)
+	game.shift.latch_locked.connect(_sync_chores)
 	_build_spots()
 	journal = EvidenceJournal.new()
 	add_child(journal)
 	journal.setup(self)
 	if not resume:
 		director._set_step(StoryDirector.Step.INTRO)
-		director._add_chores()
 		_enter_chapter()
 	return true
 
@@ -50,14 +52,18 @@ func _enter_chapter() -> void:
 		"routine":
 			director._set_step(StoryDirector.Step.WORK)
 			director._text("routine_sms","Kay","You still owe me breakfast. Don't forget to eat something.",23,24)
-			_task("routine", "Evening work", [["ben_served","Serve Ben"],["nora_served","Serve Nora"],["delivery_checked","Check the cartons and reconcile the invoice"],["restock_done","Finish stocking shelves"]])
+			_task("routine", "Evening work", [["ben_served","Serve Ben"],["nora_served","Serve Nora"],["delivery_checked","Check the cartons and reconcile the invoice"],
+				["restock_done", "Finish stocking shelves", "Take each item from the open stockroom carton and put it in a glowing gap on the middle aisle shelves."]])
 			_spawn_staff("gus","Gus",Vector3(4.25,.05,2.5),"gus_delivery")
 			_sync_chores()
 			director._spawn("ben",StoryDirector.Step.BEN)
 		"closing":
 			director._set_step(StoryDirector.Step.WORK)
 			director._text("close_sms","Dina","Cash drop goes in the office drawer. Trash out, then lift the rear latch before you turn the key.",23,49)
-			_task("closing_shift", "Closing checklist", [["ruth_served","Serve Ruth"],["leon_first_left","Serve the last customer"],["cash_drop_done","Take the sealed envelope from the counter to the office drawer"],["trash_done","Take the trash to pickup"],["latch_checked","Lock the rear latch"],["leon_second_left","Finish the last transaction"]])
+			_task("closing_shift", "Closing checklist", [["ruth_served","Serve Ruth"],["leon_first_left","Serve the last customer"],["cash_drop_done","Take the sealed envelope from the counter to the office drawer"],
+				["trash_done", "Take the trash to pickup", "Tie the bag at the left end of the checkout counter and carry it to the TRASH PICKUP mark by the rear door."],
+				["latch_checked", "Lock the rear latch", "Use the LIFT THEN TURN lever by the rear door, then turn the key below it."],
+				["leon_second_left","Finish the last transaction"]])
 			_sync_chores()
 			director._spawn("ruth",StoryDirector.Step.WORK)
 		"outage":
@@ -69,7 +75,7 @@ func _enter_chapter() -> void:
 func _task(id: String, title: String, rows: Array) -> void:
 	var objectives: Array[Dictionary] = []
 	for row in rows:
-		objectives.append({"id":row[0],"text":row[1],"guide":row[1]})
+		objectives.append({"id":row[0],"text":row[1],"guide":row[2] if row.size() > 2 else row[1]})
 	game.tasks.add_task(id,title,objectives,80)
 
 func _record(id: String) -> bool:
@@ -118,7 +124,7 @@ func customer_left(id: String) -> void:
 		"leon2":
 			_record("leon_second_left")
 
-func task_done(_id: String) -> void:
+func _on_restocked(_number: int) -> void:
 	_sync_chores()
 
 func _sync_chores() -> void:
@@ -136,12 +142,14 @@ func _on_dialogue_finished(id: String) -> void:
 		if is_instance_valid(dina):
 			dina._set_phase(Customer.Phase.LEAVE)
 			game.security.office_door.snap(true)
-			await dina._walk([CustomerProfiles.AISLE_MOUTH,Vector3(.9,0,2.9),Vector3(2.4,0,2.9),Vector3(2.4,0,0),Vector3(2.4,0,-1.6),Vector3(2.4,0,-4.3),Vector3(4.25,0,-4.3),Vector3(5,0,-4.3)])
+			if not await dina._walk([CustomerProfiles.AISLE_MOUTH,Vector3(.9,0,2.9),Vector3(2.4,0,2.9),Vector3(2.4,0,0),Vector3(2.4,0,-1.6),Vector3(2.4,0,-4.3),Vector3(4.25,0,-4.3),Vector3(5,0,-4.3)]):
+				return
 			if not game.dialogue.is_active():
 				game.dialogue.start("production_office")
 	if id == "production_office" and progress.current_id() == "handover":
 		_record("dina_handover")
-		await _depart_staff("dina",[Vector3(4.25,0,-4.3),Vector3(2.4,0,-4.3),Vector3(2.4,0,-1.6),Vector3(2.4,0,0),Vector3(2.4,0,2.9),Vector3(.9,0,2.9),Vector3(1.7,0,4.6),game.markers.FrontDoor,game.markers.NPCExit])
+		if not await _depart_staff("dina",[Vector3(4.25,0,-4.3),Vector3(2.4,0,-4.3),Vector3(2.4,0,-1.6),Vector3(2.4,0,0),Vector3(2.4,0,2.9),Vector3(.9,0,2.9),Vector3(1.7,0,4.6),game.markers.FrontDoor,game.markers.NPCExit]):
+			return
 		game.security.office_door.request_close()
 		if not ready_for_customers:
 			ready_for_customers = true
@@ -370,15 +378,16 @@ func _spawn_staff(id: String, title: String, point: Vector3, conversation: Strin
 	actor.talk.talk_requested.connect(func(): if not game.dialogue.is_active(): game.dialogue.start(conversation))
 	staff[id] = actor
 
-func _depart_staff(id: String, route: Array) -> void:
+func _depart_staff(id: String, route: Array) -> bool:
 	if not staff.has(id):
-		return
+		return true
 	var actor: Customer = staff[id]
 	staff.erase(id)
 	if not is_instance_valid(actor):
-		return
+		return true
 	actor.talk.available = false
 	actor._set_phase(Customer.Phase.LEAVE)
-	await actor._walk(route)
-	if is_instance_valid(actor):
-		actor.queue_free()
+	if not await actor._walk(route):
+		return false
+	actor.queue_free()
+	return true

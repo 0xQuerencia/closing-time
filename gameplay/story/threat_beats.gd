@@ -72,7 +72,7 @@ func leon_returns() -> void:
 	stalker = sec.spawn_stalker()
 	stalker.caught.connect(_on_caught)
 	await stalker.enter_building()
-	if ended != "" or not is_instance_valid(stalker):
+	if ended != "" or not is_inside_tree() or not is_instance_valid(stalker) or not stalker.movement_active():
 		return
 	director._text("dina_9", "Dina", "Was that the back door again? Get out or lock yourself in.", 0, 33)
 	stalker.begin_hunt()
