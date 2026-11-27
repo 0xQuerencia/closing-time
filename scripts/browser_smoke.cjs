@@ -13,7 +13,7 @@ async function waitForExport(page) {
   await page.waitForFunction(() => {
     const canvas = document.querySelector('canvas');
     const status = document.querySelector('#status');
-    return canvas && canvas.width > 0 && canvas.height > 0 && getComputedStyle(status).display === 'none';
+    return canvas && canvas.width > 0 && canvas.height > 0 && (!status || getComputedStyle(status).display === 'none');
   }, {}, { timeout: 90000 });
 }
 
@@ -51,6 +51,15 @@ function userFile(filename) {
       keys.onerror = () => reject(keys.error);
     };
   });
+}
+
+async function waitForUserFile(page, filename) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const content = await page.evaluate(userFile, filename);
+    if (content !== null) return content;
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  throw new Error('Timed out waiting for the browser save ' + filename);
 }
 
 async function main() {
@@ -98,13 +107,11 @@ async function main() {
     await screenshot(page, '01-title');
     await page.locator('canvas').focus();
     await page.keyboard.press('Enter', { delay: 120 });
-    const checkpoint = await page.waitForFunction(userFile, 'closing_time_opening.json', { timeout: 20000, polling: 500 });
-    const saved = JSON.parse(await checkpoint.jsonValue());
-    await checkpoint.dispose();
+    const saved = JSON.parse(await waitForUserFile(page, 'closing_time_opening.json'));
     await screenshot(page, '02-prologue');
     assert.equal(saved?.chapter, 'apartment', 'New Game writes the apartment checkpoint');
     findings.savedChapter = saved.chapter;
-    const settings = await page.evaluate(userFile, 'settings.cfg');
+    const settings = await waitForUserFile(page, 'settings.cfg');
     assert.match(settings, /graphics_mode="performance"/, 'a fresh browser session starts in Performance mode');
     findings.firstRunGraphics = 'performance';
 
