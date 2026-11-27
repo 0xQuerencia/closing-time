@@ -7,6 +7,7 @@ const TreeArt = preload("res://scenes/opening/roadside_trees.gd")
 const StoreArt = preload("res://scenes/opening/storefront_art.gd")
 const SIGN_RED := Color(0.62, 0.07, 0.06)
 const BOARD_CREAM := Color(0.8, 0.74, 0.6)
+const LOT_ASPHALT = preload("res://assets/materials/opening/route9_night_asphalt.png")
 var _water_finish: ShaderMaterial
 
 func _ready() -> void:
@@ -78,11 +79,12 @@ func _build_puddles() -> void:
 	var water := MeshArt.new()
 	# Patch placement follows the low parking depressions that catch the real
 	# canopy fixtures from arrival, not long transparent rectangles on their edges.
-	_append_puddle(water,Vector2(-1.9,14.62),Vector2(2.32,1.78),1)
-	_append_puddle(water,Vector2(.89,12.65),Vector2(1.48,1.21),3)
-	_append_puddle(water,Vector2(-5.45,13.84),Vector2(1.41,1.52),6)
+	_append_puddle(water,Vector2(-2.11,14.74),Vector2(1.88,1.57),1)
+	_append_puddle(water,Vector2(.89,12.65),Vector2(1.18,1.05),3)
+	_append_puddle(water,Vector2(-5.29,13.89),Vector2(1.08,1.29),6)
 	_water_finish = ShaderMaterial.new()
 	_water_finish.shader = preload("res://scenes/world/wet_reflection.gdshader")
+	_water_finish.set_shader_parameter("asphalt",LOT_ASPHALT)
 	water.attach(self,"Three standing-water depressions",_water_finish)
 
 func bind_store_circuit(grid: PowerGrid) -> void:

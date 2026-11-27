@@ -3,6 +3,7 @@ shader_type spatial;
 // keep highlights in the same world place as the player walks; no screen copy.
 render_mode cull_back, shadows_disabled, depth_draw_never, specular_schlick_ggx;
 uniform bool windows_lit = true;
+uniform sampler2D asphalt : source_color, filter_nearest_mipmap, repeat_enable;
 varying vec3 world_point;
 void vertex() {
 	world_point = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -37,13 +38,24 @@ void fragment() {
 		rect_glow(glaze,vec2(1.7,1.41),vec2(.053,1.04),vec2(.067,.155)));
 	float fresnel = pow(1.0-clamp(dot(water_normal,view_dir),0.0,1.0),4.0);
 	float reflect_valid = 1.0 - smoothstep(-.38,-.06,reflected.z);
-	float border = smoothstep(0.02,.83,COLOR.a);
+	// Retain the exact diffuse substrate and its tiled UVs; the standing water
+	// gently darkens it rather than replacing pavement with an opaque mask.
+	vec3 chips = texture(asphalt,(p.xz+vec2(14.0,-6.0))*.3125).rgb;
+	float border = smoothstep(0.04,.94,COLOR.a);
+	float roof = rect_glow(lamp,vec2(-1.1,3.36),vec2(7.2,.22),vec2(.37,.24));
+	float panels = rect_glow(lamp,vec2(-4.06,3.74),vec2(2.45,.30),vec2(.27,.15))
+		+ rect_glow(lamp,vec2(2.27,3.74),vec2(1.92,.30),vec2(.27,.15));
+	float seam = smoothstep(.10,.23,abs(fract((lamp.x+.02)/.72)-.5));
 	float strength = (.40 + .60*fresnel) * reflect_valid;
 	NORMAL = normalize((VIEW_MATRIX * vec4(water_normal,0.0)).xyz);
-	ALBEDO = mix(vec3(.024,.025,.023),vec3(.045,.051,.054),fresnel);
-	ROUGHNESS = mix(.16,.29,1.0-border);
+	ALBEDO = chips*vec3(.71,.74,.75);
+	ROUGHNESS = mix(.17,.36,1.0-border) + (.035*chips.g);
 	SPECULAR = .49;
-	METALLIC = .17;
-	EMISSION = strength * (fixtures*vec3(1.12,.79,.42) + (windows_lit ? glass : 0.0)*(1.0-.74*mullion)*vec3(.128,.099,.052));
-	ALPHA = border * (.78 + .15*fresnel);
+	METALLIC = .08;
+	vec3 skyline = mix(vec3(.040,.052,.069),vec3(.081,.059,.039),roof);
+	vec3 front = (windows_lit ? glass : 0.0)*(1.0-.74*mullion)*vec3(.120,.089,.050)
+		+ panels*(1.0-.48*seam)*vec3(.126,.043,.034);
+	EMISSION = chips*vec3(.052,.045,.041) + skyline*(.32+.37*fresnel)
+		+ strength * (fixtures*vec3(1.04,.77,.43) + front);
+	ALPHA = border * clamp(.39 + .21*fresnel + .21*fixtures, 0.0, .78);
 }
