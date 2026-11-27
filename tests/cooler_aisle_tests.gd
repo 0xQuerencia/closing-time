@@ -62,13 +62,23 @@ func _test() -> void:
 	for light in lamps:
 		_check(not light.shadow_enabled, "cooler lights are shadowless")
 	var tube: StandardMaterial3D = cooler.find_child("Fluorescents", true, false).get_active_material(0)
+	var warm_mesh := market.get_node("Powered warm front window tubes") as MeshInstance3D
+	var warm := warm_mesh.get_active_material(0) as StandardMaterial3D
+	var pool := market.find_child("Three standing-water depressions",true,false) as MeshInstance3D
+	var water := pool.get_active_material(0) as ShaderMaterial
+	_check(warm.emission.r > warm.emission.b and warm.emission_energy_multiplier > 1.0
+		and bool(water.get_shader_parameter("windows_lit")), "window fixture and its local reflected tint are warm and on")
 	var level := tube.emission_energy_multiplier
 	market.gameplay.security.power.flip("lights", false)
 	_check(level > 0.0 and tube.emission_energy_multiplier == 0.0, "the breaker turns the cooler tubes off")
+	_check(warm.emission_energy_multiplier == 0.0 and not bool(water.get_shader_parameter("windows_lit")),
+		"the breaker extinguishes the warm window tubes and the windows' reflected tint")
 	for light in lamps:
 		_check(light.light_energy == 0.0, "the breaker turns the cooler light off")
 	market.gameplay.security.power.flip("lights", true)
 	_check(tube.emission_energy_multiplier == level, "the breaker restores the cooler tubes")
+	_check(warm.emission_energy_multiplier > 1.0 and bool(water.get_shader_parameter("windows_lit")),
+		"the breaker restores the warm tubes and their window reflections")
 	var flow: FlowUI = market.gameplay.flow
 	# This exercises all four runtime modes and deliberately finishes on Quality.
 	# Do not write those temporary test choices back to the player's preferences.

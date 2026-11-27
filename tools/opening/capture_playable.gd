@@ -103,8 +103,12 @@ func _capture() -> void:
 	var native_flow: FlowUI = market.gameplay.flow
 	if str(native_flow.settings.graphics_mode) != "balanced" or not bool(native_flow.settings.retro):
 		_fail("Fresh native opening must boot in Balanced with Tape Subtle; Quality is profiled separately")
-	if market.player.position.distance_to(Vector3(1.85,-.1,15.5)) > .051:
-		_fail("Market arrival moved")
+	if market.player.position.distance_to(Vector3(-3.47,-.1,18.9516)) > .051:
+		_fail("Unexpected Market arrival pose")
+	var glyphs := market.find_child("Marlow original glyphs",true,false) as MeshInstance3D
+	if glyphs == null or not market.player.camera.is_position_in_frustum(glyphs.to_global(glyphs.get_aabb().position)) \
+		or not market.player.camera.is_position_in_frustum(glyphs.to_global(glyphs.get_aabb().end)):
+		_fail("Initial player view crops the shop name")
 	_budget("market_lot",market.get_node("OriginalExterior"))
 	_budget("market_dressing",market.get_node("ExteriorDressing"))
 	var framing := Camera3D.new()
@@ -144,12 +148,14 @@ func _walk_market_comparison(market: Node3D) -> void:
 	walker.enabled = true
 	walker.rotation.y = 0.0
 	root.disable_3d = true
-	var back_ok := await _walk_key(KEY_S,func(): return walker.position.z >= 20.2)
-	var left_ok := await _walk_key(KEY_A,func(): return walker.position.x <= -3.05)
+	# This view remains matched to the previous head irrespective of spawn.
+	var back_ok := await _walk_key(KEY_S,func(): return walker.position.z >= 20.205)
+	var side_ok := await _walk_key(KEY_D,func(): return walker.position.x >= -3.071)
 	root.disable_3d = false
 	walker.enabled = false
-	if not back_ok or not left_ok or not walker.is_on_floor():
-		_fail("Could not physically reach the parking lot comparison angle")
+	var matched := walker.position.distance_to(Vector3(-3.058332,-.119162,20.24989)) < .035
+	if not back_ok or not side_ok or not matched or not walker.is_on_floor():
+		_fail("Could not physically reach the parking lot comparison angle: %s back=%s side=%s floor=%s" % [str(walker.position),str(back_ok),str(side_ok),str(walker.is_on_floor())])
 		return
 	var storefront := Vector3(-.42,1.74,7.18)
 	view.look_at(storefront)

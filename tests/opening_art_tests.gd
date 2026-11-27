@@ -199,6 +199,18 @@ func _drive(road: Node) -> void:
 	var cards := market.find_children("Coffee placard and weekly specials card","MeshInstance3D",true,false)
 	check(cards.size() == 1 and cards[0].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
 		"Market reference window cards add no collision or shadow pass")
+	var parapet := market.find_child("Raised continuous brick sign parapet",true,false) as MeshInstance3D
+	var front := market.find_child("Raised brick window piers lintel and skirt",true,false) as MeshInstance3D
+	check(parapet != null and front != null and parapet.get_aabb().size.x > 18.0 and front.get_aabb().size.y > 2.8,
+		"Real brick geometry backs the sign and separates the window bays")
+	var entrance := market.find_child("Bronze window mullions and double-door surround",true,false) as MeshInstance3D
+	var counter := market.find_child("Cast-stone sills and projecting coffee counter",true,false) as MeshInstance3D
+	check(entrance != null and counter != null and counter.get_aabb().size.z > .40,
+		"Coffee service projects forward of the recessed window and the original door receives a real surround")
+	var water := market.find_child("Three standing-water depressions",true,false) as MeshInstance3D
+	check(water != null and water.mesh.get_surface_count() == 1 and water.mesh.get_faces().size() == 3*18*9
+		and water.get_aabb().size.y < .001 and water.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
+		"Three fixed standing-water outlines share one flat shadowless surface")
 	check(shift != null and shift.progress.current_id() == "handover"
 		and shift.progress.events.has("shift_read") and shift.progress.events.has("market_arrived")
 		and shift.progress.events.has("bypass_sign"),"Arrival forwards required and optional progress to handover")
@@ -206,13 +218,21 @@ func _drive(road: Node) -> void:
 	check(market_save.get("checkpoint") == "shift_start" and market_save.production.chapter == "handover"
 		and market_save.production.events.has("market_arrived") and OpeningCheckpoint.read().is_empty(),
 		"Market save takes over from the opening checkpoint at handover")
-	check(market.player.position.distance_to(Vector3(1.85,-.1,15.5)) < .05,"Market starts in the same clear lane with sightline to canopy and door")
+	check(market.player.position.distance_to(Vector3(-3.47,-.1,18.9516)) < .05,
+		"Market starts on the real three-quarter parking approach")
+	var sign := glyphs[0] as MeshInstance3D
+	var box := sign.get_aabb()
+	check(market.player.camera.is_position_in_frustum(sign.to_global(box.position)) and
+		market.player.camera.is_position_in_frustum(sign.to_global(box.end)),
+		"Unmoved player camera sees all fourteen sign glyphs at arrival")
 	market.player.require_mouse_capture = false
-	_key(KEY_W,true)
-	for i in 258:
-		await physics_frame
-	_key(KEY_W,false)
-	check(market.player.position.z < 8.0,"Walk from the parked wagon up the curb ramp")
+	# Walk via the actual approach lane on the wagon's east, then use its curb ramp.
+	_aim(market.player,Vector3(1.70,1.5,10.25))
+	check(await _walk_forward_to_z(market.player,10.30,340),"Physically reach the curb approach from the parked wagon")
+	market.player.rotation.y = 0
+	check(await _walk_forward_to_z(market.player,7.31,140)
+		and market.player.is_on_floor() and market.player.position.y > -.025,
+		"Walk from arrival up the original curb ramp to the door")
 	var door: Node3D = market.gameplay.security.front_door
 	_aim(market.player,door.handle.global_position)
 	await physics_frame
@@ -227,6 +247,15 @@ func _drive(road: Node) -> void:
 		await physics_frame
 	_key(KEY_W,false)
 	check(market.player.position.z < 5.0,"Walk through the storefront entrance")
+
+func _walk_forward_to_z(player: CharacterBody3D, target: float, max_frames: int) -> bool:
+	_key(KEY_W,true)
+	for i in max_frames:
+		if player.position.z <= target:
+			break
+		await physics_frame
+	_key(KEY_W,false)
+	return player.position.z <= target
 
 func _skip_drive() -> void:
 	OpeningCheckpoint.resume(self, drive_checkpoint)

@@ -45,10 +45,17 @@ func _check_market_arrival(shift: ProductionShift) -> void:
 	game.interactor.message.connect(record_cue)
 	var door := game.security.front_door
 	player.require_mouse_capture = false
+	# Look toward the original curb approach; preserve the actual spawn and
+	# walk both legs with normal input, including collision on the ramp.
+	var lane := Vector3(1.70,player.global_position.y,10.25) - player.global_position
+	player.rotation.y = atan2(-lane.x,-lane.z)
 	var walk := InputEventKey.new()
 	walk.physical_keycode = KEY_W
 	walk.pressed = true
 	Input.parse_input_event(walk)
+	check(await wait_until(func(): return player.global_position.z < 10.30,6),
+		"player walks from the three-quarter arrival to the curb approach")
+	player.rotation.y = 0.0
 	check(await wait_until(func(): return player.global_position.z < 8.06,6), "player reaches the curb ramp from the arrival spawn")
 	walk.pressed = false
 	Input.parse_input_event(walk)

@@ -27,11 +27,23 @@ const RED := Color("#a42d25")
 
 static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 	var metal := MeshArt.new()
-	metal.box(Vector3(0,3.35,7.99),Vector3(18.52,.30,.20))
-	metal.box(Vector3(0,3.39,6.83),Vector3(18.52,.08,2.20))
+	if distant:
+		metal.box(Vector3(0,3.35,7.99),Vector3(18.52,.30,.20))
+		metal.box(Vector3(0,3.39,6.83),Vector3(18.52,.08,2.20))
+	else:
+		var fascia_wall := MeshArt.new()
+		fascia_wall.box(Vector3(0,3.76,7.76),Vector3(18.50,.92,.685),Rect2(0,0,18.50,.92))
+		fascia_wall.attach(parent,"Raised continuous brick sign parapet",frontage_brick())
+		metal.box(Vector3(0,3.305,7.995),Vector3(18.70,.26,.35),Rect2(0,0,12,.35))
+		metal.box(Vector3(0,3.176,6.95),Vector3(18.69,.145,2.14),Rect2(0,0,14,2.1))
 	var green := MeshArt.material(PLASTER)
-	green.albedo_color = Color("#45564e")
-	metal.attach(parent,"Weathered green canopy flashing",green)
+	green.albedo_color = Color("#45564e") if distant else Color("#b6a382")
+	if not distant:
+		green.emission_enabled = true
+		green.emission = Color("#b88c58")
+		green.emission_texture = PLASTER
+		green.emission_energy_multiplier = .29
+	metal.attach(parent,"Weathered full-depth concrete canopy",green)
 
 	var edge := MeshArt.new()
 	edge.box(Vector3(0,3.201,8.053),Vector3(18.55,.082,.108))
@@ -57,6 +69,8 @@ static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 			continue
 		var compaction := (.25 if index < word_break else -.25) if word_break >= 0 else 0.0
 		var center := Vector3(-1.2 + (index - (label.text.length()-1)*.5)*.72 + compaction,3.72 + (index%3-1)*.019,8.136)
+		if not distant:
+			center += Vector3(0,.024,.08)
 		fitted.box(center-Vector3(0,0,.062),Vector3(.69,.72,.162))
 		caps.box(center+Vector3(0,0,.031),Vector3(.626,.644,.079))
 		var cell: Rect2 = SIGN_CELLS.get(glyph,Rect2())
@@ -88,7 +102,8 @@ static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 	for x in [-6.0,-2.0,1.7]:
 		var pos := Vector3(x,3.135,7.79)
 		hardware.box(pos,Vector3(1.04,.106,.172))
-		lens.box(pos-Vector3(0,.052,0),Vector3(.91,.029,.121))
+		var size := Vector3(.91,.029,.121) if distant else Vector3(1.02,.061,.161)
+		lens.box(pos-Vector3(0,.052,0),size)
 	for offset in [-.348,.348]:
 		var pos := Vector3(-1.2+width*offset,4.09,8.26)
 		hardware.box(pos,Vector3(.30,.092,.225))
@@ -105,7 +120,14 @@ static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 	var dark := MeshArt.material(null)
 	dark.albedo_color = Color("#383b34")
 	hardware.attach(parent,"Sign hoods and canopy tube housings",dark)
-	lens.attach(parent,"Sign and canopy diffusers",warm(Color("#f1d8a1"),.68))
+	lens.attach(parent,"Sign and canopy diffusers",
+		warm(Color("#f1d8a1"),.68) if distant else warm(Color("#ffe3ac"),1.26))
+
+static func frontage_brick() -> ShaderMaterial:
+	var finish := ShaderMaterial.new()
+	finish.shader = preload("res://scenes/world/frontage_brick.gdshader")
+	finish.set_shader_parameter("brick",BRICK)
+	return finish
 
 static func warm(color: Color, intensity: float) -> StandardMaterial3D:
 	var finish := MeshArt.material(null)
