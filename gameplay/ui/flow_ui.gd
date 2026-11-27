@@ -89,6 +89,8 @@ var _force_safe_mode := false
 func setup(owner_game: Gameplay) -> FlowUI:
 	game = owner_game
 	_force_safe_mode = "--safe-mode" in OS.get_cmdline_user_args()
+	if OS.has_feature("web"):
+		settings.graphics_mode = "performance"
 	if _force_safe_mode:
 		settings.graphics_mode = "safe"
 	_ui_font = _make_ui_font(550)

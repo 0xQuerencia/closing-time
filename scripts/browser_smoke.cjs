@@ -21,7 +21,7 @@ async function screenshot(page, name) {
   await page.screenshot({ path: path.join(output, name + '.png'), timeout: 120000 });
 }
 
-function openingCheckpoint() {
+function userFile(filename) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('/userfs');
     request.onerror = () => reject(request.error);
@@ -35,7 +35,7 @@ function openingCheckpoint() {
       const store = db.transaction('FILE_DATA').objectStore('FILE_DATA');
       const keys = store.getAllKeys();
       keys.onsuccess = () => {
-        const key = keys.result.find(entry => String(entry).endsWith('/closing_time_opening.json'));
+        const key = keys.result.find(entry => String(entry).endsWith('/' + filename));
         if (!key) {
           db.close();
           resolve(null);
@@ -44,7 +44,7 @@ function openingCheckpoint() {
         const file = store.get(key);
         file.onsuccess = () => {
           db.close();
-          resolve(JSON.parse(new TextDecoder().decode(file.result.contents)));
+          resolve(new TextDecoder().decode(file.result.contents));
         };
         file.onerror = () => reject(file.error);
       };
@@ -98,16 +98,15 @@ async function main() {
     await screenshot(page, '01-title');
     await page.locator('canvas').focus();
     await page.keyboard.press('Enter', { delay: 120 });
-    const checkpoint = await page.waitForFunction(async () => {
-      const dbs = await indexedDB.databases();
-      return dbs.some(db => db.name === '/userfs');
-    }, {}, { timeout: 15000 });
+    const checkpoint = await page.waitForFunction(userFile, 'closing_time_opening.json', { timeout: 20000, polling: 500 });
+    const saved = JSON.parse(await checkpoint.jsonValue());
     await checkpoint.dispose();
-    await page.waitForTimeout(2500);
     await screenshot(page, '02-prologue');
-    const saved = await page.evaluate(openingCheckpoint);
     assert.equal(saved?.chapter, 'apartment', 'New Game writes the apartment checkpoint');
     findings.savedChapter = saved.chapter;
+    const settings = await page.evaluate(userFile, 'settings.cfg');
+    assert.match(settings, /graphics_mode="performance"/, 'a fresh browser session starts in Performance mode');
+    findings.firstRunGraphics = 'performance';
 
     for (let line = 0; line < 3; line += 1) {
       await page.keyboard.press('e', { delay: 120 });
@@ -148,7 +147,8 @@ async function main() {
     await page.waitForFunction(() => document.pointerLockElement === document.querySelector('canvas'), {}, { timeout: 15000 });
     await page.waitForTimeout(1000);
     await screenshot(page, '06-continued');
-    assert.deepEqual(await page.evaluate(openingCheckpoint), saved, 'Continue uses the same persisted opening checkpoint');
+    const continued = JSON.parse(await page.evaluate(userFile, 'closing_time_opening.json'));
+    assert.deepEqual(continued, saved, 'Continue uses the same persisted opening checkpoint');
     findings.persisted = true;
     assert.equal(errors.length, 0, errors.join('\n'));
     fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify({ passed: true, findings, errors }, null, 2));
