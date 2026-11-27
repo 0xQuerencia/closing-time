@@ -31,6 +31,15 @@ func _capture() -> void:
 	_apartment_colliders(apartment)
 	await _shot("01-apartment-spawn",apartment.player.camera,Vector3(0,1.69,-4.38))
 	await _tape_pair(apartment,"01b-apartment-subtle",apartment.player.camera,Vector3(0,1.69,-4.38))
+	# Same real room, a point the player can walk to; keep the canonical spawn shot above.
+	var room_angle := Camera3D.new()
+	apartment.add_child(room_angle)
+	room_angle.keep_aspect = Camera3D.KEEP_WIDTH
+	room_angle.fov = 75
+	room_angle.position = Vector3(-.28,1.58,.60)
+	room_angle.look_at(Vector3(-.11,1.23,-3.84))
+	room_angle.make_current()
+	await _shot("01c-apartment-reference-angle",room_angle,Vector3(0,1.69,-4.38))
 
 	var progress = PROGRESS.new()
 	if not progress.load_content():
@@ -94,9 +103,9 @@ func _capture() -> void:
 	market.add_child(framing)
 	framing.current = true
 	framing.keep_aspect = Camera3D.KEEP_WIDTH
-	framing.fov = 70
-	framing.position = Vector3(-2.05,1.49,21.80)
-	framing.look_at(Vector3(-.35,1.69,7.50))
+	framing.fov = 62
+	framing.position = Vector3(-4.05,1.35,19.2)
+	framing.look_at(Vector3(-.15,1.83,7.10))
 	RenderingServer.viewport_set_disable_2d(root.get_viewport_rid(),true)
 	await _shot("Marlows-market-arrival",framing,Vector3(-4.9,.72,13.0))
 	RenderingServer.viewport_set_disable_2d(root.get_viewport_rid(),false)

@@ -95,8 +95,8 @@ func _build_puddles() -> void:
 	glow_mat.shader = preload("res://scenes/world/wet_reflection.gdshader")
 	var streaks: Array[Transform3D] = []
 	for x in [-7.7,-5.3,-2.9,-.4,1.7,3.0]:
-		var pose := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(rng.randf_range(.94,1.68),1.0,rng.randf_range(3.2,5.25)))
-		streaks.append(Transform3D(pose,Vector3(x,-.109,rng.randf_range(10.58,10.98))))
+		var pose := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(rng.randf_range(1.18,2.03),1.0,rng.randf_range(5.75,8.15)))
+		streaks.append(Transform3D(pose,Vector3(x,-.109,rng.randf_range(12.56,13.91))))
 	_batch_water("Window light on broken wet asphalt",glow_mat,streaks)
 
 func _batch_water(label: String, finish: Material, poses: Array[Transform3D]) -> void:

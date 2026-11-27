@@ -193,6 +193,9 @@ func _drive(road: Node) -> void:
 	var signs := market.find_children("Marlow enamel channel letters","MeshInstance3D",true,false)
 	check(signs.size() == 1 and (signs[0].get_active_material(0) as StandardMaterial3D).albedo_texture.resource_path.ends_with("marlow_channel_enamel.png"),
 		"Market arrival uses newly authored dimensional enamel signage")
+	var glyphs := market.find_children("Marlow original glyphs","MeshInstance3D",true,false)
+	check(glyphs.size() == 1 and glyphs[0].mesh.get_surface_count() == 1 and glyphs[0].mesh.get_faces().size() == 84,
+		"All fourteen project-original sign glyphs share one surface")
 	var cards := market.find_children("Coffee placard and weekly specials card","MeshInstance3D",true,false)
 	check(cards.size() == 1 and cards[0].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
 		"Market reference window cards add no collision or shadow pass")

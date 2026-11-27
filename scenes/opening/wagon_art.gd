@@ -22,8 +22,8 @@ static func add_cabin_light(wagon: Node3D) -> void:
 	var light := OmniLight3D.new()
 	light.name = "Dashboard light"
 	light.position = Vector3(-.08,1.13,-.19)
-	light.light_color = Color("#c8c1b2")
-	light.light_energy = .65
+	light.light_color = Color("#c29a72")
+	light.light_energy = .46
 	light.light_cull_mask = CABIN_MASK
 	light.omni_range = 1.30
 	wagon.add_child(light)

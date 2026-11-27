@@ -199,9 +199,16 @@ func _reference_dressing() -> void:
 	_box(chair+Vector3(0,.463,0),Vector3(.49,.071,.47),OAK)
 	_box(chair+Vector3(0,.872,.224),Vector3(.45,.126,.038),WALNUT)
 	# A decorative overshirt echoes the reference; the pickup remains on its existing collision target.
-	_front(details,chair+Vector3(.012,.760,.256),Vector2(.35,.39),VEST)
-	_front(details,chair+Vector3(-.18,.716,.253),Vector2(.106,.32),VEST)
-	_front(details,chair+Vector3(.20,.716,.253),Vector2(.114,.28),VEST)
+	var cloth_uv := MeshArt.tile(VEST)
+	var cloth_top := PackedVector3Array([Vector3(-.225,.86,.242),Vector3(-.102,.956,.26),
+		Vector3(.083,.942,.277),Vector3(.221,.866,.247)])
+	var cloth_hem := PackedVector3Array([Vector3(-.253,.596,.27),Vector3(-.106,.54,.322),
+		Vector3(.106,.565,.298),Vector3(.213,.643,.275)])
+	for fold in 3:
+		var band := Rect2(cloth_uv.position+Vector2(cloth_uv.size.x*fold/3.0,0),
+			Vector2(cloth_uv.size.x/3.0,cloth_uv.size.y))
+		details.quad(chair+cloth_hem[fold],chair+cloth_hem[fold+1],
+			chair+cloth_top[fold+1],chair+cloth_top[fold],band)
 	_box(Vector3(1.78,1.68,-4.392),Vector3(.71,.53,.043),WALNUT)
 	_front(details,Vector3(1.78,1.68,-4.368),Vector2(.666,.485),SHADE)
 	_front(details,Vector3(1.67,1.73,-4.361),Vector2(.234,.143),PHOTO)
@@ -258,7 +265,7 @@ func _window(room: Node3D, morning: bool) -> void:
 		for fold in range(8):
 			var x: float = side*(1.33-float(fold)*.050)
 			var length: float = 1.26 + .023*(fold%3)
-			var depth: float = .125 if fold%2 == 0 else .065
+			var depth: float = .145 if fold%2 == 0 else .062
 			_box(Vector3(x,2.35-length*.5,-4.30+depth*.2),Vector3(.061,length,depth),CURTAIN)
 
 func _vest(art: RefCounted) -> void:

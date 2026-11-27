@@ -134,12 +134,12 @@ func _build_car() -> void:
 		var light := SpotLight3D.new()
 		light.name = "Left low beam" if x < 0.0 else "Right low beam"
 		light.position = Vector3(x,.535,-2.34)
-		light.rotation = Vector3(-.081 if x < 0.0 else -.061,-x*.14,0.0)
-		light.light_color = Color("#f2d9a6")
-		light.light_energy = 4.14
+		light.rotation = Vector3(-.118 if x < 0.0 else -.095,-x*.14,0.0)
+		light.light_color = Color("#f4ca8a")
+		light.light_energy = 5.1
 		light.spot_range = 56.0 if x < 0.0 else 62.0
 		light.spot_angle = 20.0
-		light.spot_angle_attenuation = 2.15
+		light.spot_angle_attenuation = 1.79
 		car.add_child(light)
 
 func _build_ui() -> void:
