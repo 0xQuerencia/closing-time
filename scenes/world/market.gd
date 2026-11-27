@@ -30,7 +30,7 @@ func _ready() -> void:
 	build_signage()
 	build_markers()
 	build_room_tone()
-	add_child(RetroEffect.new())
+	RetroEffect.install(self)
 	add_child(InteriorDressing.new())
 	add_child(ExteriorDressing.new())
 	add_child(FearsLook.new())

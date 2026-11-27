@@ -2,10 +2,11 @@ extends RefCounted
 ## The fascia is shared by the near market and the distant Route 9 frontage.
 
 const MeshArt = preload("res://scenes/opening/opening_mesh.gd")
-const ASPHALT = preload("res://assets/materials/opening/route9_asphalt.png")
+const ASPHALT = preload("res://assets/materials/opening/route9_night_asphalt.png")
 const PLASTER = preload("res://assets/models/exterior_plaster.png")
 const BRICK = preload("res://assets/models/shell_brick.png")
 const FONT = preload("res://assets/fonts/original/marlow.fnt")
+const SIGN_FACE = preload("res://assets/materials/opening/marlow_channel_enamel.png")
 const RED := Color("#a42d25")
 
 static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
@@ -26,29 +27,47 @@ static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 	edge_mat.albedo_color = Color("#b2a486")
 	edge.attach(parent,"Canopy drip edge and post boots",edge_mat)
 
-	label.font = FONT
-	label.font_size = 80
-	label.pixel_size = .008
-	label.outline_size = 0
-	label.modulate = RED
-	label.position = Vector3(-1.2,3.69,8.173)
-	label.shaded = false
-	if distant:
-		label.modulate = Color("#8a3123")
-	var width := FONT.get_string_size(label.text,HORIZONTAL_ALIGNMENT_LEFT,-1,label.font_size).x*label.pixel_size+.92
-	var backing := MeshArt.new()
-	backing.box(Vector3(label.position.x,3.69,8.108),Vector3(width,.81,.122))
-	var enamel := MeshArt.material(PLASTER)
-	enamel.albedo_color = Color("#dac9a8")
-	enamel.emission_enabled = true
-	enamel.emission = Color("#d9b988")
-	enamel.emission_energy_multiplier = .21 if distant else .11
-	backing.attach(parent,"Painted Marlow's sign board",enamel)
-
+	# Individually mounted, shallow letter cans rather than the old one-piece board.
+	var fitted := MeshArt.new()
+	var caps := MeshArt.new()
 	var hardware := MeshArt.new()
 	var lens := MeshArt.new()
+	var width := 12.34
+	for index in label.text.length():
+		var glyph := label.text.substr(index,1)
+		if glyph == " ":
+			continue
+		var center := Vector3(-1.2 + (index - (label.text.length()-1)*.5)*.72,3.72 + (index%3-1)*.019,8.136)
+		fitted.box(center-Vector3(0,0,.062),Vector3(.69,.72,.162))
+		caps.box(center+Vector3(0,0,.031),Vector3(.626,.644,.079))
+		var plate := Label3D.new()
+		plate.text = glyph
+		plate.font = FONT
+		plate.font_size = 80
+		plate.pixel_size = .0068
+		plate.outline_size = 0
+		plate.modulate = Color("#f0dfbc") if not distant else Color("#d7bc95")
+		plate.position = center+Vector3(0,0,.074)
+		plate.shaded = false
+		plate.double_sided = false
+		plate.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+		parent.add_child(plate)
+	label.hide()
+	var trim := MeshArt.material(PLASTER)
+	trim.albedo_color = Color("#5f2721")
+	fitted.attach(parent,"Marlow red-letter mountings",trim)
+	var enamel := MeshArt.material(SIGN_FACE)
+	enamel.emission_enabled = true
+	enamel.emission = RED
+	enamel.emission_energy_multiplier = .18 if distant else .23
+	caps.attach(parent,"Marlow enamel channel letters",enamel)
+
+	for x in [-6.0,-2.0,1.7]:
+		var pos := Vector3(x,3.135,7.79)
+		hardware.box(pos,Vector3(1.04,.106,.172))
+		lens.box(pos-Vector3(0,.052,0),Vector3(.91,.029,.121))
 	for offset in [-.348,.348]:
-		var pos := Vector3(label.position.x+width*offset,4.10,8.26)
+		var pos := Vector3(-1.2+width*offset,4.09,8.26)
 		hardware.box(pos,Vector3(.30,.092,.225))
 		lens.box(pos-Vector3(0,.053,0),Vector3(.232,.024,.158))
 		if not distant:
@@ -62,8 +81,8 @@ static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 			parent.add_child(light)
 	var dark := MeshArt.material(null)
 	dark.albedo_color = Color("#383b34")
-	hardware.attach(parent,"Sign lamp hoods",dark)
-	lens.attach(parent,"Sign lamp diffusers",warm(Color("#f1d8a1"),.68))
+	hardware.attach(parent,"Sign hoods and canopy tube housings",dark)
+	lens.attach(parent,"Sign and canopy diffusers",warm(Color("#f1d8a1"),.68))
 
 static func warm(color: Color, intensity: float) -> StandardMaterial3D:
 	var finish := MeshArt.material(null)

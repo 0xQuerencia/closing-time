@@ -1,5 +1,6 @@
 extends Node3D
 
+const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
 const LENGTH := 460.0
 const WagonArt = preload("res://scenes/opening/wagon_art.gd")
@@ -32,6 +33,7 @@ func _ready() -> void:
 	OpeningCheckpoint.write(progress.snapshot())
 	_build_road()
 	_build_car()
+	RetroEffect.install(self)
 	_build_ui()
 	_build_audio()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -134,10 +136,10 @@ func _build_car() -> void:
 		light.position = Vector3(x,.535,-2.34)
 		light.rotation = Vector3(-.081 if x < 0.0 else -.061,-x*.14,0.0)
 		light.light_color = Color("#f2d9a6")
-		light.light_energy = 3.85
-		light.spot_range = 52.0 if x < 0.0 else 57.0
-		light.spot_angle = 17.0
-		light.spot_angle_attenuation = 2.4
+		light.light_energy = 4.14
+		light.spot_range = 56.0 if x < 0.0 else 62.0
+		light.spot_angle = 20.0
+		light.spot_angle_attenuation = 2.15
 		car.add_child(light)
 
 func _build_ui() -> void:

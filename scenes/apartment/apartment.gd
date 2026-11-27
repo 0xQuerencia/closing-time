@@ -1,6 +1,7 @@
 extends Node3D
 
 const Player = preload("res://scenes/world/inspection_player.gd")
+const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const Progress = preload("res://gameplay/story/chapter_progress.gd")
 var progress := Progress.new()
 var player: CharacterBody3D
@@ -30,6 +31,7 @@ func _ready() -> void:
 		progress.restore(get_tree().get_meta("closing_time_opening_preview"))
 		get_tree().remove_meta("closing_time_opening_preview")
 	_build_room()
+	RetroEffect.install(self)
 	_build_ui()
 	player = CharacterBody3D.new()
 	player.set_script(Player)

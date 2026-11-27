@@ -7,12 +7,11 @@ uniform bool analog_enabled = true;
 uniform float pixel_size : hint_range(1.0, 3.0, 0.25) = 1.5;
 uniform float palette_steps : hint_range(16.0, 48.0, 1.0) = 32.0;
 uniform float dither_strength : hint_range(0.0, 0.4, 0.01) = 0.12;
-uniform float grain_strength : hint_range(0.0, 0.025, 0.001) = 0.002;
-uniform float scanline_strength : hint_range(0.0, 0.025, 0.001) = 0.001;
-uniform float vignette_strength : hint_range(0.0, 1.0, 0.01) = 0.24;
-uniform float saturation : hint_range(0.0, 1.0, 0.01) = 0.94;
-uniform float chroma_strength : hint_range(0.0, 1.0, 0.01) = 0.12;
-uniform float tape_wobble : hint_range(0.0, 0.001, 0.00005) = 0.0;
+uniform float grain_strength : hint_range(0.0, 0.025, 0.001) = 0.004;
+uniform float scanline_strength : hint_range(0.0, 0.025, 0.001) = 0.003;
+uniform float vignette_strength : hint_range(0.0, 1.0, 0.01) = 0.13;
+uniform float saturation : hint_range(0.0, 1.0, 0.01) = 0.96;
+uniform float chroma_strength : hint_range(0.0, 1.0, 0.01) = 0.58;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -28,12 +27,6 @@ void fragment() {
 		uv = clamp(snapped * SCREEN_PIXEL_SIZE, SCREEN_PIXEL_SIZE * 0.5, vec2(1.0) - SCREEN_PIXEL_SIZE * 0.5);
 	}
 	vec2 sample_uv = uv;
-	if (analog_enabled) {
-		// A barely visible line drift and sub-pixel color split suggest a worn
-		// consumer tape without obscuring the product labels or interaction UI.
-		float band = floor(SCREEN_UV.y * 192.0);
-		sample_uv.x += sin(TIME * 1.7 + band * 0.37) * tape_wobble;
-	}
 	vec3 color = textureLod(screen_texture, sample_uv, 0.0).rgb;
 	if (analog_enabled && chroma_strength > 0.0) {
 		float fringe = SCREEN_PIXEL_SIZE.x * chroma_strength;

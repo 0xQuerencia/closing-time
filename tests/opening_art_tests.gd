@@ -34,6 +34,12 @@ func _run() -> void:
 	check(title_rect.position.y >= 0.0 and menu_rect.end.y <= root.get_visible_rect().size.y,
 		"Title and menu fit at 640 by 360")
 	root.size = original_size
+	var tape := current_scene.get_node("WorldTape")
+	check(tape.layer == -1 and title.layer > tape.layer, "Tape finish is behind title/settings UI")
+	title.settings.retro = false
+	title.apply_settings()
+	check(not tape.is_drawn(), "Tape Off hides the screen-reading pass")
+
 	check(title.mode == "title" and title.press("start"), "New Game uses the normal title screen")
 	await scene_changed
 	room = current_scene
@@ -51,6 +57,14 @@ func _run() -> void:
 		"Warm practical light and cool window fill keep independent low-cost pools")
 
 	check(is_instance_valid(room.prologue), "New Game opens the prologue")
+	var apartment_tape := room.get_node("WorldTape")
+	check(not apartment_tape.is_drawn() and room.narration.get_parent().get_parent().layer > apartment_tape.layer,
+		"Off survives into the apartment with UI on a later layer")
+	apartment_tape.set_profile(true,true)
+	check(apartment_tape.is_drawn(), "Subtle can render in the apartment")
+	apartment_tape.set_profile(true,false)
+	check(not apartment_tape.is_drawn(), "Unsupported graphics profiles skip the screen pass")
+
 	_key(KEY_ESCAPE, true)
 	await process_frame
 	_key(KEY_ESCAPE, false)
@@ -100,9 +114,18 @@ func _run() -> void:
 		quit(1 if failures else 0)
 
 func _drive(road: Node) -> void:
+
+	var road_tape := road.get_node("WorldTape")
+	check(not road_tape.is_drawn() and road.caption_label.get_parent().get_parent().layer > road_tape.layer,
+		"Off survives into Route 9 and gameplay captions remain above the world pass")
 	var roadside: Node3D = road.get_node("Route 9 roadside")
 	check(roadside.get_child_count() > 20 and roadside.find_children("*","MultiMeshInstance3D",true,false).size() > 20,
 		"Route surfaces and batched roadside trees are present in the driving scene")
+	var posts := roadside.find_children("Batched roadside delineators","MeshInstance3D",true,false)
+	var one_surface := true
+	for post in posts:
+		one_surface = one_surface and post.mesh.get_surface_count() == 1 and post.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	check(posts.size() >= 16 and one_surface, "New road reflectors are batched without collisions or shadows")
 	var wagon: Node3D = road.car.get_node("Route9Wagon")
 	var steering: Node3D = road.wheel
 	var camera := root.get_camera_3d()
@@ -166,6 +189,12 @@ func _drive(road: Node) -> void:
 	check(parked.scene_file_path == "res://assets/models/opening/route9_wagon.glb"
 		and parked.position.is_equal_approx(Vector3(-4.9,-.12,13.0)),"Arrival reuses the exact GLB at the established lot position")
 	var shift = market.gameplay.director.production
+	var signs := market.find_children("Marlow enamel channel letters","MeshInstance3D",true,false)
+	check(signs.size() == 1 and (signs[0].get_active_material(0) as StandardMaterial3D).albedo_texture.resource_path.ends_with("marlow_channel_enamel.png"),
+		"Market arrival uses newly authored dimensional enamel signage")
+	var cards := market.find_children("Coffee placard and weekly specials card","MeshInstance3D",true,false)
+	check(cards.size() == 1 and cards[0].cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,
+		"Market reference window cards add no collision or shadow pass")
 	check(shift != null and shift.progress.current_id() == "handover"
 		and shift.progress.events.has("shift_read") and shift.progress.events.has("market_arrived")
 		and shift.progress.events.has("bypass_sign"),"Arrival forwards required and optional progress to handover")

@@ -95,3 +95,23 @@ for y in range(21,114,13):
     for x in range(19,114,13):
         d.polygon([(x-3,y),(x,y-3),(x+3,y),(x,y+3)],outline=(144,108,73))
 rug.save(OUT/'apartment_night_rug.png')
+
+enamel=plane(64,(137,44,32),4)
+d=ImageDraw.Draw(enamel)
+d.rectangle((1,1,62,62),outline=(105,52,33),width=2)
+d.line((3,3,61,3),fill=(177,67,49),width=2)
+for x,y in [(2,5),(58,2),(8,60),(55,61),(61,47)]:
+    d.rectangle((x,y,x+2,y+1),fill=(100,65,52))
+for y in range(8,60,9):
+    d.line((rng.randrange(2,7),y,rng.randrange(10,17),y),fill=(130,52,37))
+enamel.save(OUT/'marlow_channel_enamel.png')
+
+# Tileable wet asphalt: periodic ruts and sparse aggregate, not a baked reflection.
+asphalt=Image.new('RGB',(128,128)); px=asphalt.load()
+for y in range(128):
+    for x in range(128):
+        rut=4*math.sin(math.tau*x/128) + 2*math.sin(math.tau*(3*x+2*y)/128)
+        wave=4*math.sin(math.tau*(x-y)/128) + 1.8*math.cos(math.tau*(7*x+13*y)/128)
+        grit=rng.choice((-6,-5,-3,-2,0,1,2,4,4,7,12))
+        px[x,y]=mix((61,62,58),rut+wave+grit)
+asphalt.save(OUT/'route9_night_asphalt.png')

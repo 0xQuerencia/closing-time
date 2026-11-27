@@ -81,6 +81,7 @@ var _return_to := "title"
 var _guide_return := "game"
 var _ui_font: FontVariation
 const SETTINGS_PATH := "user://settings.cfg"
+const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 var persist_settings := false
 const SENSITIVITIES := [0.6, 1.0, 1.6]
 var _shadow_defaults: Dictionary = {}
@@ -190,12 +191,12 @@ func apply_settings() -> void:
 		var bus := AudioServer.get_bus_index(pair[0])
 		if bus >= 0:
 			AudioServer.set_bus_volume_db(bus,linear_to_db(maxf(.0001,float(settings[pair[1]]))))
-	for node in game.world.get_children():
-		var script: Script = node.get_script()
-		if script != null and script.resource_path.ends_with("retro_effects.gd"):
-			node.palette_enabled = false
-			node.analog_enabled = settings.retro
-			node._sync_toggles()
+	var post_allowed := bool(preset.post)
+	game.world.get_tree().set_meta(RetroEffect.POST_ALLOWED,post_allowed)
+	game.world.get_tree().set_meta(RetroEffect.TAPE_CHOICE,bool(settings.retro))
+	var tape := game.world.get_node_or_null("WorldTape")
+	if tape != null:
+		tape.set_profile(bool(settings.retro),post_allowed)
 	if not persist_settings or _force_safe_mode:
 		return
 	var file := ConfigFile.new()
@@ -212,7 +213,7 @@ func show_settings() -> void:
 	_return_to = mode if mode in ["title", "pause"] else _return_to
 	_clear_buttons()
 	_present("settings", "SETTINGS", "", "Saved automatically  /  safe mode is the crash fallback")
-	var first := _button("retro", "Retro filter: %s" % ("on" if settings.retro else "off"), func():
+	var first := _button("retro", "Tape finish: %s" % ("subtle" if settings.retro else "off"), func():
 		settings.retro = not settings.retro
 		apply_settings()
 		show_settings())

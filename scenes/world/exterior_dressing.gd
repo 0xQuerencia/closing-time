@@ -17,6 +17,7 @@ func _ready() -> void:
 	_build_sky()
 	_dress_store_sign()
 	_build_storefront_trim()
+	_build_reference_window_cards()
 	_build_entrance_sign()
 
 func _mat(color: Color, rough := 0.8, metallic := 0.0, emit := 0.0) -> StandardMaterial3D:
@@ -203,3 +204,25 @@ func _build_storefront_trim() -> void:
 	for pair in [[-4.14,9.78],[5.71,6.62]]:
 		apron.box(Vector3(pair[0],.058,6.153),Vector3(pair[1],.105,.105))
 	apron.attach(self,"Scuffed masonry kick plate",concrete)
+
+# Window signage does not alter the shell, its ray setup or entrance.
+func _build_reference_window_cards() -> void:
+	var plates := MeshArt.new()
+	var coffee_spot := Vector3(-7.55,2.129,6.17)
+	var sale_spot := Vector3(-2.28,1.15,6.14)
+	plates.box(coffee_spot,Vector3(1.49,.435,.032))
+	plates.box(sale_spot,Vector3(.57,.71,.030),Rect2(0,0,1,1),
+		Transform3D(Basis(Vector3.FORWARD,.045),sale_spot-Basis(Vector3.FORWARD,.045)*sale_spot))
+	var old_card := MeshArt.material(StoreArt.PLASTER)
+	old_card.albedo_color = Color("#e6d4a7")
+	plates.attach(self,"Coffee placard and weekly specials card",old_card)
+	_label("COFFEE",coffee_spot+Vector3(-.145,0,.027),72,.0039,Color("#47392b"))
+	_label("WEEKLY\nSPECIALS",sale_spot+Vector3(0,0,.026),44,.0026,Color("#484138")).rotation.z = .045
+	var cup := MeshArt.new()
+	var pos := coffee_spot+Vector3(.48,0,.029)
+	cup.box(pos,Vector3(.166,.097,.014))
+	cup.box(pos+Vector3(.102,.012,0),Vector3(.047,.012,.014))
+	cup.box(pos+Vector3(.125,-.015,0),Vector3(.014,.057,.014))
+	cup.box(pos+Vector3(.102,-.042,0),Vector3(.05,.013,.014))
+	cup.box(pos-Vector3(0,.067,0),Vector3(.225,.015,.015))
+	cup.attach(self,"Coffee cup mark",_mat(Color("#4a3a29")))

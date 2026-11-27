@@ -4,13 +4,13 @@ extends Node3D
 const MeshArt = preload("res://scenes/opening/opening_mesh.gd")
 const TreeArt = preload("res://scenes/opening/roadside_trees.gd")
 const StoreArt = preload("res://scenes/opening/storefront_art.gd")
-const ASPHALT = preload("res://assets/materials/opening/route9_asphalt.png")
+const ASPHALT = preload("res://assets/materials/opening/route9_night_asphalt.png")
 const AGGREGATE = preload("res://assets/materials/opening/route9_aggregate.png")
 const CENTER_LINE := -1.54
 const ROAD_LEFT := -5.37
 const ROAD_RIGHT := 2.29
-const SAFFRON := Color("#b39558")
-const CHALK := Color("#bfc0ab")
+const SAFFRON := Color("#caac65")
+const CHALK := Color("#d5d6bd")
 # Stand centers and radii are in metres along the spline and out from the road edge.
 const BEND_STANDS := [
 	[40.0,-10.0,13.0,6.3,9,4.0,8.8], [65.5,-7.7,12.0,4.6,14,4.1,9.7],
@@ -37,14 +37,20 @@ var rng := RandomNumberGenerator.new()
 var wet := MeshArt.material(ASPHALT,.5)
 var earth := MeshArt.material(AGGREGATE,.91)
 var road_paint := MeshArt.material(null,.69)
+var reflectors := MeshArt.material(null,.58)
+var post_finish := MeshArt.material(null,.80)
 
 func build(spline: Callable) -> void:
 	center_at = spline
 	rng.seed = 20061124
-	for finish in [wet,earth,road_paint]:
+	for finish in [wet,earth,road_paint,reflectors]:
 		finish.vertex_color_use_as_albedo = true
 		finish.vertex_color_is_srgb = true
 	wet.metallic_specular = .55
+	reflectors.emission_enabled = true
+	reflectors.emission = Color("#b86c40")
+	reflectors.emission_energy_multiplier = .095
+	post_finish.albedo_color = Color("#abac9a")
 	_environment()
 	for start in range(-32,512,32):
 		_section(float(start))
@@ -78,7 +84,7 @@ func _environment() -> void:
 	env.ambient_light_energy = .59
 	env.fog_enabled = true
 	env.fog_light_color = Color("#28353d")
-	env.fog_density = .0067
+	env.fog_density = .0075
 	env.fog_sky_affect = 0.0
 	var world := WorldEnvironment.new()
 	world.environment = env
@@ -120,9 +126,29 @@ func _section(start: float) -> void:
 			var x: float = ROAD_LEFT+.24 if side < 0 else ROAD_RIGHT-.24
 			_strip(lines,t+6.93,t+7.00,x-.028,x+.028,.025,.025,CHALK,1.0)
 		_strip(lines,t+4.85,t+4.948,CENTER_LINE-.043,CENTER_LINE+.043,.027,.027,SAFFRON,1.0)
+	_delineators(section,start)
 	_visible(asphalt.attach(section,"Wet asphalt and tire tracks",wet),155)
 	_visible(gravel.attach(section,"Shoulders, ditch and embankments",earth),155)
 	_visible(lines.attach(section,"Broken paint and cat's-eyes",road_paint),120)
+
+# Reflectors are visual only. Four small posts share two meshes in each road chunk.
+func _delineators(section: Node3D, start: float) -> void:
+	var bodies := MeshArt.new()
+	var faces := MeshArt.new()
+	for pos in [start + 7.2,start + 23.6]:
+		for side in [-1.0,1.0]:
+			var t: float = pos + (3.2 if side < 0.0 else 0.0)
+			var edge := ROAD_LEFT if side < 0.0 else ROAD_RIGHT
+			var offset: float = edge+side*.47
+			var bottom := _point(t,offset,_height(t,offset))
+			bodies.box(bottom+Vector3(0,.42,0),Vector3(.096,.86,.105))
+			var plate := bottom + Vector3(0,.695,.057)
+			faces.quad(plate+Vector3(-.049,-.051,0),plate+Vector3(.049,-.051,0),
+				plate+Vector3(.049,.051,0),plate+Vector3(-.049,.051,0),Rect2(),Color("#c96f4b"))
+			faces.quad(plate+Vector3(-.049,.051,.002),plate+Vector3(.049,.051,.002),
+				plate+Vector3(.049,.105,.002),plate+Vector3(-.049,.105,.002),Rect2(),Color("#efc38c"))
+	_visible(bodies.attach(section,"Batched roadside delineators",post_finish),106)
+	_visible(faces.attach(section,"Inset amber reflector plates",reflectors),94)
 
 func _chunk(label: String, start: float) -> Node3D:
 	var chunk := Node3D.new()
