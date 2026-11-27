@@ -95,6 +95,7 @@ func _capture() -> void:
 	market.gameplay.hud.visible = false
 	market.gameplay.phone_ui.visible = false
 	market.gameplay.flow.hide_all()
+	_market_profile_metadata("first-market-boot",market,market.player.camera)
 	if market.player.position.distance_to(Vector3(1.85,-.1,15.5)) > .051:
 		_fail("Market arrival moved")
 	_budget("market_lot",market.get_node("OriginalExterior"))
@@ -235,8 +236,39 @@ func _shot(label: String, camera: Camera3D, focus: Vector3) -> void:
 		_fail("Could not save "+label)
 	if label in ["03-cockpit","04-night-road","Route-9-roadside"] and draws > 70.0:
 		_fail("%s exceeds the 70-draw-call road budget" % label)
+	if label in ["Marlows-market-arrival","05-arrival-spawn","05b-market-walked-view","02-car-exterior"]:
+		_market_profile_metadata(label,current_scene,camera)
 	if label in ["05-arrival-spawn","05b-market-walked-view"] and draws > 1800.0:
 		_fail("%s exceeds the 1800-draw-call default Market budget" % label)
+
+# Log the real sequential capture state without reapplying settings, changing
+# camera state, or touching the performance assertions above.
+func _market_profile_metadata(label: String, market: Node3D, camera: Camera3D) -> void:
+	if headless:
+		return
+	var flow: FlowUI = market.gameplay.flow
+	var settings := ConfigFile.new()
+	var prefs_exists := settings.load(FlowUI.SETTINGS_PATH) == OK
+	var lights := []
+	for n in market.find_children("*","Light3D",true,false):
+		var lamp := n as Light3D
+		if lamp.is_visible_in_tree() and lamp.shadow_enabled:
+			lights.append([str(lamp.name),str(lamp.global_position),lamp.light_energy])
+	var view := root.get_viewport_rid()
+	var subviews := []
+	for n in root.find_children("*","SubViewport",true,false):
+		var v := n as SubViewport
+		subviews.append([v.name,v.render_target_update_mode,RenderingServer.viewport_get_render_info(
+			v.get_viewport_rid(),RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)])
+	var enabled_3d := RenderingServer.viewport_get_render_info(view,RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
+	var renderer_total := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+	print("MARKET-SEQUENTIAL ",JSON.stringify({"view":label,"mode":flow.settings.graphics_mode,
+		"prefs_exists":prefs_exists,"persisted_preset":settings.get_value("view","graphics_mode","none") if prefs_exists else "none",
+		"render_mode":RenderingServer.get_current_rendering_method(),"scale":root.scaling_3d_scale,
+		"msaa":root.msaa_3d,"atlas":root.positional_shadow_atlas_size,"pressed":Input.is_physical_key_pressed(KEY_W),
+		"camera_layers":camera.cull_mask,"camera_current":camera.current,"paused":paused,"retro":flow.settings.retro,
+		"production":market.gameplay.director.production != null,"subviews":subviews,"shadow_sources":lights,
+		"viewport3d_draws":enabled_3d,"renderer_total_draws":renderer_total}))
 
 func _budget(label: String, scene: Node) -> void:
 	var meshes := {}
