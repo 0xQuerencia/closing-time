@@ -54,8 +54,18 @@ func _run() -> void:
 	var original_retro := bool(flow.settings.retro)
 	# No changes made to a player's persisted preferences, even in a reused capture environment.
 	flow.persist_settings = false
+	var pair_only := OS.get_environment("CLOSING_MARKET_PAIR_ONLY") == "1"
+	print("ISOLATION renderer=", RenderingServer.get_current_rendering_method(),
+		" fixed_fps_args=", OS.get_cmdline_args(), " camera_layers=", point.cull_mask)
+	await _sample("startup-live",flow,lights)
 	paused = true
-	await _sample("00-unchanged-startup",flow,lights)
+	await _sample("startup-paused",flow,lights)
+	paused = false
+	await _sample("startup-resumed",flow,lights)
+	if pair_only:
+		await market.finish_run(1 if failed else 0)
+		return
+	paused = true
 	for mode in ["balanced","performance","safe","quality"]:
 		flow.settings.graphics_mode = mode
 		flow.apply_settings()
@@ -140,7 +150,13 @@ func _sample(label: String, flow: FlowUI, lights: Array) -> void:
 	var visible_draws := RenderingServer.viewport_get_render_info(view,RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 	var shadow_draws := RenderingServer.viewport_get_render_info(view,RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 	var canvas_draws := RenderingServer.viewport_get_render_info(view,RenderingServer.VIEWPORT_RENDER_INFO_TYPE_CANVAS,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
+	var all_views := []
+	for node in root.find_children("*", "SubViewport", true, false):
+		var child_view := node as SubViewport
+		all_views.append([child_view.name,child_view.render_target_update_mode,RenderingServer.viewport_get_render_info(
+			child_view.get_viewport_rid(),RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)])
 	print("MARKET-PROFILE ",JSON.stringify({"view":label,"mode":str(flow.settings.graphics_mode),
+		"paused":paused,"subviews":all_views,"monitor_total_draws":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"scale":root.scaling_3d_scale,"msaa":root.msaa_3d,"lights":active,"shadow_lights":shadows,
 		"total_draws":global_draws,"visible_draws":visible_draws,"shadow_draws":shadow_draws,
 		"canvas_draws":canvas_draws,"render_median_ms":durations[SAMPLES >> 1],

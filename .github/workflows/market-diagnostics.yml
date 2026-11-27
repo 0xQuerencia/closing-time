@@ -32,6 +32,14 @@ jobs:
             timeout --signal=TERM 360 xvfb-run -a -s '-screen 0 1440x900x24' godot --display-driver x11 \
               --audio-driver Dummy --path . --resolution 1280x800 --script tools/opening/profile_market_isolation.gd \
               2>&1 | tee build/market-isolation/market-render.log
+      - name: Compare live versus paused on the exact capture clock
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/market-isolation/fixed
+          export XDG_DATA_HOME="$RUNNER_TEMP/fixed-data" XDG_CONFIG_HOME="$RUNNER_TEMP/fixed-config" XDG_CACHE_HOME="$RUNNER_TEMP/fixed-cache"
+          export CLOSING_MARKET_DIAGNOSTIC_DIR="$PWD/build/market-isolation/fixed" CLOSING_MARKET_PAIR_ONLY=1
+          LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 timeout --signal=TERM 170 xvfb-run -a -s '-screen 0 1440x900x24 -nolisten tcp' godot --display-driver x11 --fixed-fps 60 --audio-driver Dummy --path . --resolution 1280x800 --script tools/opening/profile_market_isolation.gd 2>&1 | tee build/market-isolation/fixed/market-render.log
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
