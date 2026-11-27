@@ -98,6 +98,11 @@ func _build_puddles() -> void:
 		var pose := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(rng.randf_range(1.18,2.03),1.0,rng.randf_range(5.75,8.15)))
 		streaks.append(Transform3D(pose,Vector3(x,-.109,rng.randf_range(12.56,13.91))))
 	_batch_water("Window light on broken wet asphalt",glow_mat,streaks)
+	var lot_fill := glow_mat.duplicate() as ShaderMaterial
+	lot_fill.set_shader_parameter("strength",.54)
+	var spread := Basis(Vector3.RIGHT,-PI*.5).scaled(Vector3(11.5,1.0,9.6))
+	var lit_patch: Array[Transform3D] = [Transform3D(spread,Vector3(-.25,-.109,17.2))]
+	_batch_water("Baked shallow warm lot sheen",lot_fill,lit_patch)
 
 func _batch_water(label: String, finish: Material, poses: Array[Transform3D]) -> void:
 	var tile := QuadMesh.new()

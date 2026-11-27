@@ -53,15 +53,15 @@ func _capture() -> void:
 	road.set_process(false)
 	_hide_canvas(road)
 	var driver := root.get_camera_3d()
-	if driver.position.distance_to(Vector3(-.38,1.24,.22)) > .001:
+	if driver.position.distance_to(Vector3(-.38,1.19,.10)) > .001:
 		_fail("Driver eye moved")
 	_budget("route9",road)
 	_drive_pose(road,48)
-	driver.rotation.x = -.16
+	driver.rotation.x = road.DRIVER_PITCH
 	await _shot("03-cockpit",driver,road.car.to_global(Vector3(-.38,.91,-.40)))
 	await _tape_pair(road,"03b-cockpit-subtle",driver,road.car.to_global(Vector3(-.38,.91,-.40)))
 	_drive_pose(road,106)
-	driver.rotation.x = 0
+	driver.rotation.x = road.DRIVER_PITCH
 	await _shot("04-night-road",driver,Vector3(road._center(124),0,-124))
 	var overlook := Camera3D.new()
 	road.add_child(overlook)
@@ -95,7 +95,7 @@ func _capture() -> void:
 	market.gameplay.hud.visible = false
 	market.gameplay.phone_ui.visible = false
 	market.gameplay.flow.hide_all()
-	if market.player.position.distance_to(Vector3(1.85,-.1,12.55)) > .051:
+	if market.player.position.distance_to(Vector3(1.85,-.1,15.5)) > .051:
 		_fail("Market arrival moved")
 	_budget("market_lot",market.get_node("OriginalExterior"))
 	_budget("market_dressing",market.get_node("ExteriorDressing"))
@@ -111,6 +111,7 @@ func _capture() -> void:
 	RenderingServer.viewport_set_disable_2d(root.get_viewport_rid(),false)
 	market.player.camera.make_current()
 	await _shot("05-arrival-spawn",market.player.camera,Vector3(1.70,1.42,6.08))
+	await _walk_market_comparison(market)
 	framing.make_current()
 	framing.fov = 58
 	framing.position = Vector3(-1.79,1.29,18.42)
@@ -125,6 +126,41 @@ func _capture() -> void:
 		await market.finish_run(1)
 	else:
 		await market.finish_run(0)
+
+# QA moves the actual character through the parking lot. Only the mouse aim is
+# prescribed; movement is processed by the real controller, collision and floor.
+func _walk_market_comparison(market: Node3D) -> void:
+	var walker: CharacterBody3D = market.player
+	var view: Camera3D = walker.camera
+	walker.require_mouse_capture = false
+	walker.enabled = true
+	walker.rotation.y = 0.0
+	root.disable_3d = true
+	var back_ok := await _walk_key(KEY_S,func(): return walker.position.z >= 20.2)
+	var left_ok := await _walk_key(KEY_A,func(): return walker.position.x <= -3.05)
+	root.disable_3d = false
+	walker.enabled = false
+	if not back_ok or not left_ok or not walker.is_on_floor():
+		_fail("Could not physically reach the parking lot comparison angle")
+		return
+	var storefront := Vector3(-.42,1.74,7.18)
+	view.look_at(storefront)
+	view.make_current()
+	print("PLAYER REACHED market comparison=",walker.position," collision_floor=",walker.is_on_floor())
+	await _shot("05b-market-walked-view",view,Vector3(1.7,1.42,6.08))
+
+func _walk_key(key: Key, reached: Callable) -> bool:
+	var event := InputEventKey.new()
+	event.physical_keycode = key
+	event.pressed = true
+	Input.parse_input_event(event)
+	for frame in 320:
+		if reached.call():
+			break
+		await physics_frame
+	event.pressed = false
+	Input.parse_input_event(event)
+	return reached.call()
 
 func _scene(path: String) -> void:
 	var result := change_scene_to_file(path)
@@ -199,6 +235,8 @@ func _shot(label: String, camera: Camera3D, focus: Vector3) -> void:
 		_fail("Could not save "+label)
 	if label in ["03-cockpit","04-night-road","Route-9-roadside"] and draws > 70.0:
 		_fail("%s exceeds the 70-draw-call road budget" % label)
+	if label in ["05-arrival-spawn","05b-market-walked-view"] and draws > 1800.0:
+		_fail("%s exceeds the 1800-draw-call default Market budget" % label)
 
 func _budget(label: String, scene: Node) -> void:
 	var meshes := {}

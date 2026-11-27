@@ -307,6 +307,13 @@ func lamp(pos: Vector3, color: Color, energy: float, distance: float, shadows: b
 	light.light_color = color
 	light.light_energy = energy
 	light.shadow_enabled = shadows
+	# Balanced keeps one shadow anchor per practical zone. Wide fills still illuminate
+	# the lot and shelves, but only Quality renders those overlapping shadow maps.
+	var door_anchor := pos.distance_to(Vector3(1.7,2.65,7.0)) < .08
+	var shelf_anchor := pos.distance_to(Vector3(-2.0,2.85,.1)) < .08
+	var office_anchor := pos.distance_to(Vector3(6.9,2.84,-4.0)) < .08
+	if shadows and not (door_anchor or shelf_anchor or office_anchor):
+		light.add_to_group("quality_fill_shadows")
 	light.shadow_bias = 0.025
 	light.light_size = 0.0
 	light.light_specular = 0.3
@@ -404,7 +411,7 @@ func build_markers() -> void:
 		markers.add_child(marker)
 	var arrival := Marker3D.new()
 	arrival.name = "MarketArrival"
-	arrival.position = Vector3(1.85, -.1, 12.55)
+	arrival.position = Vector3(1.85, -.1, 15.5)
 	arrival.rotation.y = .04
 	arrival.add_to_group("MarketArrival")
 	markers.add_child(arrival)

@@ -130,8 +130,8 @@ func _drive(road: Node) -> void:
 	var wagon: Node3D = road.car.get_node("Route9Wagon")
 	var steering: Node3D = road.wheel
 	var camera := root.get_camera_3d()
-	check(camera.position.is_equal_approx(Vector3(-.38,1.24,.22)) and is_equal_approx(camera.fov,75.0),
-		"Driver camera retains the original mount and FOV")
+	check(camera.position.is_equal_approx(Vector3(-.38,1.19,.10)) and is_equal_approx(camera.fov,75.0) and is_equal_approx(camera.rotation.x,-.20),
+		"Driver uses the recalibrated cockpit mount with a wider unobstructed windshield")
 	check(wagon.has_node("SpeedNeedle") and wagon.has_node("SteeringWheel"),"Authored cockpit is active")
 	var tire: MeshInstance3D
 	var tire_nodes := wagon.find_children("RoadWheel*", "MeshInstance3D",false,false)
@@ -206,10 +206,10 @@ func _drive(road: Node) -> void:
 	check(market_save.get("checkpoint") == "shift_start" and market_save.production.chapter == "handover"
 		and market_save.production.events.has("market_arrived") and OpeningCheckpoint.read().is_empty(),
 		"Market save takes over from the opening checkpoint at handover")
-	check(market.player.position.distance_to(Vector3(1.85,-.1,12.55)) < .05,"Original market arrival spawn")
+	check(market.player.position.distance_to(Vector3(1.85,-.1,15.5)) < .05,"Market starts in the same clear lane with sightline to canopy and door")
 	market.player.require_mouse_capture = false
 	_key(KEY_W,true)
-	for i in 160:
+	for i in 258:
 		await physics_frame
 	_key(KEY_W,false)
 	check(market.player.position.z < 8.0,"Walk from the parked wagon up the curb ramp")
