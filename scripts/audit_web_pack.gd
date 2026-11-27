@@ -28,6 +28,10 @@ func _initialize() -> void:
 	var failures := 0
 	var paths: Array[String] = []
 	_walk("res://assets",paths)
+	for folder in ["build", "local"]:
+		if DirAccess.dir_exists_absolute("res://" + folder):
+			push_error("Workspace output directory packaged: " + folder)
+			failures += 1
 	for path in paths:
 		for pattern in FORBIDDEN:
 			if path.trim_prefix("res://").begins_with(pattern):
