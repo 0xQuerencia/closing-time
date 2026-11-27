@@ -73,13 +73,31 @@ func blackout() -> void:
 	director.clock.advance_to(0, 14)
 	sec.power.trip_all()
 	director._record("blackout")
-	game.tasks.add_task("power", "Restore the power", [
+	var production := director.production != null
+	var task_title := "Restore power or leave through the front" if production else "Restore the power"
+	game.tasks.add_task("power", task_title, [
 		{"id": "cover", "text": "Open the breaker panel", "guide": "Go through the stockroom into the narrow rear hall. Press E on the gray breaker box cover."},
 		{"id": "main", "text": "Switch the main on", "guide": "With the cover open, use E on the large main breaker."},
 		{"id": "security", "text": "Switch the security breaker on", "guide": "Use E on the smaller security breaker beside the main."}], 140)
-	game.interactor.message.emit("Power's out.  T  phone light")
-	director._later(3.0, func(): director._text("dina_6", "Dina", "The panel says you're on battery. Breaker box is in the back hall past the stockroom. Try the main.", 0, 15))
+	var caption := "Power's out. T for the phone light. The front exit is still usable." if production else "Power's out.  T  phone light"
+	game.interactor.message.emit(caption)
+	director._later(3.0, _send_blackout_text)
 	director._later(entry_fallback, leon_enters)
+
+func _send_blackout_text() -> void:
+	if director.production != null and director.step != StoryDirector.Step.BLACKOUT:
+		return
+	var message := "The panel says you're on battery. Breaker box is in the back hall past the stockroom. Try the main."
+	if director.production != null:
+		message = "The panel says you're on battery. The breaker is by the stockroom. If you're scared, leave through the front."
+	director._text("dina_6", "Dina", message, 0, 15)
+
+func _physics_process(_delta: float) -> void:
+	if director.production == null or director.step != StoryDirector.Step.BLACKOUT or not director.threat.reached_front_exit():
+		return
+	director._record("power_bypassed")
+	game.tasks.retire("power")
+	finish(true)
 
 func _on_cover_opened() -> void:
 	if director.step == StoryDirector.Step.BLACKOUT:
@@ -110,6 +128,8 @@ func power_back() -> void:
 
 ## Unlocks with the spare key, opens the rear door and stops just inside. Spooked off if the player walks up.
 func leon_enters() -> void:
+	if director.production != null and director._fired.has("security_done"):
+		return
 	if not director._once("leon_rear_entry"):
 		return
 	var leon := sec.spawn_intruder()
@@ -159,7 +179,7 @@ func camera_walk() -> void:
 	director.flags["rear_cam_lost"] = true
 	finish()  # he does not leave: the threat beat takes him over, still standing in the hall
 
-func finish() -> void:
+func finish(left_in_blackout := false) -> void:
 	if not director._once("security_done"):
 		return
 	director._set_step(StoryDirector.Step.SECURITY_DONE)
@@ -167,5 +187,8 @@ func finish() -> void:
 	game.tasks.complete_objective("rear_cam", "look")
 	director.flags["m4_complete"] = true
 	director._record("security_done")
+	if left_in_blackout:
+		director.threat.end("escape")
+		return
 	director._later(2.0, func(): director._text("dina_8", "Dina", "Police are fifteen minutes out. Don't go looking for him. Get out the front, or lock the office and call them back. I'm on my way.", 0, 29))
 	director._later(1.5, director.threat.begin)
