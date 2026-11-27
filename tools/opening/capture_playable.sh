@@ -5,9 +5,12 @@ project="$(realpath -- "${1:?Pass a Godot project directory}")"
 out="$(realpath -m -- "${2:?Pass a capture output directory}")"
 script="$(realpath -- "$(dirname -- "$0")/capture_playable.gd")"
 mode="${3:-}"
-mkdir -m 700 -p -- "$out" "$out/xdg" "$out/runtime"
-export XDG_DATA_HOME="$out/xdg" XDG_CONFIG_HOME="$out/xdg" XDG_CACHE_HOME="$out/xdg"
-export XDG_RUNTIME_DIR="$out/runtime" CLOSING_OPENING_CAPTURE_DIR="$out"
+mkdir -m 700 -p -- "$out"
+profile="$(mktemp -d)"
+trap 'rm -rf -- "$profile"' EXIT
+mkdir -m 700 -- "$profile/data" "$profile/config" "$profile/cache" "$profile/runtime"
+export XDG_DATA_HOME="$profile/data" XDG_CONFIG_HOME="$profile/config" XDG_CACHE_HOME="$profile/cache"
+export XDG_RUNTIME_DIR="$profile/runtime" CLOSING_OPENING_CAPTURE_DIR="$out"
 unset DISPLAY WAYLAND_DISPLAY WAYLAND_SOCKET
 args=(--path "$project" --audio-driver Dummy --resolution 1280x800 --fixed-fps 60 --script "$script")
 if [[ "$mode" == --headless ]]; then

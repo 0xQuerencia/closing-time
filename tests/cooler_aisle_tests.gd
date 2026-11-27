@@ -70,6 +70,9 @@ func _test() -> void:
 	market.gameplay.security.power.flip("lights", true)
 	_check(tube.emission_energy_multiplier == level, "the breaker restores the cooler tubes")
 	var flow: FlowUI = market.gameplay.flow
+	# This exercises all four runtime modes and deliberately finishes on Quality.
+	# Do not write those temporary test choices back to the player's preferences.
+	flow.persist_settings = false
 	var stock: MultiMeshInstance3D = batches[0]
 	var stock_source: BaseMaterial3D = stock.multimesh.mesh.surface_get_material(0)
 	for mode in FlowUI.GRAPHICS_MODES:

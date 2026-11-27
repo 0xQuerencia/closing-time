@@ -67,6 +67,10 @@ jobs:
         run: |
           sudo apt-get install -y xvfb xauth libgl1-mesa-dri
           mkdir -p build/opening-frames
+          profile="$(mktemp -d "$RUNNER_TEMP/closing-game-opening.XXXXXX")"
+          mkdir -p "$profile/data" "$profile/config" "$profile/cache"
+          install -d -m 700 "$profile/runtime"
+          export XDG_DATA_HOME="$profile/data" XDG_CONFIG_HOME="$profile/config" XDG_CACHE_HOME="$profile/cache" XDG_RUNTIME_DIR="$profile/runtime"
           CLOSING_OPENING_CAPTURE_DIR="$PWD/build/opening-frames" LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
             timeout --signal=TERM 360 xvfb-run -a -s '-screen 0 1440x900x24' \
             godot --display-driver x11 --audio-driver Dummy \

@@ -16,6 +16,10 @@ func _capture() -> void:
 		quit(2)
 		return
 	headless = DisplayServer.get_name() == "headless"
+	if FileAccess.file_exists(FlowUI.SETTINGS_PATH):
+		printerr("Opening capture requires a fresh user-data directory, not saved settings")
+		quit(2)
+		return
 	DirAccess.make_dir_recursive_absolute(output)
 	root.size = Vector2i(1280,800)
 	root.title = "Closing Time opening capture"
@@ -96,6 +100,9 @@ func _capture() -> void:
 	market.gameplay.phone_ui.visible = false
 	market.gameplay.flow.hide_all()
 	_market_profile_metadata("first-market-boot",market,market.player.camera)
+	var native_flow: FlowUI = market.gameplay.flow
+	if str(native_flow.settings.graphics_mode) != "balanced" or not bool(native_flow.settings.retro):
+		_fail("Fresh native opening must boot in Balanced with Tape Subtle; Quality is profiled separately")
 	if market.player.position.distance_to(Vector3(1.85,-.1,15.5)) > .051:
 		_fail("Market arrival moved")
 	_budget("market_lot",market.get_node("OriginalExterior"))
