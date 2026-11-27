@@ -59,8 +59,9 @@ func _collect_tubes(world: Node3D) -> void:
 			var mat := mesh.surface_get_material(surface) as StandardMaterial3D
 			if mat != null and mat.emission_enabled and mat.resource_name == "tube":
 				var own := mat.duplicate() as StandardMaterial3D
-				own.emission = Color("#e6e8cb")
-				own.emission_energy_multiplier = .85
+				if not mi.is_in_group("authored_warm_tube"):
+					own.emission = Color("#e6e8cb")
+					own.emission_energy_multiplier = .85
 				(mi as MeshInstance3D).set_surface_override_material(surface, own)
 				_emissive.append(own)
 				_emissive_base[own] = own.emission_energy_multiplier

@@ -7,6 +7,7 @@ const TreeArt = preload("res://scenes/opening/roadside_trees.gd")
 const StoreArt = preload("res://scenes/opening/storefront_art.gd")
 const SIGN_RED := Color(0.62, 0.07, 0.06)
 const BOARD_CREAM := Color(0.8, 0.74, 0.6)
+var _water_finish: ShaderMaterial
 
 func _ready() -> void:
 	name = "ExteriorDressing"
@@ -75,19 +76,26 @@ func _build_puddles() -> void:
 	# Three drainage depressions, not a transparent veil spread over the lot.
 	# Each polygon's outline is real geometry. Only the soft boundary is blended.
 	var water := MeshArt.new()
-	_append_puddle(water,Vector2(-1.38,15.23),Vector2(3.43,3.88),1)
-	_append_puddle(water,Vector2(3.15,13.0),Vector2(1.81,2.89),3)
-	_append_puddle(water,Vector2(-6.15,12.16),Vector2(1.78,2.38),6)
-	var finish := ShaderMaterial.new()
-	finish.shader = preload("res://scenes/world/wet_reflection.gdshader")
-	water.attach(self,"Three standing-water depressions",finish)
+	# Patch placement follows the low parking depressions that catch the real
+	# canopy fixtures from arrival, not long transparent rectangles on their edges.
+	_append_puddle(water,Vector2(-1.9,14.62),Vector2(2.32,1.78),1)
+	_append_puddle(water,Vector2(.89,12.65),Vector2(1.48,1.21),3)
+	_append_puddle(water,Vector2(-5.45,13.84),Vector2(1.41,1.52),6)
+	_water_finish = ShaderMaterial.new()
+	_water_finish.shader = preload("res://scenes/world/wet_reflection.gdshader")
+	water.attach(self,"Three standing-water depressions",_water_finish)
+
+func bind_store_circuit(grid: PowerGrid) -> void:
+	var sync := func(): _water_finish.set_shader_parameter("windows_lit",grid.powered("lights"))
+	grid.changed.connect(sync)
+	sync.call()
 
 func _append_puddle(water, at: Vector2, radius: Vector2, phase: int) -> void:
 	var rim: Array[Vector3] = []
 	var uv: Array[Vector2] = []
 	for i in 18:
 		var angle := TAU*float(i)/18.0
-		var r := 1.0+.11*sin(angle*3.0+float(phase))+.07*cos(angle*5.0-float(phase))
+		var r := 1.0+.17*sin(angle*3.0+float(phase))+.09*cos(angle*5.0-float(phase))
 		var unit := Vector2(cos(angle),sin(angle))*r
 		rim.append(Vector3(at.x+unit.x*radius.x,-.116,at.y+unit.y*radius.y))
 		uv.append(Vector2(.5+unit.x*.37,.5+unit.y*.37))

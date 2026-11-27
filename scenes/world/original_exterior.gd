@@ -45,8 +45,8 @@ func _build_lot() -> void:
 	# individual pools, entirely on the real ground mesh.
 	asphalt.emission_enabled = true
 	asphalt.emission_texture = ASPHALT
-	asphalt.emission = Color("#514031")
-	asphalt.emission_energy_multiplier = .31
+	asphalt.emission = Color("#494139")
+	asphalt.emission_energy_multiplier = .25
 	var paving := MeshArt.new()
 	# The one-metre grid gives low-tier vertex lighting enough samples for the lot's practical pools.
 	for x in range(-14, 14):

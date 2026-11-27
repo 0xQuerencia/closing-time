@@ -1,5 +1,6 @@
 extends Node3D
 ## Static environment composition and reproducible M1 rendering hooks.
+const FrontageMesh = preload("res://scenes/opening/opening_mesh.gd")
 const Player = preload("res://scenes/world/inspection_player.gd")
 const RetroEffect = preload("res://scenes/world/retro_effects.gd")
 const RetroMaterials = preload("res://scenes/world/retro_material_style.gd")
@@ -199,6 +200,8 @@ func add_gameplay(auto_customers: bool) -> void:
 	add_child(gameplay)
 	gameplay.setup(self, player, auto_customers)
 	cooler.bind_power(gameplay.security.power)
+	var frontage := get_node("ExteriorDressing") as ExteriorDressing
+	frontage.bind_store_circuit(gameplay.security.power)
 	ambient_dread.bind_gameplay(gameplay)
 
 func build_original_props() -> void:
@@ -367,12 +370,51 @@ func build_lighting() -> void:
 		lamp(Vector3(x,2.65,7.0),Color(1,.85,.62),1.83 if x == 1.7 else 1.28,6.35,true)
 	lamp(Vector3(-10,5.35,14.5),Color(1,.72,.43),3.05,17,true)
 	lamp(Vector3(11,5.35,22.5),Color(.63,.70,.95),2.35,16,true)
+	_build_vertical_practicals()
 	for x in [-4,3]:
 		lamp(Vector3(x,4.08,7.65),Color(1,.94,.82),1.4,6.0)
 	# A warm, shadowless service practical, powered by the real store circuit.
 	lamp(Vector3(-7.55,2.52,5.28),Color(1.0,.78,.48),1.52,3.75)
 	for x in [-6.45, -1.66]:
 		lamp(Vector3(x,1.9,-4.88),Color(.78,.9,.95),.40,3.45)
+
+# Exterior wall washers are mounted in the actual canopy tubes and remain on
+# the exterior circuit. The three visible interior strips follow the store breaker.
+func _build_vertical_practicals() -> void:
+	var centres := PackedFloat32Array([-6.0,-2.0,1.7])
+	var faces := PackedFloat32Array([-6.83,-2.21,2.36])
+	for i in centres.size():
+		var wash := SpotLight3D.new()
+		wash.name = "CanopyWallWash%d" % (i+1)
+		wash.position = Vector3(centres[i],3.025,7.78)
+		wash.light_color = Color("#ffd1a0")
+		wash.light_energy = 1.68 if i != 2 else 1.96
+		wash.light_specular = .19
+		wash.shadow_enabled = false
+		wash.spot_range = 4.25
+		wash.spot_attenuation = 1.28
+		wash.spot_angle = 38
+		wash.spot_angle_attenuation = .49
+		add_child(wash)
+		wash.look_at(Vector3(faces[i],1.43,6.08))
+	var housings := FrontageMesh.new()
+	var lenses := FrontageMesh.new()
+	for x in [-5.54,-1.66,1.65]:
+		var at := Vector3(x,2.719,4.78)
+		housings.box(at,Vector3(1.17,.075,.22))
+		lenses.box(at-Vector3(0,.042,.015),Vector3(1.065,.043,.174))
+		lamp(Vector3(x,2.61,4.78),Color("#ffe0a3"),.89,3.65)
+	var housing := FrontageMesh.material(null)
+	housing.albedo_color = Color("#5f5a44")
+	housings.attach(self,"Front window tube housings",housing)
+	var lens := FrontageMesh.material(null)
+	lens.resource_name = "tube"
+	lens.albedo_color = Color("#b7a270")
+	lens.emission_enabled = true
+	lens.emission = Color("#ffc878")
+	lens.emission_energy_multiplier = 1.35
+	var actual := lenses.attach(self,"Powered warm front window tubes",lens)
+	actual.add_to_group("authored_warm_tube")
 
 func text_label(value: String, pos: Vector3, size: int, pixel: float, color: Color, angle: float = 0, unshaded: bool = false) -> void:
 	var label := Label3D.new()

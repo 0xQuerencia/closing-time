@@ -21,6 +21,6 @@ void fragment() {
 	float wear = pow(clamp(texel.r*1.21+.17,.14,1.0),.65);
 	ALBEDO = texel * vec3(1.03,.89,.75);
 	ROUGHNESS = .93;
-	float bounce = .043 + .16*max(at_right, max(at_centre,at_left)) + .070*right_edge + .07*fascia;
+	float bounce = .033 + .11*max(at_right, max(at_centre,at_left)) + .038*right_edge + .10*fascia;
 	EMISSION = (vec3(.82,.44,.25)*bounce + vec3(.08,.095,.087)*fascia*.10)*wear;
 }

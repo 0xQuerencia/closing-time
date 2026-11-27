@@ -102,7 +102,8 @@ static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 	for x in [-6.0,-2.0,1.7]:
 		var pos := Vector3(x,3.135,7.79)
 		hardware.box(pos,Vector3(1.04,.106,.172))
-		lens.box(pos-Vector3(0,.052,0),Vector3(.91,.029,.121))
+		var size := Vector3(.91,.029,.121) if distant else Vector3(1.02,.061,.161)
+		lens.box(pos-Vector3(0,.052,0),size)
 	for offset in [-.348,.348]:
 		var pos := Vector3(-1.2+width*offset,4.09,8.26)
 		hardware.box(pos,Vector3(.30,.092,.225))
@@ -119,7 +120,8 @@ static func fascia(parent: Node3D, label: Label3D, distant: bool) -> void:
 	var dark := MeshArt.material(null)
 	dark.albedo_color = Color("#383b34")
 	hardware.attach(parent,"Sign hoods and canopy tube housings",dark)
-	lens.attach(parent,"Sign and canopy diffusers",warm(Color("#f1d8a1"),.68))
+	lens.attach(parent,"Sign and canopy diffusers",
+		warm(Color("#f1d8a1"),.68) if distant else warm(Color("#ffe3ac"),1.26))
 
 static func frontage_brick() -> ShaderMaterial:
 	var finish := ShaderMaterial.new()
