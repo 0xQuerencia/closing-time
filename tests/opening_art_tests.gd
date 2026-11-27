@@ -25,6 +25,15 @@ func _run() -> void:
 	change_scene_to_file(MARKET)
 	await scene_changed
 	var title: FlowUI = current_scene.gameplay.flow
+	var original_size := root.size
+	root.size = Vector2i(640, 360)
+	await process_frame
+	await process_frame
+	var title_rect := title._title.get_global_rect()
+	var menu_rect := title._buttons.get_global_rect()
+	check(title_rect.position.y >= 0.0 and menu_rect.end.y <= root.get_visible_rect().size.y,
+		"Title and menu fit at 640 by 360")
+	root.size = original_size
 	check(title.mode == "title" and title.press("start"), "New Game uses the normal title screen")
 	await scene_changed
 	room = current_scene
