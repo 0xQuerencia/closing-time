@@ -30,7 +30,7 @@ func build(room: Node3D, morning: bool) -> void:
 	floor_art.quad(Vector3(-3.5,0,4.5),Vector3(3.5,0,4.5),Vector3(3.5,0,-4.5),Vector3(-3.5,0,-4.5), Rect2(0,0,3,6))
 	floor_art.attach(room, "Woven apartment carpet", MeshArt.material(FLOOR, .96))
 	var rug := MeshArt.new()
-	rug.quad(Vector3(-1.63,.009,.71),Vector3(1.57,.009,.71),Vector3(1.57,.009,-1.40),Vector3(-1.63,.009,-1.40))
+	rug.quad(Vector3(-1.56,.009,-.55),Vector3(1.32,.009,-.55),Vector3(1.32,.009,-2.74),Vector3(-1.56,.009,-2.74))
 	rug.attach(room,"Patterned bedside rug",MeshArt.material(RUG,.95))
 
 	var walls := MeshArt.new()
@@ -70,7 +70,7 @@ func build(room: Node3D, morning: bool) -> void:
 	luminous.emission = Color("#dca664")
 	luminous.emission_energy_multiplier = .5
 	shade.attach(room,"Desk lamp inner diffuser",luminous)
-	_light(room,"Lamp pool over shift note",Vector3(1.25,1.382,-4.04),Color("#ffd0a0"),2.12,3.45)
+	_light(room,"Lamp pool over shift note",Vector3(1.25,1.382,-4.04),Color("#ffd0a0"),1.65,2.05)
 	_light(room,"Apartment exit jamb",Vector3(1.08,2.06,3.38),Color("#e7ccae"),.47,4.2)
 	_light(room,"Night window fill",Vector3(.06,1.87,-3.95),Color("#abcadd") if morning else Color("#82a8da"),
 		.75 if morning else .53,3.8)
@@ -143,13 +143,13 @@ func _bed() -> void:
 	_taper(details,Vector3(-2.35,.449,-2.45),Vector2(1.37,1.94),Vector2(1.405,1.99),.194,LINEN)
 	# Folds are silhouette geometry; the uninterrupted plaid uses the same atlas cell.
 	var xs := [-3.07,-2.70,-2.35,-1.98,-1.63]
-	var folds := [.566,.574,.586,.573,.566]
+	var folds := [.566,.587,.574,.602,.566]
 	var uv := MeshArt.tile(QUILT)
 	for i in 4:
 		var a := Vector3(xs[i],folds[i],-1.44)
 		var b := Vector3(xs[i+1],folds[i+1],-1.44)
-		var c := Vector3(xs[i+1],folds[i+1]-.008,-2.94)
-		var d := Vector3(xs[i],folds[i]-.008,-2.94)
+		var c := Vector3(xs[i+1],folds[i+1]+.018,-2.94)
+		var d := Vector3(xs[i],folds[i]+.018,-2.94)
 		var segment := Rect2(uv.position + Vector2(uv.size.x * i / 4.0,0),Vector2(uv.size.x*.25,uv.size.y))
 		details.quad(a,b,c,d,segment)
 		details.quad(a-Vector3(0,.246+(i%2)*.021,0),b-Vector3(0,.246+((i+1)%2)*.021,0),b,a,segment)
@@ -200,15 +200,35 @@ func _reference_dressing() -> void:
 	_box(chair+Vector3(0,.872,.224),Vector3(.45,.126,.038),WALNUT)
 	# A decorative overshirt echoes the reference; the pickup remains on its existing collision target.
 	var cloth_uv := MeshArt.tile(VEST)
-	var cloth_top := PackedVector3Array([Vector3(-.225,.86,.242),Vector3(-.102,.956,.26),
-		Vector3(.083,.942,.277),Vector3(.221,.866,.247)])
-	var cloth_hem := PackedVector3Array([Vector3(-.253,.596,.27),Vector3(-.106,.54,.322),
-		Vector3(.106,.565,.298),Vector3(.213,.643,.275)])
-	for fold in 3:
-		var band := Rect2(cloth_uv.position+Vector2(cloth_uv.size.x*fold/3.0,0),
-			Vector2(cloth_uv.size.x/3.0,cloth_uv.size.y))
+	# Shoulder ridge wraps over the back, with two hanging panels and loose sleeves.
+	# A non-planar hem and narrow center opening avoid the former flat blue shield.
+	var cloth_top := PackedVector3Array([Vector3(-.245,.86,.25),Vector3(-.13,.98,.24),
+		Vector3(.015,.965,.28),Vector3(.15,.95,.26),Vector3(.235,.85,.25)])
+	var cloth_hem := PackedVector3Array([Vector3(-.26,.31,.30),Vector3(-.13,.285,.37),
+		Vector3(.015,.32,.33),Vector3(.15,.30,.36),Vector3(.235,.35,.29)])
+	for fold in 4:
+		var band := Rect2(cloth_uv.position+Vector2(cloth_uv.size.x*fold/4.0,0),
+			Vector2(cloth_uv.size.x/4.0,cloth_uv.size.y))
 		details.quad(chair+cloth_hem[fold],chair+cloth_hem[fold+1],
 			chair+cloth_top[fold+1],chair+cloth_top[fold],band)
+		var back_a: Vector3 = cloth_top[fold] + Vector3(0,-.045,-.13)
+		var back_b: Vector3 = cloth_top[fold+1] + Vector3(0,-.045,-.13)
+		details.quad(chair+cloth_top[fold],chair+cloth_top[fold+1],
+			chair+back_b,chair+back_a,band)
+	for side in [-1.0,1.0]:
+		var a := chair+Vector3(side*.20,.91,.26)
+		var b := chair+Vector3(side*.31,.82,.24)
+		var c := chair+Vector3(side*.34,.44,.32)
+		var d := chair+Vector3(side*.24,.46,.37)
+		if side > 0:
+			details.quad(d,c,b,a,cloth_uv)
+		else:
+			details.quad(c,d,a,b,cloth_uv)
+	# Small sewn label and placket, not floating decorative writing.
+	_box(chair+Vector3(.135,.77,.293),Vector3(.075,.027,.009),PUTTY)
+	for y in [.72,.61,.50,.39]:
+		_box(chair+Vector3(.018,y,.355),Vector3(.009,.009,.008),PUTTY)
+
 	_box(Vector3(1.78,1.68,-4.392),Vector3(.71,.53,.043),WALNUT)
 	_front(details,Vector3(1.78,1.68,-4.368),Vector2(.666,.485),SHADE)
 	_front(details,Vector3(1.67,1.73,-4.361),Vector2(.234,.143),PHOTO)
@@ -243,7 +263,7 @@ func _kitchen() -> void:
 func _window(room: Node3D, morning: bool) -> void:
 	var width := 2.08
 	var art := MeshArt.new()
-	_front(art,Vector3(.01,1.70,-4.411),Vector2(width,1.10),NIGHT)
+	_front(art,Vector3(.01,1.55,-4.411),Vector2(width,1.40),NIGHT)
 	var glass := MeshArt.material(ATLAS)
 	glass.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	glass.albedo_color = Color(.78,.87,1.0)
@@ -256,15 +276,15 @@ func _window(room: Node3D, morning: bool) -> void:
 		glass.albedo_color = Color.WHITE
 	art.attach(room,"Window view",glass)
 	for x in [-1.06,0.01,1.08]:
-		_box(Vector3(x,1.70,-4.38),Vector3(.047,1.14,.085),PUTTY)
-	for y in [1.13,1.65,2.27]:
+		_box(Vector3(x,1.55,-4.38),Vector3(.047,1.44,.085),PUTTY)
+	for y in [.83,1.55,2.27]:
 		_box(Vector3(.01,y,-4.371),Vector3(2.18,.046,.10),PUTTY)
-	_box(Vector3(.01,1.12,-4.32),Vector3(2.22,.051,.184),OAK)
+	_box(Vector3(.01,.82,-4.32),Vector3(2.22,.051,.184),OAK)
 	_box(Vector3(.01,2.37,-4.30),Vector3(2.52,.023,.027),STEEL)
 	for side in [-1.0,1.0]:
 		for fold in range(8):
 			var x: float = side*(1.33-float(fold)*.050)
-			var length: float = 1.26 + .023*(fold%3)
+			var length: float = 1.56 + .023*(fold%3)
 			var depth: float = .145 if fold%2 == 0 else .062
 			_box(Vector3(x,2.35-length*.5,-4.30+depth*.2),Vector3(.061,length,depth),CURTAIN)
 

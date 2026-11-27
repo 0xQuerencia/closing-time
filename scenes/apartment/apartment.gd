@@ -35,8 +35,11 @@ func _ready() -> void:
 	_build_ui()
 	player = CharacterBody3D.new()
 	player.set_script(Player)
-	player.position = Vector3(-1.6,.05,2.4)
+	# Start in the clear central aisle, close enough to read the room's furniture.
+	# Keep the original 75 degree gameplay lens and full movement controls.
+	player.position = Vector3(-.55,.05,-.15)
 	add_child(player)
+	player.camera.rotation.x = -.075
 	if not epilogue.is_empty():
 		_build_epilogue()
 		return

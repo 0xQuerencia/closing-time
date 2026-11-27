@@ -43,7 +43,7 @@ func _run() -> void:
 	check(title.mode == "title" and title.press("start"), "New Game uses the normal title screen")
 	await scene_changed
 	room = current_scene
-	check(room.player.position.is_equal_approx(Vector3(-1.6,.05,2.4)), "Original apartment spawn")
+	check(room.player.position.is_equal_approx(Vector3(-.55,.05,-.15)), "Closer apartment aisle spawn")
 	var furniture := room.get_node("Furniture and fittings") as MeshInstance3D
 	var material := furniture.get_active_material(0) as StandardMaterial3D
 	var rug := room.get_node("Patterned bedside rug") as MeshInstance3D

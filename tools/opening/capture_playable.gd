@@ -24,7 +24,7 @@ func _capture() -> void:
 	await _scene("res://scenes/apartment/apartment.tscn")
 	var apartment := current_scene
 	apartment.player.enabled = false
-	if apartment.player.position.distance_to(Vector3(-1.6,.05,2.4)) > .001:
+	if apartment.player.position.distance_to(Vector3(-.55,.05,-.15)) > .001:
 		_fail("Apartment spawn moved")
 	_hide_canvas(apartment)
 	_budget("apartment",apartment)
