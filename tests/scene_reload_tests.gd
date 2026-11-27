@@ -71,6 +71,13 @@ func _run() -> void:
 		_check(orphans == 0, "no orphan nodes after returning to the title")
 		print("SCENE RELOAD cycle=%d nodes=%d objects=%d resources=%d orphans=%d" % [cycle, get_node_count(),
 			objects, Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT), orphans])
+	var actor := Customer.new()
+	current_scene.add_child(actor)
+	_check(physics_frame.is_connected(actor._on_movement_frame), "customer receives physics frames in the scene")
+	current_scene.remove_child(actor)
+	_check(not physics_frame.is_connected(actor._on_movement_frame), "detached customer stops receiving physics frames")
+	await physics_frame
+	actor.free()
 	_check(current_scene.gameplay.flow.mode == "title", "normal title remains usable")
 	print("SCENE RELOAD TESTS COMPLETE failures=", failures)
 	await current_scene.finish_run(failures)

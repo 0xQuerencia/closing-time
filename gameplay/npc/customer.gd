@@ -44,11 +44,11 @@ const BACK_OF_STORE := Vector3(4.2, 1.5, -3.0)
 const IDLE_CLIPS := [&"Idle", &"IdleShift", &"IdleWait", &"CounterIdle"]
 const GAZE_BLOCKING_CLIPS := [&"LookAround", &"LookBehind", &"TurnLeft", &"TurnRight", &"Startle", &"ShakeHead", &"Nod"]
 
-func _ready() -> void:
+func _enter_tree() -> void:
 	get_tree().physics_frame.connect(_on_movement_frame)
 
 func _on_movement_frame() -> void:
-	if can_process():
+	if is_inside_tree() and can_process():
 		_movement_frame.emit()
 
 func setup(owner_game: Gameplay, customer_profile: Dictionary) -> Customer:
@@ -350,6 +350,7 @@ func _walk_to(target: Vector3, final_point: bool) -> void:
 			break
 		await _movement_frame
 func _exit_tree() -> void:
+	get_tree().physics_frame.disconnect(_on_movement_frame)
 	_retiring = true
 	velocity = Vector3.ZERO
 	# Let any pending route and its caller return before the actor is freed.
