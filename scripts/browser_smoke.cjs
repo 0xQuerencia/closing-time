@@ -86,6 +86,24 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 1024, height: 640 }, deviceScaleFactor: 1 });
     await page.addInitScript(() => {
       window.closingTimeAudio = [];
+      // A running Web Audio context can still be silent if Godot disconnects the sample output.
+      window.closingTimeSampleOutputs = new Set();
+      const connect = AudioNode.prototype.connect;
+      const disconnect = AudioNode.prototype.disconnect;
+      AudioNode.prototype.connect = function (destination, ...args) {
+        const result = connect.call(this, destination, ...args);
+        if (this instanceof GainNode && destination === this.context.destination) {
+          window.closingTimeSampleOutputs.add(this);
+        }
+        return result;
+      };
+      AudioNode.prototype.disconnect = function (...args) {
+        const result = disconnect.apply(this, args);
+        if (args.length === 0 || typeof args[0] === 'number' || args[0] === this.context.destination) {
+          window.closingTimeSampleOutputs.delete(this);
+        }
+        return result;
+      };
       window.AudioContext = new Proxy(window.AudioContext, {
         construct(target, args, constructor) {
           const context = Reflect.construct(target, args, constructor);
@@ -105,6 +123,8 @@ async function main() {
     await waitForExport(page);
     await page.waitForTimeout(2800);
     await screenshot(page, '01-title');
+    findings.sampleOutputs = await page.evaluate(() => window.closingTimeSampleOutputs.size);
+    assert.ok(findings.sampleOutputs > 0, 'Godot sample audio remains connected to the browser output');
     await page.locator('canvas').focus();
     await page.keyboard.press('Enter', { delay: 120 });
     const saved = JSON.parse(await waitForUserFile(page, 'closing_time_opening.json'));
