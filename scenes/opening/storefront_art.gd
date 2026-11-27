@@ -5,6 +5,7 @@ const MeshArt = preload("res://scenes/opening/opening_mesh.gd")
 const ASPHALT = preload("res://assets/materials/opening/route9_night_asphalt.png")
 const PLASTER = preload("res://assets/models/exterior_plaster.png")
 const BRICK = preload("res://assets/models/shell_brick.png")
+const FONT = preload("res://assets/fonts/original/marlow.fnt")
 const GLYPH_ATLAS = preload("res://assets/fonts/original/marlow.png")
 # Ink cells from the project's original Marlow Terminal BMFont, in atlas pixels.
 const SIGN_CELLS := {
