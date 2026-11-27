@@ -72,7 +72,7 @@ func leon_returns() -> void:
 	stalker = sec.spawn_stalker()
 	stalker.caught.connect(_on_caught)
 	await stalker.enter_building()
-	if ended != "" or not is_instance_valid(stalker):
+	if ended != "" or not is_inside_tree() or not is_instance_valid(stalker) or not stalker.movement_active():
 		return
 	director._text("dina_9", "Dina", "Was that the back door again? Get out or lock yourself in.", 0, 33)
 	stalker.begin_hunt()
@@ -83,7 +83,7 @@ func _physics_process(delta: float) -> void:
 		return
 	threat_time += delta
 	var player: CharacterBody3D = game.player
-	if player.global_position.z > ESCAPE_Z and (director.production == null or (absf(player.global_position.x - 1.7) <= 2.2 and not sec.front_door.locked)):
+	if player.global_position.z > ESCAPE_Z and (director.production == null or reached_front_exit()):
 		end("escape")
 		return
 	if police_left >= 0.0:
@@ -95,6 +95,10 @@ func _physics_process(delta: float) -> void:
 			police_left = 0.0
 	if director.production == null and threat_time > rescue_after:
 		end("secured")  # Dina and the first car turn up regardless: nobody can be stuck in here forever
+
+func reached_front_exit() -> bool:
+	var at: Vector3 = game.player.global_position
+	return at.z > ESCAPE_Z and absf(at.x - Security.FRONT_CENTRE.x) <= 2.2 and not sec.front_door.locked
 
 func in_office() -> bool:
 	var p := game.player.global_position

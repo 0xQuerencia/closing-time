@@ -42,7 +42,12 @@ func _build_lot() -> void:
 	asphalt.albedo_color = Color("#d7dddd")
 	asphalt.metallic_specular = .52
 	var paving := MeshArt.new()
-	paving.quad(Vector3(-14,-.12,24),Vector3(14,-.12,24),Vector3(14,-.12,6),Vector3(-14,-.12,6),Rect2(0,0,8.75,5.625))
+	# The one-metre grid gives low-tier vertex lighting enough samples for the lot's practical pools.
+	for x in range(-14, 14):
+		for z in range(6, 24):
+			paving.quad(Vector3(x, -.12, z + 1), Vector3(x + 1, -.12, z + 1),
+				Vector3(x + 1, -.12, z), Vector3(x, -.12, z),
+				Rect2((x + 14) * .3125, (z - 6) * .3125, .3125, .3125))
 	paving.attach(self,"Parking_asphalt",asphalt)
 	var concrete := _mat(Color("#85837a"),.94,"res://assets/models/exterior_plaster.png")
 	concrete.uv1_scale = Vector3(4,4,4)

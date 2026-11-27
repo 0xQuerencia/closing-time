@@ -233,6 +233,8 @@ func _test_cctv() -> void:
 	for i in cctv.feeds.size():
 		var vp: SubViewport = cctv.feeds[i].viewport
 		check(vp.world_3d == world.get_viewport().world_3d and (cctv.feeds[i].camera as Camera3D).get_viewport() == vp, "feed %d renders the live world through its own camera" % (i + 1))
+		check(vp.positional_shadow_atlas_size > 0 and (cctv.feeds[i].camera.cull_mask & Cctv.MONITOR_LAYER) == 0,
+			"feed %d can light the world without drawing the CRT into its own picture" % (i + 1))
 	check(cctv.feeds[0].camera.global_position.distance_to(Vector3(-7.9, 2.5, 5.6)) < 0.01 and cctv.feeds[1].camera.global_position.x > 4.0 and cctv.feeds[2].camera.global_position.z > 6.0, "feeds watch the shop floor, rear hall, and parking lot")
 	var viewed: Array = []
 	cctv.feed_viewed.connect(func(i): viewed.append(i))

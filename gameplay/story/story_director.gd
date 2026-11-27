@@ -177,8 +177,6 @@ func _on_task_completed(task_id: String) -> void:
 	if task_id in ["restock", "trash", "latch"]:
 		_chores_done[task_id] = true
 		_record("chore_" + task_id)
-		if production != null:
-			production.task_done(task_id)
 
 func _on_clue_seen(clue_id: String) -> void:
 	flags[clue_id + "_seen"] = true

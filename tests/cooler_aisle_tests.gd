@@ -30,7 +30,8 @@ func _test() -> void:
 	for batch in batches:
 		var mesh: Mesh = batch.multimesh.mesh
 		meshes[mesh] = true
-		materials[mesh.surface_get_material(0)] = true
+		var finish: Material = batch.material_override if batch.material_override != null else mesh.surface_get_material(0)
+		materials[finish] = true
 		placements += batch.multimesh.instance_count
 		drawn_triangles += mesh.get_faces().size() / 3 * batch.multimesh.instance_count
 		_check(batch.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "stock has no shadow pass")
@@ -68,6 +69,19 @@ func _test() -> void:
 		_check(light.light_energy == 0.0, "the breaker turns the cooler light off")
 	market.gameplay.security.power.flip("lights", true)
 	_check(tube.emission_energy_multiplier == level, "the breaker restores the cooler tubes")
+	var flow: FlowUI = market.gameplay.flow
+	var stock: MultiMeshInstance3D = batches[0]
+	var stock_source: BaseMaterial3D = stock.multimesh.mesh.surface_get_material(0)
+	for mode in FlowUI.GRAPHICS_MODES:
+		flow.settings.graphics_mode = mode
+		flow.apply_settings()
+		var expected := BaseMaterial3D.SHADING_MODE_PER_VERTEX if mode in ["safe", "performance"] else BaseMaterial3D.SHADING_MODE_PER_PIXEL
+		_check(stock.material_override.shading_mode == expected, mode + " switches the lighting on cooler stock")
+		_check(stock_source.shading_mode == BaseMaterial3D.SHADING_MODE_PER_PIXEL, mode + " keeps the shared imported material intact")
+		market.gameplay.security.power.flip("lights", false)
+		_check(tube.emission_energy_multiplier == 0.0, mode + " keeps the cooler tube dark when power is off")
+		market.gameplay.security.power.flip("lights", true)
+		_check(tube.emission_energy_multiplier == level, mode + " restores the cooler tube")
 	print("COOLER ASSET METRICS fixture_triangles=", fixture_triangles, " surround_triangles=", static_triangles-fixture_triangles,
 		" unique_stock_triangles=", unique_triangles-static_triangles+bottle_triangles,
 		" decorative_triangles=", drawn_triangles, " decorative_instances=", placements,

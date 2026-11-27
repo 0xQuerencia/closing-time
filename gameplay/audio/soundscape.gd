@@ -55,8 +55,9 @@ func _play_entry_bell() -> void:
 		game.interactor.message.emit("[The front door bell rings.]")
 
 func _ensure_buses() -> void:
+	# Growing the list avoids Godot 4.6's Web sample driver reordering Master on add_bus().
 	if AudioServer.get_bus_index(ROOM_BUS) < 0:
-		AudioServer.add_bus()
+		AudioServer.bus_count += 1
 		var room := AudioServer.bus_count - 1
 		AudioServer.set_bus_name(room, ROOM_BUS)
 		AudioServer.set_bus_send(room, "Master")
@@ -69,7 +70,7 @@ func _ensure_buses() -> void:
 		reverb.predelay_msec = 18.0
 		AudioServer.add_bus_effect(room, reverb)
 	if AudioServer.get_bus_index(WEATHER_BUS) < 0:
-		AudioServer.add_bus()
+		AudioServer.bus_count += 1
 		var weather := AudioServer.bus_count - 1
 		AudioServer.set_bus_name(weather, WEATHER_BUS)
 		AudioServer.set_bus_send(weather, "Master")

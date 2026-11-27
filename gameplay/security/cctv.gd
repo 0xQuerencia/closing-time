@@ -1,19 +1,22 @@
 class_name Cctv
 extends Node3D
 ## Three real Godot cameras render into small SubViewports; the office CRT shows the selected one.
-## A short low-rate DVR buffer preserves recent frames for review at the desk.
+## The production recorder has a historical tape. The legacy shift retains its bounded replay buffer.
 signal entered
 signal exited
 signal feed_selected(index: int)
 signal feed_viewed(index: int)
 signal feed_lost(index: int)
+signal archive_viewed
 const FONT := preload("res://assets/fonts/original/marlow.fnt")
 const FEED_SIZE := Vector2i(320, 240)
 const FRAME_SECONDS := 0.1  # ~10 fps, like a cheap recorder
+const MONITOR_LAYER := 1 << 2
 const SCREEN_VIEW_POS := Vector3(7.9, 1.0, -4.62)
 const SCREEN_VIEW_TARGET := Vector3(7.9, 0.955, -5.25)
 const SEE_MONITOR_RANGE := 6.5
 const BOOT_SECONDS := 3.5
+const ARCHIVE_FRAMES := 4
 const CAMS := [
 	{"title": "CAM 1  SHOP FLOOR", "pos": Vector3(-7.9, 2.5, 5.6), "look": Vector3(0.5, 0.9, -0.8), "fov": 82.0},
 	{"title": "CAM 2  REAR HALL", "pos": Vector3(4.82, 2.6, 2.3), "look": Vector3(4.25, 0.9, -5.8), "fov": 66.0},
@@ -46,6 +49,8 @@ var _stamp_jam_left := 0.0
 var _threat_was_present: Array[bool] = []
 var _rng := RandomNumberGenerator.new()
 var _capture_pending: Array[bool] = []
+var _capture_callbacks: Dictionary[int, Callable] = {}
+var _can_capture := false
 var _record_clock := 0.0
 var _record_next := 0
 var _history: Array = []
@@ -53,6 +58,7 @@ var _opening_tape: Array = []
 var _playback_frames: Array = []
 var playback := false
 var _playback_cursor := -1
+var _archive: Array = []
 const RECORD_INTERVAL := 3.0  # per-feed archive sample, live monitor remains 10 fps
 const HISTORY_SECONDS := 300
 const OPENING_CLIP_MAX_FRAMES := 18
@@ -61,6 +67,7 @@ const OPENING_CLIP_SPAN_MSEC := 18000
 func build(owner_game, power: PowerGrid) -> Cctv:
 	game = owner_game
 	grid = power
+	_can_capture = DisplayServer.get_name() != "headless"
 	_rng.seed = 4097
 	name = "Cctv"
 	game.world.add_child(self)
@@ -78,6 +85,14 @@ func build(owner_game, power: PowerGrid) -> Cctv:
 	power.changed.connect(_on_power_changed)
 	return self
 
+func _exit_tree() -> void:
+	for callback in _capture_callbacks.values():
+		RenderingServer.frame_post_draw.disconnect(callback)
+	_capture_callbacks.clear()
+	if is_instance_valid(_switch_click):
+		_switch_click.stop()
+		_switch_click.stream = null
+
 # --- feeds --------------------------------------------------------------------------------------
 
 func _build_feed(index: int) -> Dictionary:
@@ -88,7 +103,8 @@ func _build_feed(index: int) -> Dictionary:
 	viewport.world_3d = get_viewport().world_3d
 	viewport.msaa_3d = Viewport.MSAA_DISABLED
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
-	viewport.positional_shadow_atlas_size = 0  # recorder feeds reuse lighting without extra shadow passes
+	# A zero-size atlas makes the 3D picture nearly black in the 4.6.3 GL renderer.
+	viewport.positional_shadow_atlas_size = 512
 	viewport.gui_disable_input = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(viewport)
@@ -97,7 +113,7 @@ func _build_feed(index: int) -> Dictionary:
 	camera.fov = info.fov
 	camera.near = 0.08
 	camera.far = 40.0
-	camera.cull_mask = 0xFFFFF  # includes the layer-2 proxy of the clerk
+	camera.cull_mask &= ~MONITOR_LAYER  # avoid sampling the CRT texture from its own render target
 	viewport.add_child(camera)
 	camera.position = info.pos
 	camera.look_at(info.look)
@@ -131,6 +147,7 @@ func _build_screen() -> void:
 	if monitor == null:
 		push_error("Original office monitor screen missing")
 		return
+	monitor.layers = MONITOR_LAYER
 	monitor.material_override = screen_material
 
 func _build_terminal() -> void:
@@ -204,6 +221,8 @@ func _on_power_changed() -> void:
 	var live := grid.powered("security")
 	if live and not _was_live:
 		_boot_left = BOOT_SECONDS
+	if not live:
+		_cancel_live_frame()
 	_was_live = live
 
 func kill_feed(index: int) -> void:
@@ -228,18 +247,19 @@ func _process(delta: float) -> void:
 		_next_glitch = randf_range(7.0, 16.0)
 	_glitch_left = maxf(0.0, _glitch_left - delta)
 	var live := grid.powered("security")
+	var production := _production_mode()
 	if playback and not live:
 		_toggle_playback()  # the recorder lost power, so drop back to the live (dark) screen
 	var dead: bool = feeds[selected].dead
-	_record_clock -= delta
-	if live and _record_clock <= 0.0:
-		# Archive each feed every three seconds, render/read back one camera per second.
-		# Avoid concentrating three GPU readbacks and JPEG encodes in one frame.
-		_record_clock = RECORD_INTERVAL / feeds.size()
-		if not feeds[_record_next].dead:
-			_record_frame(_record_next)
-		_record_next = (_record_next + 1) % feeds.size()
-	var leon_seen := _leon_in_feed(selected)
+	if not production and _can_capture:
+		_record_clock -= delta
+		if live and _record_clock <= 0.0:
+			# Stagger the legacy camera renders and readbacks across frames.
+			_record_clock = RECORD_INTERVAL / feeds.size()
+			if not feeds[_record_next].dead:
+				_record_frame(_record_next)
+			_record_next = (_record_next + 1) % feeds.size()
+	var leon_seen := (not production or viewing) and not playback and _leon_in_feed(selected)
 	if leon_seen and not _threat_was_present[selected] and _rng.randf() < 0.55:
 		# A cheap DVR briefly repeats a frame as a person crosses the camera's view.
 		_frame_hold_left = _rng.randf_range(0.16, 0.32)
@@ -260,22 +280,32 @@ func _process(delta: float) -> void:
 	screen_material.set_shader_parameter("playback", 1.0 if playback else 0.0)
 	screen_material.set_shader_parameter("glitch", 1.0 if _glitch_left > 0.0 else 0.0)
 	screen_material.set_shader_parameter("tracking_amount", 1.0 if leon_seen else 0.0)
-	_update_overlay()
 	_watch_screen()
 	if _proxy != null:
-		var player: Node3D = game.player
-		_proxy.global_position = player.global_position
-		_proxy.rotation.y = player.rotation.y + PI
-		_proxy.visible = viewing or live
+		_proxy.visible = (viewing and not playback) if production else (viewing or live)
+		if _proxy.visible:
+			var player: Node3D = game.player
+			_proxy.global_position = player.global_position
+			_proxy.rotation.y = player.rotation.y + PI
 	_frame_clock -= delta
 	if _frame_clock > 0.0 or not live:
+		return
+	if production and (not viewing or playback):
 		return
 	if not _someone_can_see():
 		return
 	if _frame_hold_left > 0.0:
 		return
 	_frame_clock = FRAME_SECONDS
-	(feeds[selected].viewport as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+	_request_feed_frame(selected)
+
+func _request_feed_frame(index: int) -> void:
+	_update_overlay(index)
+	(feeds[index].viewport as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+
+func _cancel_live_frame() -> void:
+	if _production_mode():
+		(feeds[selected].viewport as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 func _leon_in_feed(index: int) -> bool:
 	var camera := feeds[index].camera as Camera3D
@@ -302,14 +332,15 @@ func _record_frame(index: int) -> void:
 	if _capture_pending[index]:
 		return  # the previous grab for this camera has not finished drawing yet
 	_capture_pending[index] = true
-	var viewport := feeds[index].viewport as SubViewport
-	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-	_capture_frame_after_render(index)
+	_request_feed_frame(index)
+	var callback := _capture_rendered_frame.bind(index)
+	_capture_callbacks[index] = callback
+	RenderingServer.frame_post_draw.connect(callback, CONNECT_ONE_SHOT)
 
-func _capture_frame_after_render(index: int) -> void:
-	await RenderingServer.frame_post_draw
+func _capture_rendered_frame(index: int) -> void:
+	_capture_callbacks.erase(index)
 	_capture_pending[index] = false
-	if not is_inside_tree() or not grid.powered("security") or feeds[index].dead:
+	if not is_inside_tree() or _production_mode() or not grid.powered("security") or feeds[index].dead:
 		return
 	var image := (feeds[index].viewport as SubViewport).get_texture().get_image()
 	if image == null or image.is_empty():
@@ -341,16 +372,19 @@ func _someone_can_see() -> bool:
 	var monitor_pos := Vector3(7.9, 1.0, -5.3)
 	return game.player.global_position.distance_to(monitor_pos) < SEE_MONITOR_RANGE
 
-func _update_overlay() -> void:
+func _update_overlay(index: int) -> void:
 	var minutes: int = (StoryClock.SHIFT_START + int(game.clock.elapsed)) % 1440
 	var hours: int = minutes / 60  # integer division is intended
-	var text := "11/05  %02d:%02d:%02d" % [hours, minutes % 60, int(Time.get_ticks_msec() / 1000.0) % 60]
+	var date := "11/05"
+	if _production_mode():
+		date = "11/24" if hours >= 12 else "11/25"
+	var text := "%s  %02d:%02d:%02d" % [date, hours, minutes % 60, int(Time.get_ticks_msec() / 1000.0) % 60]
 	var blink := int(Time.get_ticks_msec() / 600.0) % 2 == 0
-	for feed in feeds:
-		(feed.stamp as Label).text = text.substr(0, text.length() - 2) + "??" if _stamp_jam_left > 0.0 else text
-		(feed.rec as Label).visible = blink and not feed.dead
-	if sensor != null:
-		(feeds[1].door as Label).text = sensor.last_lines(2)
+	var feed: Dictionary = feeds[index]
+	(feed.stamp as Label).text = text.substr(0, text.length() - 2) + "??" if _stamp_jam_left > 0.0 else text
+	(feed.rec as Label).visible = blink and not feed.dead
+	if index == 1 and sensor != null:
+		(feed.door as Label).text = sensor.last_lines(2)
 
 # --- the desk -----------------------------------------------------------------------------------
 
@@ -358,6 +392,7 @@ func select(index: int) -> void:
 	index = clampi(index, 0, feeds.size() - 1)
 	if index == selected and viewed.has(index):
 		return
+	_cancel_live_frame()
 	selected = index
 	if playback:
 		_playback_frames = _tape_frames(index)
@@ -369,11 +404,14 @@ func select(index: int) -> void:
 			_playback_cursor = _first_sighting_index(index)
 			if _playback_cursor < 0:
 				_playback_cursor = _playback_frames.size() - 1
+			_set_tape_hint()
 	else:
 		_playback_cursor = -1
 		_set_live_hint()
 	_show_selected_feed()
-	(feeds[index].viewport as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+	if not _production_mode():
+		_request_feed_frame(index)
+	_frame_clock = 0.0
 	if viewing:
 		_switch_left = SWITCH_SECONDS
 		_glitch_left = maxf(_glitch_left, 0.1)
@@ -400,6 +438,8 @@ func _show_selected_feed() -> void:
 		screen_material.set_shader_parameter("playback", 0.0)
 
 func _tape_frames(index: int) -> Array:
+	if _production_mode():
+		return _historical_tape() if index == 1 else []
 	var combined: Array = _opening_tape[index].duplicate()
 	combined.append_array(_history[index])
 	combined.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.at_msec) < int(b.at_msec))
@@ -414,6 +454,8 @@ func _tape_frames(index: int) -> Array:
 	return unique
 
 func _first_sighting_index(index: int) -> int:
+	if _production_mode():
+		return 0
 	var opening: Array = _opening_tape[index]
 	if opening.is_empty():
 		return -1
@@ -426,9 +468,12 @@ func _first_sighting_index(index: int) -> int:
 	return -1
 
 func _set_live_hint() -> void:
-	_hint.text = "A / D  camera     R  review tape     wheel  scrub     E  leave"
-	if not _opening_tape[selected].is_empty():
+	if _production_mode():
+		_hint.text = "A / D  camera     R  archive (rear hall)     E  leave"
+	elif not _opening_tape[selected].is_empty():
 		_hint.text = "A / D  camera     R  review earlier lot footage     E  leave"
+	else:
+		_hint.text = "A / D  camera     R  review tape     wheel  scrub     E  leave"
 
 func _toggle_playback() -> void:
 	if not playback:
@@ -437,27 +482,42 @@ func _toggle_playback() -> void:
 			return
 		_playback_frames = _tape_frames(selected)
 		if _playback_frames.is_empty():
-			_hint.text = "No frames saved yet. Check again in a moment."
+			if _production_mode():
+				_hint.text = "The archive is unreadable." if selected == 1 else "Select the rear hall camera to open the archive."
+			else:
+				_hint.text = "No frames saved yet. Check again in a moment."
 			return
+		_cancel_live_frame()
 		playback = true
 		_playback_cursor = _first_sighting_index(selected)
-		if _playback_cursor >= 0:
-			_hint.text = "EARLIER LOT FOOTAGE  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
-		else:
+		if _playback_cursor < 0:
 			_playback_cursor = _playback_frames.size() - 1
-			_hint.text = "RECENT TAPE  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
+		_set_tape_hint()
 	else:
 		playback = false
 		_playback_frames.clear()
 		_set_live_hint()
+		_frame_clock = 0.0
 	_show_selected_feed()
+	_watch_screen()
 
 func _scrub_tape(step: int) -> void:
 	if not playback or _playback_frames.is_empty():
 		return
-	_playback_cursor = clampi(_playback_cursor + step, 0, _playback_frames.size() - 1)
-	_hint.text = "RECORDED  %s     wheel  scrub     R  live     E  leave" % _playback_frames[_playback_cursor].time
+	var next := clampi(_playback_cursor + step, 0, _playback_frames.size() - 1)
+	if next == _playback_cursor:
+		return
+	_playback_cursor = next
+	if _production_mode() and _playback_cursor == ARCHIVE_FRAMES - 1:
+		archive_viewed.emit()
+	_set_tape_hint()
 	_show_selected_feed()
+
+func _set_tape_hint() -> void:
+	var label := "RECENT TAPE" if _opening_tape[selected].is_empty() else "EARLIER LOT FOOTAGE"
+	if _production_mode():
+		label = "ARCHIVE"
+	_hint.text = "%s  %s     arrows / wheel  scrub     R  live     E  leave" % [label, _playback_frames[_playback_cursor].time]
 
 func cycle(step: int) -> void:
 	select(posmod(selected + step, feeds.size()))
@@ -479,7 +539,9 @@ func enter() -> bool:
 	_watching = -1
 	playback = false
 	_playback_frames.clear()
+	_frame_clock = 0.0
 	_set_live_hint()
+	_show_selected_feed()
 	game.interactor.enabled = false
 	game.interactor.refresh_focus()
 	game.player.enabled = false
@@ -496,10 +558,12 @@ func enter() -> bool:
 func leave() -> bool:
 	if not viewing:
 		return false
+	_cancel_live_frame()
 	viewing = false
 	_watching = -1
 	playback = false
 	_playback_frames.clear()
+	_show_selected_feed()
 	_ui.visible = false
 	_glide(0.0)
 	return true
@@ -551,7 +615,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key := (event as InputEventKey).physical_keycode
-		if key in [KEY_D, KEY_RIGHT]:
+		if playback and key in [KEY_LEFT, KEY_RIGHT]:
+			_scrub_tape(1 if key == KEY_RIGHT else -1)
+		elif key in [KEY_D, KEY_RIGHT]:
 			cycle(1)
 		elif key in [KEY_A, KEY_LEFT]:
 			cycle(-1)
@@ -562,6 +628,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			return
 		get_viewport().set_input_as_handled()
+
+func _production_mode() -> bool:
+	return game != null and game.director != null and game.director.production != null
+
+## Four original frames captured through the rear-hall lens by tools/capture_dvr_archive.gd.
+func _historical_tape() -> Array:
+	if not _archive.is_empty():
+		return _archive.duplicate()
+	for frame in ARCHIVE_FRAMES:
+		var texture := load("res://assets/story/dvr/rear-hall-%d.png" % frame) as Texture2D
+		if texture == null:
+			_archive.clear()
+			break
+		_archive.append({"texture": texture, "time": "08/19  00:12:%02d" % (frame * 3)})
+	return _archive.duplicate()
 
 class SecurityTerminal extends Interactable:
 	var cctv: Cctv

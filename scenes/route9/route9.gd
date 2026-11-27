@@ -21,7 +21,6 @@ var speed_needle: Node3D
 var windshield: ShaderMaterial
 var status: Label
 var caption_label: Label
-var rain: AudioStreamPlayer
 var engine: AudioStreamPlayer
 var skip: Button
 
@@ -57,8 +56,6 @@ func _process(delta: float) -> void:
 	var sweep := .5-.5*cos(TAU*minf(wiper_clock/1.38,1.0))
 	wiper.rotation.z = lerpf(WIPER_PARK,WIPER_SWEEP,sweep)
 	engine.pitch_scale = .72 + speed/25.0
-	if travelled >= 80.0:
-		skip.show()
 	if travelled >= 120.0 and travelled < 155.0:
 		caption_label.text = "The bypass had been open for three years. Hardly anyone took the old road anymore.  [E] Read sign"
 	elif travelled >= 330.0 and travelled < 390.0:
@@ -75,6 +72,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	match event.physical_keycode:
+		KEY_ENTER, KEY_KP_ENTER:
+			get_viewport().set_input_as_handled()
+			_arrive()
 		KEY_R:
 			radio_on = not radio_on
 			if radio_on:
@@ -167,10 +167,9 @@ func _build_ui() -> void:
 	controls.add_theme_font_size_override("font_size",17)
 	root.add_child(controls)
 	skip = Button.new()
-	skip.text = "Skip drive"
+	skip.text = "Skip drive [Enter]"
 	skip.position = Vector2(24,120)
 	skip.pressed.connect(_arrive)
-	skip.hide()
 	root.add_child(skip)
 
 func _build_audio() -> void:
@@ -191,3 +190,8 @@ func _build_audio() -> void:
 	engine.volume_db = -18
 	add_child(engine)
 	engine.play()
+
+func _exit_tree() -> void:
+	if is_instance_valid(engine):
+		engine.stop()
+		engine.stream = null

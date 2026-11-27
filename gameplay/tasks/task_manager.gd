@@ -76,3 +76,7 @@ func current_guide() -> Dictionary:
 func clear() -> void:
 	tasks.clear()
 	cleared.emit()
+
+func retire(id: String) -> void:
+	if tasks.erase(id):
+		cleared.emit()

@@ -4,7 +4,7 @@ it's my first-person horror game about working the last shift at marlow's market
 
 you play as jamie. ring up the last customers, restock the shelves, take out the trash, answer dina's texts, and keep checking the cameras. at first it's all normal night-shift stuff. then someone you thought had left keeps showing up again.
 
-no ghosts or sci-fi twist. just a fired employee with a spare key and a shift that gets worse the longer you stay. it takes around 10–15 minutes, and there are three endings: get out, hold up in the office until help arrives, or get caught.
+it's a grounded story about a fired employee with a spare key and a shift that gets worse the longer you stay. what you do in the outage, and what you manage to preserve, changes how the night ends.
 
 ## screenshots
 
@@ -47,7 +47,9 @@ or open `project.godot` in Godot and hit **Run**.
 | G | open the guide |
 | Esc | pause |
 
-the pause menu's **Graphics mode** cycles through `SAFE`, `PERFORMANCE`, `BALANCED`, and `QUALITY`. safe turns off shadows and post effects and renders at 65%, while quality keeps the full dark look at native 3D resolution. if a saved setting ever makes the game unhappy, launch the project once with:
+on Route 9, use W/S to accelerate and brake, A/D to steer, R for the radio and T for the wipers. press Enter to skip the drive from the start. at the office CRT, use A/D to change cameras and R to open the rear hall archive. use the arrow keys or mouse wheel to scrub it.
+
+the pause menu's **Graphics mode** cycles through `SAFE`, `PERFORMANCE`, `BALANCED`, and `QUALITY`. safe and performance use per-vertex lighting on Marlow's props and render 3D at 65% and 75%. the walls and floor keep the flashlight beam defined in every mode. quality keeps the full dark look at native 3D resolution. fresh browser sessions start in performance mode and remember your selection. if a saved setting ever makes the game unhappy, launch the project once with:
 
 ```sh
 godot --path . -- --safe-mode

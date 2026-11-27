@@ -22,6 +22,9 @@ func run_production(market: Node3D) -> void:
 		check(false,"production initialized")
 		await _finish()
 		return
+	game.flow.settings.graphics_mode = "performance"
+	game.flow.apply_settings()
+	game.director.beats.blackout_delay = 120.0
 	await _check_market_arrival(shift)
 	await _check_handover(shift)
 	if not await _chapter("routine"):
@@ -35,6 +38,7 @@ func run_production(market: Node3D) -> void:
 func _check_market_arrival(shift: ProductionShift) -> void:
 	await _settle()
 	check(player.global_position.z > 12.0 and shift.progress.events.has("market_arrived"),"Route 9 progress starts on the lot")
+	check(game.tasks.active_ids() == ["handover"], "arrival shows the handover before later chores")
 	await _capture_handover("01-arrival")
 	var cues: Array[String] = []
 	var record_cue := func(message: String): cues.append(message)
@@ -125,7 +129,7 @@ func _check_rest_of_shift(shift: ProductionShift) -> void:
 	for i in 3:
 		if game.shift.take_stock(game.interactor):
 			game.shift.stock_slot(game.shift.slots[i],game.interactor.release_held())
-	check(game.shift.filled == 3,"three stock slots filled")
+	check(game.shift.filled == 3 and shift.progress.events.has("restock_done"),"three stock slots directly complete the routine objective")
 	check(await _sale("ben"),"Ben paid and left")
 	check(await _sale("nora"),"Nora paid and left")
 	check(await _chapter("closing"),"routine advances")
@@ -148,8 +152,10 @@ func _check_rest_of_shift(shift: ProductionShift) -> void:
 	check(await _chapter("outage"),"closing advances")
 	if shift.progress.current_id() != "outage":
 		return
+	var outage := shift.progress.snapshot()
+	await _check_production_archive(shift)
 	game.phone.mark_read("Dina")
-	check(shift.progress.has_substantive_evidence(),"binder and phone testimony preserved")
+	check(shift.progress.discoveries.has("dina_statement"),"phone testimony preserved as independent corroboration")
 	# Separate security and threat suites exercise live stalking and the actual camera controls.
 	# Here isolate the production chapter handoff without the stalker interrupting the test.
 	game.director.spawn_enabled = false
@@ -168,6 +174,44 @@ func _check_rest_of_shift(shift: ProductionShift) -> void:
 	check(shift.progress.current_id() == "escape", "evidence outcome is stored in the finale chapter")
 	await _check_production_outcomes(shift)
 	await _check_checkpoint_restore(shift)
+	await _check_blackout_exit(shift, outage)
+
+func _check_production_archive(shift: ProductionShift) -> void:
+	var cctv := game.security.cctv
+	check(cctv._history.all(func(tape): return tape.is_empty()) and not cctv._capture_pending.has(true),
+		"production has no background camera recording or pending readback")
+	check(cctv.feeds.all(func(feed): return feed.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED),
+		"camera viewports sleep away from the desk")
+	await aim(Vector3(7.4, .05, -4.3), cctv.terminal.global_position)
+	check(game.interactor.interact() and cctv.viewing, "use the production CRT through the player ray")
+	cctv.settle()
+	await _cctv_key(KEY_R)
+	check(not cctv.playback, "only the rear hall has an archive")
+	await _cctv_key(KEY_D)
+	check(cctv.selected == 1 and cctv.viewed.has(1), "switch to the live rear camera")
+	await _cctv_key(KEY_R)
+	check(cctv.playback and cctv._playback_frames.size() == 4 and cctv._playback_cursor == 0,
+		"the production tape opens at its first frame")
+	check(not shift.progress.discoveries.has("dvr_clip"), "opening the tape alone does not award evidence")
+	for frame in 3:
+		await _cctv_key(KEY_RIGHT)
+	check(shift.progress.discoveries.has("dvr_clip") and shift.progress.has_substantive_evidence(),
+		"the last archived frame corroborates the binder")
+	await _cctv_key(KEY_E)
+	cctv.settle()
+	check(not cctv.viewing and not cctv.playback and game.interactor.enabled and player.camera.current,
+		"leaving the archive restores first-person control")
+	check(cctv.screen_material.get_shader_parameter("feed") == cctv.feeds[1].viewport.get_texture()
+		and cctv._historical_tape().size() == 4, "leaving the archive restores the live texture and retains the tape")
+
+func _cctv_key(key: Key) -> void:
+	var input := InputEventKey.new()
+	input.physical_keycode = key
+	input.pressed = true
+	Input.parse_input_event(input)
+	await get_tree().process_frame
+	input.pressed = false
+	Input.parse_input_event(input)
 
 func _check_production_outcomes(shift: ProductionShift) -> void:
 	for row in [["escape", "escaped"], ["secured", "rescued"]]:
@@ -196,8 +240,43 @@ func _check_checkpoint_restore(shift: ProductionShift) -> void:
 	check(game.director.production.progress.discoveries.has("training_binder") and game.director.production.progress.discoveries.has("dina_statement"), "restore retains binder and Dina corroboration")
 	game.director.threat.end("caught")
 	check(game.director.production.progress.outcome == "caught", "caught signal records production outcome")
-	game.flow.retry_requested.emit()
+	check(game.flow.press("retry"), "the caught card exposes retry")
 	check(game.director.production.progress.outcome.is_empty() and game.director.threat.active, "retry restores checkpoint without retaining the ending")
+
+func _check_blackout_exit(shift: ProductionShift, outage: Dictionary) -> void:
+	check(shift.progress.restore(outage), "reset to the real outage chapter for the other route")
+	var director := game.director
+	director.threat.clear_actors()
+	director._fired.clear()
+	game.tasks.clear()
+	director._set_step(StoryDirector.Step.ANOMALY)
+	director.beats.begin()
+	director.beats.blackout()
+	var door := game.security.front_door
+	door.set_locked(true, true)
+	player.global_position = Vector3(1.7, .05, 8.2)
+	await _settle()
+	check(shift.progress.outcome.is_empty(), "a locked front door does not validate a blackout exit")
+	door.set_locked(false, true)
+	player.global_position = Vector3(7.5, .05, 8.2)
+	await _settle()
+	check(shift.progress.outcome.is_empty(), "a position away from the front exit does not validate escape")
+	player.enabled = true
+	door.snap(false)
+	await aim(Vector3(1.7, .05, 4.82), Vector3(2.24, 1.35, 5.99))
+	check(game.interactor.focus is Door.DoorHandle and game.interactor.interact(), "use the real front door during the blackout")
+	check(await wait_until(door.is_fully_open, 4), "the front door works with the main breaker off")
+	player.rotation.y = PI
+	player.camera.rotation.x = 0.0
+	var walk := InputEventKey.new()
+	walk.physical_keycode = KEY_W
+	walk.pressed = true
+	Input.parse_input_event(walk)
+	check(await wait_until(func(): return shift.progress.outcome == "escaped", 6), "walking out during the blackout reaches the escape ending")
+	walk.pressed = false
+	Input.parse_input_event(walk)
+	check(not game.security.power.main_on and not game.tasks.tasks.has("power") and director.log.has("power_bypassed"),
+		"the escape leaves the power off and removes the old objective")
 
 func _chapter(id: String) -> bool:
 	return await wait_until(func(): return game.director.production.progress.current_id() == id,20)

@@ -2,7 +2,9 @@ extends SceneTree
 
 const APARTMENT := "res://scenes/apartment/apartment.tscn"
 const ROAD := "res://scenes/route9/route9.tscn"
+const MARKET := "res://scenes/world/market_root.tscn"
 var failures := 0
+var drive_checkpoint: Dictionary
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -20,10 +22,28 @@ func _run() -> void:
 	await _use_at(room,"epilogue_phone",Vector3(.48,.03,-2.53))
 	check(room.narration.text.contains("Breakfast"),"Epilogue phone remains readable")
 
-	change_scene_to_file(APARTMENT)
+	change_scene_to_file(MARKET)
+	await scene_changed
+	var title: FlowUI = current_scene.gameplay.flow
+	var original_size := root.size
+	root.size = Vector2i(640, 360)
+	await process_frame
+	await process_frame
+	var title_rect := title._title.get_global_rect()
+	var menu_rect := title._buttons.get_global_rect()
+	check(title_rect.position.y >= 0.0 and menu_rect.end.y <= root.get_visible_rect().size.y,
+		"Title and menu fit at 640 by 360")
+	root.size = original_size
+	check(title.mode == "title" and title.press("start"), "New Game uses the normal title screen")
 	await scene_changed
 	room = current_scene
 	check(room.player.position.is_equal_approx(Vector3(-1.6,.05,2.4)), "Original apartment spawn")
+	check(is_instance_valid(room.prologue), "New Game opens the prologue")
+	_key(KEY_ESCAPE, true)
+	await process_frame
+	_key(KEY_ESCAPE, false)
+	await process_frame
+	check(not is_instance_valid(room.prologue), "Escape skips the prologue")
 	room.player.require_mouse_capture = false
 	_key(KEY_D,true)
 	for frame in 60:
@@ -58,7 +78,9 @@ func _run() -> void:
 		await scene_changed
 	check(current_scene.scene_file_path == ROAD and current_scene.progress.events.has("drive_started"),"Apartment exit starts Route 9 with apartment progress")
 	if "--apartment-only" not in OS.get_cmdline_user_args():
+		drive_checkpoint = OpeningCheckpoint.read()
 		await _drive(current_scene)
+		await _skip_drive()
 	print("OPENING ART TESTS COMPLETE failures=",failures)
 	if current_scene.has_method("finish_run"):
 		await current_scene.finish_run(1 if failures else 0)
@@ -160,6 +182,22 @@ func _drive(road: Node) -> void:
 		await physics_frame
 	_key(KEY_W,false)
 	check(market.player.position.z < 5.0,"Walk through the storefront entrance")
+
+func _skip_drive() -> void:
+	OpeningCheckpoint.resume(self, drive_checkpoint)
+	await scene_changed
+	var road := current_scene
+	check(road.scene_file_path == ROAD and road.travelled == 0.0 and road.skip.visible, "Skip is available at the start of Route 9")
+	_key(KEY_ENTER, true)
+	await process_frame
+	_key(KEY_ENTER, false)
+	if current_scene == null or current_scene.scene_file_path == ROAD:
+		await scene_changed
+	await physics_frame
+	var shift: ProductionShift = current_scene.gameplay.director.production
+	check(shift != null and shift.progress.current_id() == "handover"
+		and shift.progress.events.has("drive_started") and shift.progress.events.has("market_arrived")
+		and shift.progress.events.has("shift_read"), "Skipping joins the same handover with required progress")
 
 func _use_at(room: Node, id: String, position: Vector3) -> void:
 	var player: CharacterBody3D = room.player

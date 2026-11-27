@@ -35,6 +35,8 @@ var _title: Label
 var _body: Label
 var _buttons: VBoxContainer
 var _footer: Label
+const MENU_WIDTH := 680.0
+var _menu_scale := 1.0
 const GRAPHICS_MODES := ["safe", "performance", "balanced", "quality"]
 const GRAPHICS_PRESETS := {
 	"safe": {
@@ -44,6 +46,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 512,
 		"post": false,
 		"shadows": false,
+		"vertex_lighting": true,
 	},
 	"performance": {
 		"label": "performance",
@@ -52,6 +55,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 1024,
 		"post": false,
 		"shadows": false,
+		"vertex_lighting": true,
 	},
 	"balanced": {
 		"label": "balanced",
@@ -60,6 +64,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 1536,
 		"post": true,
 		"shadows": true,
+		"vertex_lighting": false,
 	},
 	"quality": {
 		"label": "quality",
@@ -68,6 +73,7 @@ const GRAPHICS_PRESETS := {
 		"shadow_atlas": 2048,
 		"post": true,
 		"shadows": true,
+		"vertex_lighting": false,
 	},
 }
 var settings := {"retro": true, "sensitivity": 1.0, "bob": false, "graphics_mode": "balanced", "render_scale": 0.85, "master_volume": 1.0, "weather_volume": 1.0, "toggle_sprint": false, "reduced_flashes": false}
@@ -83,6 +89,8 @@ var _force_safe_mode := false
 func setup(owner_game: Gameplay) -> FlowUI:
 	game = owner_game
 	_force_safe_mode = "--safe-mode" in OS.get_cmdline_user_args()
+	if OS.has_feature("web"):
+		settings.graphics_mode = "performance"
 	if _force_safe_mode:
 		settings.graphics_mode = "safe"
 	_ui_font = _make_ui_font(550)
@@ -116,9 +124,6 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	_title_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_title_fade)
 	_column = VBoxContainer.new()
-	_column.set_anchors_preset(Control.PRESET_CENTER)
-	_column.custom_minimum_size = Vector2(680, 0)
-	_column.add_theme_constant_override("separation", 14)
 	_root.add_child(_column)
 	_title = _label(64, INK)
 	_column.add_child(_title)
@@ -132,6 +137,7 @@ func setup(owner_game: Gameplay) -> FlowUI:
 	_footer = _label(18, DIM)
 	_footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_footer)
+	_root.resized.connect(_layout_menu)
 	apply_settings()
 	hide_all()
 	return self
@@ -172,6 +178,7 @@ func apply_settings() -> void:
 	viewport.msaa_3d = int(preset.msaa)
 	viewport.positional_shadow_atlas_size = int(preset.shadow_atlas)
 	_apply_world_quality(bool(preset.post), bool(preset.shadows))
+	game.world.get_node("VisualDirection").set_vertex_lighting(bool(preset.vertex_lighting))
 	var player = game.player
 	player.sensitivity = settings.sensitivity
 	player.head_bob = settings.bob
@@ -259,14 +266,11 @@ func show_guide(return_to := "game") -> void:
 	_present("guide", "SHIFT GUIDE", _guide_body(), "G / Esc  close")
 	var first := _button("back", "Back", _close_guide)
 	first.grab_focus()
-	call_deferred("_center_guide")
 
 func _center_guide() -> void:
 	await get_tree().process_frame
 	if mode == "guide":
-		_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		var viewport_size := get_viewport().get_visible_rect().size
-		_column.position = (viewport_size - _column.size) * 0.5
+		_column.position = ((get_viewport().get_visible_rect().size - _column.size) * 0.5).max(Vector2(20, 12))
 
 func _guide_body() -> String:
 	var current := game.tasks.current_guide()
@@ -304,7 +308,7 @@ func _button(id: String, text: String, action: Callable) -> Button:
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_font_override("font", _ui_font)
-	b.add_theme_font_size_override("font_size", 26)
+	b.add_theme_font_size_override("font_size", _menu_font(26))
 	b.add_theme_color_override("font_color", DIM)
 	b.add_theme_color_override("font_hover_color", WARM)
 	b.add_theme_color_override("font_focus_color", WARM)
@@ -337,29 +341,44 @@ func _present(next_mode: String, title: String, body: String, footer: String) ->
 	_title.text = title
 	var on_title := next_mode == "title"
 	_title.add_theme_font_override("font", LOGO_FONT if on_title else _ui_font)
-	_title.add_theme_font_size_override("font_size", 96 if on_title else 42)
 	_title.add_theme_color_override("font_color", INK)
 	_body.text = body.replace("\\n", "\n")
 	_body.visible = body != ""
-	_body.add_theme_font_size_override("font_size", 20 if next_mode == "guide" else 21)
 	_body.add_theme_color_override("font_color", INK if on_title else DIM)
 	_shade.color.a = 0.12 if on_title else 0.86
 	_title_fade.visible = on_title
-	_column.anchor_left = 0.1
-	_column.anchor_right = 0.1
-	_column.anchor_top = 0.5
-	_column.anchor_bottom = 0.5
-	_column.offset_left = 0
-	_column.offset_right = 680
-	_column.offset_top = -330 if on_title else -190  # the logo sits in the night sky above the storefront
-	_column.offset_bottom = _column.offset_top
 	_footer.text = footer
 	_root.visible = true
+	_layout_menu()
 	if is_inside_tree():
 		get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	game.hud.visible = false
 	game.phone_ui.visible = false
+
+func _layout_menu() -> void:
+	if mode == "none":
+		return
+	var viewport_size := get_viewport().get_visible_rect().size
+	var left := maxf(28.0, viewport_size.x * 0.1)
+	var width := clampf(viewport_size.x - left - 20.0, 1.0, MENU_WIDTH)
+	_menu_scale = clampf(minf(width / MENU_WIDTH, viewport_size.y / 600.0), 0.64, 1.0)
+	var on_title := mode == "title"
+	_title.add_theme_font_size_override("font_size", _menu_font(96 if on_title else 42))
+	_body.add_theme_font_size_override("font_size", _menu_font(20 if mode == "guide" else 21))
+	_footer.add_theme_font_size_override("font_size", maxi(13, _menu_font(18)))
+	_column.add_theme_constant_override("separation", _menu_font(14))
+	_buttons.add_theme_constant_override("separation", _menu_font(6))
+	for button in _buttons.get_children():
+		button.add_theme_font_size_override("font_size", _menu_font(26))
+	_column.custom_minimum_size.x = width
+	_column.position = Vector2(left, maxf(14.0, viewport_size.y * 0.5 - (330.0 if on_title else 190.0)))
+	_column.size = Vector2(width, 0.0)
+	if mode == "guide":
+		_center_guide.call_deferred()
+
+func _menu_font(size: int) -> int:
+	return roundi(float(size) * _menu_scale)
 
 func _make_ui_font(_weight: int) -> FontVariation:
 	var variation := FontVariation.new()
